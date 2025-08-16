@@ -49,6 +49,36 @@ app.post('/api/inscribir', async (req, res) => {
   }
 });
 
+// ==========================================================
+// NUEVA RUTA PARA OBTENER LA LISTA DE INSCRIPTOS
+// ==========================================================
+app.get('/api/inscriptos', async (req, res) => {
+  // Obtenemos la categoría del filtro, si es que viene en la URL
+  // ej: /api/inscriptos?categoria=masculino-c
+  const { categoria } = req.query;
+
+  // Preparamos la consulta base
+  let sql = 'SELECT integrantes, categoria FROM inscriptos ORDER BY id DESC';
+  const params = [];
+
+  // Si nos piden filtrar por una categoría específica...
+  if (categoria) {
+    sql = 'SELECT integrantes, categoria FROM inscriptos WHERE categoria = ? ORDER BY id DESC';
+    params.push(categoria);
+  }
+
+  try {
+    const connection = await mysql.createConnection(connectionConfig);
+    // Ejecutamos la consulta (con o sin filtro)
+    const [rows] = await connection.execute(sql, params);
+    await connection.end();
+    // Enviamos la lista de jugadores como respuesta
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error('Error al obtener inscriptos:', error);
+    res.status(500).json({ error: 'No se pudo obtener la lista de inscriptos.' });
+  }
+});
 // 4. Poner el servidor a escuchar en un puerto
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {

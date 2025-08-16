@@ -1,0 +1,75 @@
+/* Estilos para la página de inscriptos */
+#filtros {
+    margin-bottom: 40px;
+    background-color: #f9f9f9;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #eee;
+}
+
+.filtro-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.filtro-container label {
+    font-weight: 700;
+}
+
+.filtro-container select {
+    padding: 10px;
+    font-size: 1em;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    min-width: 250px;
+}
+
+/* Estilos para la tabla */
+#tabla-inscriptos {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+#tabla-inscriptos thead {
+    background-color: #4CAF50;
+    color: white;
+}
+
+#tabla-inscriptos th, #tabla-inscriptos td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+#tabla-inscriptos tbody tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+#tabla-inscriptos tbody tr:hover {
+    background-color: #e9e9e9;
+}
+
+#loading-message, .no-results {
+    text-align: center;
+    padding: 20px;
+    font-style: italic;
+    color: #777;
+}
+
+.back-link {
+    margin-top: 30px;
+    text-align: center;
+}
+
+.back-link a {
+    color: #4CAF50;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.back-link a:hover {
+    text-decoration: underline;
+}
