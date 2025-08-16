@@ -1,22 +1,21 @@
-/* Estilos Generales */
+/* ========================================= */
+/* --- ESTILOS GENERALES Y DE ESCRITORIO --- */
+/* ========================================= */
+
 body {
     font-family: 'Roboto', sans-serif;
     color: #333;
     line-height: 1.6;
     margin: 0;
     padding: 20px;
-    position: relative; 
-
-    /* --- NUEVO: AÑADIMOS UN GRADIENTE DE COLOR --- */
-    background-color: #f4f0ef; /* Color de respaldo para navegadores antiguos */
-    /* El gradiente va de un tono más claro (#d37a56) a nuestro tono principal (#c9643b) */
-    background-image: linear-gradient(to bottom, #f2eeec, #9d9794);
+    position: relative;
+    background-color: #c9643b;
+    background-image: linear-gradient(to bottom, #d37a56, #c9643b);
 }
 
-/* NUEVO: Marca de agua sutil en el fondo (Opcional, pero muy elegante) */
 body::before {
     content: '';
-    position: fixed; /* Se queda fijo aunque hagas scroll */
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
@@ -24,155 +23,116 @@ body::before {
     background-image: url('logo.png');
     background-repeat: no-repeat;
     background-position: center center;
-    background-size: 300px; /* Ajusta el tamaño de la marca de agua */
-    opacity: 0.05; /* La clave para que sea muy sutil */
-    z-index: -1; /* Lo manda detrás de todo el contenido */
+    background-size: 300px;
+    opacity: 0.1; /* Le subimos un poco la opacidad */
+    z-index: -1;
 }
-
 
 .container {
     max-width: 800px;
     margin: 0 auto;
-    background-color: rgba(238, 243, 243, 0.18);
+    background-color: rgba(255, 255, 255, 0.9); /* Fondo semi-transparente */
     padding: 30px;
     border-radius: 10px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
-/* Encabezado */
 header {
-    /* text-align: center; -- Ya no lo necesitamos centrado así */
+    display: flex;
+    align-items: center;
+    gap: 25px;
     border-bottom: 2px solid #4CAF50;
     padding-bottom: 20px;
     margin-bottom: 30px;
-
-    /* NUEVO: Usamos Flexbox para alinear el logo y el texto fácilmente */
-    display: flex;
-    align-items: center; /* Centra verticalmente el logo y el texto */
-    gap: 25px; /* Espacio entre el logo y el texto */
 }
 
-/* NUEVO: Estilos para la imagen del logo en el encabezado */
 .header-logo {
-    height: 100px; /* Ajusta el tamaño del logo */
+    height: 100px;
     width: 100px;
-    border-radius: 50%; /* Lo mantiene perfectamente circular */
-    border: 2px solid #eee; /* Un borde sutil opcional */
+    border-radius: 50%;
+    border: 2px solid #eee;
 }
 
-/* NUEVO: Estilos para el contenedor del texto del encabezado */
 .header-text {
-    text-align: left; /* Alineamos el texto a la izquierda */
+    text-align: left;
 }
 
 header h1 {
     color: #2c3e50;
-    margin-bottom: 5px; /* Reducimos el margen */
+    margin-bottom: 5px;
     margin-top: 0;
 }
 
-header .subtitle {
-    color: #22bbc6;
-    font-size: 1.1em;
-    margin: 0;
-}
+/* ... (el resto de tus estilos del formulario, etc. van aquí. Los pego para asegurar) ... */
 
-
-/* --- EL RESTO DEL CÓDIGO CSS SIGUE SIENDO EL MISMO --- */
-/* (Lo pego todo para que no haya dudas) */
-
-/* Secciones Principales */
-main section {
-    margin-bottom: 40px;
-}
-
-h2 {
-    color: #4CAF50;
-    border-left: 4px solid #f39c12;
-    padding-left: 10px;
-    margin-bottom: 20px;
-}
-
-/* Lista de Información */
-#info-torneo ul {
-    list-style-type: none;
-    padding: 0;
-}
-#info-torneo li {
-    background-color: #f9f9f9;
-    padding: 10px 15px;
-    border-radius: 5px;
-    margin-bottom: 8px;
-    border-left: 3px solid #4CAF50;
-}
-
-/* Formulario */
+h2 { color: #4CAF50; border-left: 4px solid #f39c12; padding-left: 10px; margin-bottom: 20px; }
+#info-torneo ul { list-style-type: none; padding: 0; }
+#info-torneo li { background-color: #f9f9f9; padding: 10px 15px; border-radius: 5px; margin-bottom: 8px; border-left: 3px solid #4CAF50; }
 .form-group { margin-bottom: 20px; }
 .form-group label { display: block; margin-bottom: 8px; font-weight: 700; color: #555; }
-.form-group input[type="text"],
-.form-group input[type="email"],
-.form-group input[type="tel"],
-.form-group select {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    box-sizing: border-box;
-    font-size: 1em;
-    transition: border-color 0.3s ease;
-}
-.form-group input:focus, .form-group select:focus {
-    outline: none;
-    border-color: #4CAF50;
-    box-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
-}
-
-/* Disponibilidad Horaria */
-.availability-fieldset { border: 1px solid #631d1d; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+.form-group input[type="text"], .form-group input[type="email"], .form-group input[type="tel"], .form-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 1em; }
+.availability-fieldset { border: 1px solid #ccc; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
 .availability-fieldset legend { font-weight: 700; color: #555; padding: 0 10px; }
-.availability-instructions { font-size: 0.9em; color: #37a5ad; margin-top: 0; margin-bottom: 15px; }
+.availability-instructions { font-size: 0.9em; color: #7f8c8d; margin-top: 0; margin-bottom: 15px; }
 .availability-grid { display: grid; grid-template-columns: max-content 1fr; gap: 10px 15px; align-items: center; }
 .availability-grid label { font-weight: normal; text-align: right; }
 .availability-grid input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-
-/* Checkbox */
 .checkbox-group { display: flex; align-items: center; margin-top: 25px; }
 .checkbox-group input[type="checkbox"] { margin-right: 10px; width: 20px; height: 20px; }
-.checkbox-group label { margin-bottom: 0; font-weight: 400; }
-
-/* Botón de envío */
-button[type="submit"] { width: 100%; padding: 15px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; font-size: 1.2em; font-weight: 700; cursor: pointer; transition: background-color 0.3s ease, transform 0.2s ease; }
-button[type="submit"]:hover { background-color: #45a049; transform: translateY(-2px); }
-button[type="submit"]:disabled { background-color: #9E9E9E; cursor: not-allowed; }
-
-/* Mensajes y Clases de Estado */
+button[type="submit"] { width: 100%; padding: 15px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; font-size: 1.2em; font-weight: 700; cursor: pointer; }
 .hidden { display: none; }
 #confirmationMessage { background-color: #e8f5e9; border-left: 5px solid #4CAF50; padding: 20px; border-radius: 5px; text-align: center; }
-
-/* Estilos para Errores */
 input.error, select.error { border-color: #e74c3c; background-color: #fbeae5; }
-.error-message { color: #e74c3c; font-size: 0.9em; margin-top: 5px; }
-.server-error { background-color: #fbeae5; color: #c0392b; padding: 10px; margin-bottom: 20px; border: 1px solid #e74c3c; border-radius: 5px; text-align: center; }
+footer { text-align: center; margin-top: 30px; color: #333; font-size: 0.9em; }
 
-/* Pie de Página */
-footer { text-align: center; margin-top: 30px; color: #bb3a3a; font-size: 0.9em; }
 /* Estilo para el enlace a la lista de inscriptos */
-.view-list-link {
-    text-align: center;
-    margin-bottom: 30px;
-}
+.view-list-link { text-align: center; margin-bottom: 30px; }
+.view-list-link a { display: inline-block; padding: 10px 20px; background-color: #f39c12; color: #fff; font-weight: bold; text-decoration: none; border-radius: 5px; transition: background-color 0.3s ease; }
+.view-list-link a:hover { background-color: #e67e22; }
 
-.view-list-link a {
-    display: inline-block;
-    padding: 10px 20px;
-    background-color: #30a438; /* Amarillo tenis */
-    color: #fff;
-    font-weight: bold;
-    text-decoration: none;
-    border-radius: 5px;
-    transition: background-color 0.3s ease;
-}
 
-.view-list-link a:hover {
-    background-color: #36962b;
+/* ========================================= */
+/* --- ESTILOS PARA DISPOSITIVOS MÓVILES --- */
+/* ========================================= */
+@media (max-width: 600px) {
+    body { padding: 10px; }
+    .container { padding: 15px; }
+
+    header {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .header-text {
+        text-align: center;
+    }
+
+    header h1 {
+        font-size: 1.5em; /* Un poco más pequeño para móviles */
+    }
+    
+    .header-logo {
+        height: 80px;
+        width: 80px;
+    }
+    
+    .availability-grid {
+        grid-template-columns: 1fr;
+        gap: 5px 10px;
+    }
+
+    .availability-grid label {
+        text-align: left;
+        margin-bottom: -5px;
+    }
+
+    /* Reglas específicas para la página de inscriptos en móvil */
+    .filtro-container {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .filtro-container select {
+        width: 100%;
+    }
 }
