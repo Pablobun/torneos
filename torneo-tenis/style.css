@@ -165,7 +165,7 @@ footer { text-align: center; margin-top: 30px; color: #bb3a3a; font-size: 0.9em;
 .view-list-link a {
     display: inline-block;
     padding: 10px 20px;
-    background-color: #f39c12; /* Amarillo tenis */
+    background-color: #30a438; /* Amarillo tenis */
     color: #fff;
     font-weight: bold;
     text-decoration: none;
@@ -174,5 +174,5 @@ footer { text-align: center; margin-top: 30px; color: #bb3a3a; font-size: 0.9em;
 }
 
 .view-list-link a:hover {
-    background-color: #e67e22;
+    background-color: #36962b;
 }
