@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inscripción Torneo de Tenis</title>
+    <link rel="icon" href="logo.png" type="image/png">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="container">
+        <header>
+                <!-- NUEVO: Aquí añadimos la imagen del logo -->
+    <img src="logo.png" alt="Logo Academia de Tenis Guido Ferrer" class="header-logo">
+        <!-- NUEVO: Envolvemos el texto en un div para alinearlo mejor -->
+    <div class="header-text">
+        <h1>Torneo Abierto de Tenis "Copa Aero Club"</h1>
+        <p class="subtitle">¡Inscribite y disfruta una semana a puro deporte!</p>
+    </div>
+        </header>
+
+        <main>
+            <section id="info-torneo">
+                <h2>Detalles del Torneo</h2>
+                <ul>
+                    <li><strong>Fechas del Torneo:</strong> Del 4 al 12 de Octubre, 2025</li>
+                    <li><strong>Lugar:</strong> Club de Tenis "Aero Club Rio Cuarto"</li>
+                    <li><strong>Modalidad:</strong> Dobles Masculino y Femenino</li>
+                    <li><strong>Costo de Inscripción:</strong> $27.000 por Jugador</li>
+                </ul>
+            </section>
+
+            <section id="formulario-inscripcion">
+                <h2>Formulario de Inscripción</h2>
+                <form id="registrationForm" novalidate>
+                    <div class="form-group">
+                        <label for="integrantes">Integrantes de la Pareja:</label>
+                        <input type="text" id="integrantes" name="integrantes" placeholder="Ej: Juan Pérez y Luis García" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email">Correo Electrónico de Contacto:</label>
+                        <input type="email" id="email" name="email" placeholder="ejemplo@correo.com" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="telefono">Teléfono de Contacto:</label>
+                        <input type="tel" id="telefono" name="telefono" placeholder="Tu número de teléfono">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="categoria">Categoría:</label>
+                        <select id="categoria" name="categoria" required>
+                            <option value="" disabled selected>Selecciona una categoría</option>
+                            <option value="masculino-b">Masculino - B</option>
+                            <option value="femenino-b">Femenino - B</option>
+                            <option value="masculino-c">Masculino - C</option>
+                            <option value="femenino-c">Femenino - C</option>
+                            <option value="masculino-d">Masculino - D</option>
+                            <option value="femenino-d">Femenino - D</option>
+                            <option value="masculino-e">Masculino - E</option>
+                            <option value="femenino-e">Femenino - E</option>
+                        </select>
+                    </div>
+                    
+                    <fieldset class="availability-fieldset">
+                        <legend>Disponibilidad Horaria</legend>
+                        <p class="availability-instructions">Indica los horarios en los que puedes comenzar a jugar. Si puedes todo el dia solo aclaralo sin horarios.</p>
+                        <div class="availability-grid">
+                            <label for="sabado4">Sábado 4:</label>
+                            <input type="text" id="sabado4" name="sabado4" placeholder="Ej: Solo puedo jugar a la tarde">
+                            
+                            <label for="domingo5">Domingo 5:</label>
+                            <input type="text" id="domingo5" name="domingo5">
+                            
+                            <label for="lunes6">Lunes 6:</label>
+                            <input type="text" id="lunes6" name="lunes6" placeholder="Ej:Puedo empezar a jugar a las 14.30-Debo terminar antes de las 20">
+                            
+                            <label for="martes7">Martes 7:</label>
+                            <input type="text" id="martes7" name="martes7">
+                            
+                            <label for="miercoles8">Miércoles 8:</label>
+                            <input type="text" id="miercoles8" name="miercoles8">
+
+                            <label for="jueves9">Jueves 9:</label>
+                            <input type="text" id="jueves9" name="jueves9">
+                            
+                            <label for="viernes10">Viernes 10:</label>
+                            <input type="text" id="viernes10" name="viernes10">
+                            
+                            <label for="sabado11">Sábado 11:</label>
+                            <input type="text" id="sabado11" name="sabado11" placeholder="A partir de la tarde se requiere disponibilidad">
+                        </div>
+                    </fieldset>
+
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="terminos" name="terminos" required>
+                        <label for="terminos">Acepto los <a href="reglamento.pdf" download target="_blank">términos y condiciones</a> del torneo.</label>
+                    </div>
+
+                    <!-- Div para mostrar errores del servidor -->
+                    <div id="server-message" class="hidden"></div>
+
+                    <button type="submit">Inscribir Pareja</button>
+                </form>
+                
+                <div id="confirmationMessage" class="hidden">
+                    <h3>¡Inscripción Exitosa!</h3>
+                    <p>Gracias por registrar a tu pareja. Su inscripción ha sido guardada correctamente.</p>
+                    <p>¡Nos vemos en la cancha!</p>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2025 Escuela de Tenis "Guido Ferrer". Todos los derechos reservados.</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
