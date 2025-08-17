@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             // 6. Enviamos los datos a nuestra función de backend en Netlify.
-            const response = await fetch('/.netlify/functions/guardarInscripcion', {
+            const response = await fetch('https://academia-torneos.onrender.com/api/inscribir', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),
