@@ -37,7 +37,7 @@ app.post('/api/inscribir', async (req, res) => {
     const values = [
         data.integrantes, data.email, data.telefono, data.categoria,
         data.sabado4, data.domingo5, data.lunes6, data.martes7,
-        data.miercoles8, data.junes9, data.viernes10, data.sabado11,
+        data.miercoles8, data.jueves9, data.viernes10, data.sabado11,
         data.terminos ? 1 : 0
     ];
 
