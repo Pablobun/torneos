@@ -9,8 +9,8 @@ body {
     margin: 0;
     padding: 20px;
     position: relative;
-    background-color: #c9643b;
-    background-image: linear-gradient(to bottom, #d37a56, #c9643b);
+    background-color: #d6c2ba;
+    background-image: linear-gradient(to bottom, #d9cdc8, #efebea);
 }
 
 body::before {
@@ -65,7 +65,7 @@ header h1 {
 
 /* ... (el resto de tus estilos del formulario, etc. van aquí. Los pego para asegurar) ... */
 
-h2 { color: #4CAF50; border-left: 4px solid #f39c12; padding-left: 10px; margin-bottom: 20px; }
+h2 { color: #4CAF50; border-left: 4px solid #bab3a8; padding-left: 10px; margin-bottom: 20px; }
 #info-torneo ul { list-style-type: none; padding: 0; }
 #info-torneo li { background-color: #f9f9f9; padding: 10px 15px; border-radius: 5px; margin-bottom: 8px; border-left: 3px solid #4CAF50; }
 .form-group { margin-bottom: 20px; }
