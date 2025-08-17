@@ -1,8 +1,10 @@
 /* Estilos para la página de inscriptos */
 #filtros {
     margin-bottom: 40px;
-    padding-bottom: 25px; /* Damos espacio por abajo */
-    border-bottom: 1px solid #ddd; /* Una línea sutil para separar */
+    background-color: #f9f9f9;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #eee;
 }
 
 .filtro-container {

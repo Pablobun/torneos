@@ -136,3 +136,48 @@ footer { text-align: center; margin-top: 30px; color: #333; font-size: 0.9em; }
         width: 100%;
     }
 }
+/* ========================================= */
+/* --- ESTILOS PARA DISPOSITIVOS MÓVILES --- */
+/* ========================================= */
+@media (max-width: 600px) {
+    body { padding: 10px; }
+    .container { padding: 15px; }
+
+    header {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .header-text {
+        text-align: center;
+    }
+
+    header h1 {
+        font-size: 1.5em; 
+    }
+    
+    .header-logo {
+        height: 80px;
+        width: 80px;
+    }
+    
+    .availability-grid {
+        grid-template-columns: 1fr;
+        gap: 5px 10px;
+    }
+
+    .availability-grid label {
+        text-align: left;
+        margin-bottom: -5px;
+    }
+
+    /* Reglas específicas para la página de inscriptos en móvil */
+    .filtro-container {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .filtro-container select {
+        width: 100%;
+    }
+}
