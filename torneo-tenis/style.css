@@ -31,7 +31,7 @@ body::before {
 .container {
     max-width: 800px;
     margin: 0 auto;
-    background-color: rgba(255, 255, 255, 0.9); /* Fondo semi-transparente */
+    background-color: rgba(255, 255, 255, 0.6); /* Fondo semi-transparente */
     padding: 30px;
     border-radius: 10px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
@@ -87,7 +87,7 @@ footer { text-align: center; margin-top: 30px; color: #333; font-size: 0.9em; }
 
 /* Estilo para el enlace a la lista de inscriptos */
 .view-list-link { text-align: center; margin-bottom: 30px; }
-.view-list-link a { display: inline-block; padding: 10px 20px; background-color: #bbedc6; color: #fff; font-weight: bold; text-decoration: none; border-radius: 5px; transition: background-color 0.3s ease; }
+.view-list-link a { display: inline-block; padding: 10px 20px; background-color: #245c30; color: #fff; font-weight: bold; text-decoration: none; border-radius: 5px; transition: background-color 0.3s ease; }
 .view-list-link a:hover { background-color: #5ca78f; }
 
 
