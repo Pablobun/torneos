@@ -1,10 +1,12 @@
 /* Estilos para la página de inscriptos */
 #filtros {
     margin-bottom: 40px;
-    background-color: #f9f9f9;
+    /* Hacemos el fondo blanco pero con 50% de transparencia */
+    background-color: rgba(255, 255, 255, 0.5); 
     padding: 20px;
     border-radius: 8px;
-    border: 1px solid #eee;
+    /* Hacemos el borde también un poco transparente para que no desentone */
+    border: 1px solid rgba(0, 0, 0, 0.1); 
 }
 
 .filtro-container {
