@@ -113,15 +113,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 2. Si encontramos al menos un error, mostramos UN SOLO mensaje genérico
     if (hayErrorDisponibilidad) {
-        // Buscamos el contenedor de la disponibilidad horaria
-        const fieldsetDisponibilidad = document.querySelector('.availability-fieldset');
-        // Creamos nuestro mensaje de error
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'error-message'; // Usamos la misma clase para el estilo
-        errorDiv.textContent = 'Por favor, completa la disponibilidad para todos los días!.';
-        // Añadimos el mensaje al final del contenedor
-        fieldsetDisponibilidad.appendChild(errorDiv);
-    }
+    // Buscamos el contenedor de la disponibilidad horaria
+    const fieldsetDisponibilidad = document.querySelector('.availability-fieldset');
+    // Creamos nuestro mensaje de error
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error-message'; // Usamos la misma clase para el estilo
+    errorDiv.textContent = 'Por favor, completa la disponibilidad para todos los días!.';
+    // Añadimos el mensaje al final del contenedor
+    fieldsetDisponibilidad.appendChild(errorDiv);
+}
     
     return isValid;
 }
