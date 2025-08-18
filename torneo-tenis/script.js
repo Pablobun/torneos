@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (campoDia.value.trim() === '') {
             // Obtenemos la etiqueta del campo para un mensaje de error más claro
             const label = document.querySelector(`label[for='${idDia}']`).textContent;
-            showError(campoDia, `La disponibilidad para ${label.replace(':', '')} es obligatoria.`);
+            showError(campoDia, `La disponibilidad para ${label.replace(':', '')} debe ser completada.(Ejemplo: No puedo)`);
             isValid = false;
         }
     });
