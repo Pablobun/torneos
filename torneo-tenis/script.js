@@ -74,49 +74,61 @@ document.addEventListener('DOMContentLoaded', function () {
     function validateForm() {
     let isValid = true;
     
-    // --- Campos que ya validábamos ---
+    // --- Campos de siempre ---
     const integrantes = document.getElementById('integrantes');
     const email = document.getElementById('email');
     const categoria = document.getElementById('categoria');
     const terminos = document.getElementById('terminos');
+    const telefono = document.getElementById('telefono');
 
     if (integrantes.value.trim() === '') { showError(integrantes, 'El nombre de los integrantes es obligatorio.'); isValid = false; }
     if (email.value.trim() === '') { showError(email, 'El correo electrónico es obligatorio.'); isValid = false; }
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) { showError(email, 'Por favor, introduce un correo electrónico válido.'); isValid = false; }
     if (categoria.value === '') { showError(categoria, 'Debes seleccionar una categoría.'); isValid = false; }
+    if (telefono.value.trim() === '') { showError(telefono, 'El teléfono es obligatorio.'); isValid = false; }
     if (!terminos.checked) { showError(terminos, 'Debes aceptar los términos y condiciones.'); isValid = false; }
-    
-    // --- NUEVAS VALIDACIONES ---
-    
-    // 1. Validar Teléfono
-    const telefono = document.getElementById('telefono');
-    if (telefono.value.trim() === '') {
-        showError(telefono, 'El teléfono es obligatorio.');
-        isValid = false;
-    }
 
-    // 2. Validar todos los campos de disponibilidad horaria
-    // Creamos una lista con los IDs de todos los campos de disponibilidad
+    // ==========================================================
+    // --- NUEVA LÓGICA PARA VALIDAR LA DISPONIBILIDAD HORARIA ---
+    // ==========================================================
+
     const diasDisponibilidad = [
         'sabado4', 'domingo5', 'lunes6', 'martes7',
         'miercoles8', 'jueves9', 'viernes10', 'sabado11'
     ];
+    
+    // Bandera para saber si encontramos al menos un error en esta sección
+    let hayErrorDisponibilidad = false;
 
-    // Recorremos la lista y validamos cada campo
+    // 1. Recorremos la lista para marcar en rojo los campos vacíos
     diasDisponibilidad.forEach(idDia => {
         const campoDia = document.getElementById(idDia);
         if (campoDia.value.trim() === '') {
-            // Obtenemos la etiqueta del campo para un mensaje de error más claro
-            const label = document.querySelector(`label[for='${idDia}']`).textContent;
-            showError(campoDia, `La disponibilidad para ${label.replace(':', '')} debe ser completada.(Ejemplo: No puedo)`);
-            isValid = false;
+            // Solo le añadimos la clase de error para que se ponga rojo
+            campoDia.classList.add('error');
+            hayErrorDisponibilidad = true;
+            isValid = false; // Marcamos el formulario como inválido
         }
     });
 
+    // 2. Si encontramos al menos un error, mostramos UN SOLO mensaje genérico
+    if (hayErrorDisponibilidad) {
+        // Buscamos el contenedor de la disponibilidad horaria
+        const fieldsetDisponibilidad = document.querySelector('.availability-fieldset');
+        // Creamos nuestro mensaje de error
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error-message'; // Usamos la misma clase para el estilo
+        errorDiv.textContent = 'Por favor, completa la disponibilidad para todos los días!.';
+        // Añadimos el mensaje al final del contenedor
+        fieldsetDisponibilidad.appendChild(errorDiv);
+    }
+    
     return isValid;
 }
+
+
     /**
-     * Muestra un mensaje de error debajo de un campo específico y le pone un borde rojo.
+     * Muestra un mensaje de error debajo de un campo específico y le pone un borde rojo
      */
     function showError(input, message) {
         input.classList.add('error');
