@@ -72,38 +72,49 @@ document.addEventListener('DOMContentLoaded', function () {
      * Devuelve 'true' si todo está correcto, 'false' si hay algún error.
      */
     function validateForm() {
-        let isValid = true;
-        const integrantes = document.getElementById('integrantes');
-        const email = document.getElementById('email');
-        const categoria = document.getElementById('categoria');
-        const terminos = document.getElementById('terminos');
+    let isValid = true;
+    
+    // --- Campos que ya validábamos ---
+    const integrantes = document.getElementById('integrantes');
+    const email = document.getElementById('email');
+    const categoria = document.getElementById('categoria');
+    const terminos = document.getElementById('terminos');
 
-        if (integrantes.value.trim() === '') {
-            showError(integrantes, 'El nombre de los integrantes es obligatorio.');
-            isValid = false;
-        }
-        
-        if (email.value.trim() === '') {
-            showError(email, 'El correo electrónico es obligatorio.');
-            isValid = false;
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) { // Regex para validar email
-            showError(email, 'Por favor, introduce un correo electrónico válido.');
-            isValid = false;
-        }
-
-        if (categoria.value === '') {
-            showError(categoria, 'Debes seleccionar una categoría.');
-            isValid = false;
-        }
-
-        if (!terminos.checked) {
-            showError(terminos, 'Debes aceptar los términos y condiciones.');
-            isValid = false;
-        }
-        
-        return isValid;
+    if (integrantes.value.trim() === '') { showError(integrantes, 'El nombre de los integrantes es obligatorio.'); isValid = false; }
+    if (email.value.trim() === '') { showError(email, 'El correo electrónico es obligatorio.'); isValid = false; }
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) { showError(email, 'Por favor, introduce un correo electrónico válido.'); isValid = false; }
+    if (categoria.value === '') { showError(categoria, 'Debes seleccionar una categoría.'); isValid = false; }
+    if (!terminos.checked) { showError(terminos, 'Debes aceptar los términos y condiciones.'); isValid = false; }
+    
+    // --- NUEVAS VALIDACIONES ---
+    
+    // 1. Validar Teléfono
+    const telefono = document.getElementById('telefono');
+    if (telefono.value.trim() === '') {
+        showError(telefono, 'El teléfono es obligatorio.');
+        isValid = false;
     }
 
+    // 2. Validar todos los campos de disponibilidad horaria
+    // Creamos una lista con los IDs de todos los campos de disponibilidad
+    const diasDisponibilidad = [
+        'sabado4', 'domingo5', 'lunes6', 'martes7',
+        'miercoles8', 'jueves9', 'viernes10', 'sabado11'
+    ];
+
+    // Recorremos la lista y validamos cada campo
+    diasDisponibilidad.forEach(idDia => {
+        const campoDia = document.getElementById(idDia);
+        if (campoDia.value.trim() === '') {
+            // Obtenemos la etiqueta del campo para un mensaje de error más claro
+            const label = document.querySelector(`label[for='${idDia}']`).textContent;
+            showError(campoDia, `La disponibilidad para ${label.replace(':', '')} es obligatoria.`);
+            isValid = false;
+        }
+    });
+
+    return isValid;
+}
     /**
      * Muestra un mensaje de error debajo de un campo específico y le pone un borde rojo.
      */
