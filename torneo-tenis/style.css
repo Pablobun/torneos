@@ -119,7 +119,7 @@ footer { text-align: center; margin-top: 30px; color: #333; font-size: 0.9em; }
     position: fixed;
     top: 50%;
     transform: translateY(-50%);
-    width: 200px; /* Un poco más anchos para esta imagen */
+    width: 250px; /* Un poco más anchos para esta imagen */
     z-index: 10;
 }
 
@@ -159,7 +159,7 @@ footer { text-align: center; margin-top: 30px; color: #333; font-size: 0.9em; }
 /* ========================================================== */
 
 /* Para pantallas grandes (PC), mostramos los banners laterales */
-@media (min-width: 1300px) {
+@media (min-width: 1450px) {
     .banner {
         display: block;
     }
