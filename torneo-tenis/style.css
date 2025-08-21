@@ -110,6 +110,69 @@ footer { text-align: center; margin-top: 30px; color: #333; font-size: 0.9em; }
 }
 
 /* ========================================= */
+/* --- ESTILOS PARA BANNERS DE PUBLICIDAD -- */
+/* ========================================= */
+
+/* Contenedor general de los banners laterales (oculto por defecto) */
+.banner {
+    display: none; /* Empezamos ocultándolo */
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 200px; /* Un poco más anchos para esta imagen */
+    z-index: 10;
+}
+
+/* Posición específica para cada uno */
+.banner-izquierdo {
+    left: 20px;
+}
+
+.banner-derecho {
+    right: 20px;
+}
+
+.banner img {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 4px S10px rgba(0,0,0,0.2);
+    display: block;
+}
+
+/* Banner horizontal para móviles (oculto por defecto) */
+.banner-movil {
+    display: none;
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+.banner-movil img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+}
+
+
+/* ========================================================== */
+/* --- REGLAS RESPONSIVE PARA MOSTRAR/OCULTAR LOS BANNERS --- */
+/* ========================================================== */
+
+/* Para pantallas grandes (PC), mostramos los banners laterales */
+@media (min-width: 1300px) {
+    .banner {
+        display: block;
+    }
+}
+
+/* Para pantallas pequeñas (celulares), mostramos el banner horizontal */
+@media (max-width: 600px) {
+    .banner-movil {
+        display: block;
+    }
+}
+
+/* ========================================= */
 /* --- ESTILOS PARA DISPOSITIVOS MÓVILES --- */
 /* ========================================= */
 @media (max-width: 600px) {
