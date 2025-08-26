@@ -162,19 +162,30 @@ footer { text-align: center; margin-top: 30px; color: #333; font-size: 0.9em; }
 }
 
 /* ======================================= */
-/* --- ESTILOS PARA CARRUSEL DE BANNERS -- */
+/* --- ESTILOS PARA CARRUSEL DE BANNERS (v2) -- */
 /* ======================================= */
 
 /* Contenedor principal del slider (oculto por defecto en PC) */
 .banner-movil-slider {
     display: none; /* Oculto en PC y se activa con @media */
-    width: 100%; /* Ocupa todo el ancho disponible */
-    overflow-x: auto; /* Permite el scroll horizontal */
-    scroll-snap-type: x mandatory; /* Engancha en cada banner */
-    scroll-behavior: smooth; /* Deslizamiento suave */
-    -webkit-overflow-scrolling: touch; /* Mejora el scroll en iOS */
-    gap: 20px; /* Espacio entre los banners */
-    padding: 10px 0; /* Espacio vertical para que la sombra se vea */
+    
+    /* Usamos Grid en lugar de Flex para un control más preciso */
+    display: grid;
+    grid-auto-flow: column; /* Flujo de elementos en columna */
+    grid-auto-columns: 85%; /* Cada columna (banner) ocupa el 85% */
+
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    
+    gap: 15px; /* Espacio entre los banners */
+    
+    /* Truco para que el primer y último banner se centren bien */
+    /* Calcula el espacio sobrante (100% - 85% = 15%) y lo divide */
+    padding-left: 7.5%;
+    padding-right: 7.5%;
+    
     margin-top: 30px;
     margin-bottom: 25px;
 }
@@ -184,18 +195,17 @@ footer { text-align: center; margin-top: 30px; color: #333; font-size: 0.9em; }
     display: none;
 }
 
-/* Cada banner individual dentro del slider */
-.banner-movil-slide {
-    flex: 0 0 85%; /* Cada banner ocupa el 85% del ancho del contenedor */
+/* Cada enlace <a> dentro del slider ahora es un "slide" */
+.banner-movil-slider > a {
     scroll-snap-align: center; /* Se centra al deslizar */
 }
 
-.banner-movil-slide img {
+.banner-movil-slider img {
     width: 100%;
     height: auto;
-    border-radius: 10px; /* Bordes un poco más redondeados */
+    border-radius: 10px;
     display: block;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Sombra más pronunciada */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 /* ========================================= */
 /* --- ESTILOS PARA DISPOSITIVOS MÓVILES --- */
@@ -244,5 +254,8 @@ footer { text-align: center; margin-top: 30px; color: #333; font-size: 0.9em; }
     }
     .banner-movil-slider {
     display: flex; /* Muestra el carrusel en móviles */
+}
+.banner-movil-slider {
+    display: grid; /* Muestra el carrusel en móviles usando grid */
 }
 }
