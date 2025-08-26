@@ -209,6 +209,7 @@ footer { text-align: center; margin-top: 30px; color: #333; font-size: 0.9em; }
 @media (max-width: 600px) {
     body { padding: 10px; }
     .container { padding: 15px; }
+    .banner { display: none !important; } /* Oculta los banners laterales de PC en móvil */
 
     header {
         flex-direction: column;
