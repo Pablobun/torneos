@@ -170,7 +170,7 @@ footer { text-align: center; margin-top: 30px; color: #333; font-size: 0.9em; }
     display: none; /* Oculto en PC y se activa con @media */
     
     /* Usamos Grid en lugar de Flex para un control más preciso */
-    display: grid;
+   
     grid-auto-flow: column; /* Flujo de elementos en columna */
     grid-auto-columns: 85%; /* Cada columna (banner) ocupa el 85% */
 
