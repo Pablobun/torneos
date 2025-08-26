@@ -161,21 +161,45 @@ footer { text-align: center; margin-top: 30px; color: #333; font-size: 0.9em; }
     border-radius: 8px;
 }
 
-/* ========================================================== */
-/* --- REGLAS RESPONSIVE PARA MOSTRAR/OCULTAR LOS BANNERS --- */
-/* ========================================================== */
+/* ======================================= */
+/* --- ESTILOS PARA CARRUSEL DE BANNERS -- */
+/* ======================================= */
 
-/* Para pantallas grandes (PC), mostramos la columna de banners */
-@media (min-width: 1400px) { 
-    .banner {
-        display: flex; /* Cambiamos de 'block' a 'flex' */
-    }
+/* Contenedor principal del slider (oculto por defecto en PC) */
+.banner-movil-slider {
+    display: none; /* Oculto en PC */
+    display: flex; /* Lo convertimos en un contenedor flexible */
+    overflow-x: auto; /* ¡LA MAGIA! Permite el scroll horizontal */
+    scroll-snap-type: x mandatory; /* Hace que el scroll "enganche" en cada banner */
+    -webkit-overflow-scrolling: touch; /* Mejora el scroll en iOS */
+    gap: 15px; /* Espacio entre los banners */
+    margin-bottom: 25px;
+    margin-top: 30px;
+    padding: 5px; /* Pequeño padding para que la sombra se vea bien */
 }
 
-/* Para pantallas pequeñas (celulares), mostramos el banner horizontal */
+/* Cada banner individual dentro del slider */
+.banner-movil-slide {
+    flex: 0 0 80%; /* Cada banner ocupa el 80% del ancho de la pantalla */
+    scroll-snap-align: center; /* Asegura que cada banner se centre al hacer scroll */
+}
+
+.banner-movil-slide img {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    display: block;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+}
+
+/* Ocultamos la barra de scroll fea */
+.banner-movil-slider::-webkit-scrollbar {
+    display: none;
+}
+/* Para pantallas pequeñas (celulares), mostramos el carrusel */
 @media (max-width: 600px) {
-    .banner-movil {
-        display: block;
+    .banner-movil-slider {
+        display: flex; /* Cambiamos a 'flex' para mostrarlo */
     }
 }
 
