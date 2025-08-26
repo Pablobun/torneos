@@ -169,7 +169,6 @@ footer { text-align: center; margin-top: 30px; color: #333; font-size: 0.9em; }
 .banner-movil-slider {
     display: none; /* Oculto en PC y se activa con @media */
     width: 100%; /* Ocupa todo el ancho disponible */
-    display: flex;
     overflow-x: auto; /* Permite el scroll horizontal */
     scroll-snap-type: x mandatory; /* Engancha en cada banner */
     scroll-behavior: smooth; /* Deslizamiento suave */
