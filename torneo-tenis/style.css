@@ -113,54 +113,59 @@ footer { text-align: center; margin-top: 30px; color: #333; font-size: 0.9em; }
 /* --- ESTILOS PARA BANNERS DE PUBLICIDAD -- */
 /* ========================================= */
 
-/* Contenedor general de los banners laterales (oculto por defecto) */
+/* Contenedor general: SOLO se encarga de la posición */
 .banner {
-    display: none; /* Empezamos ocultándolo */
+    display: none; 
     position: fixed;
     top: 50%;
     transform: translateY(-50%);
-    width: 250px; /* Un poco más anchos para esta imagen */
     z-index: 10;
 }
 
-/* Posición específica para cada uno */
-.banner-izquierdo {
-    left: 20px;
+/* NUEVO: Clases específicas para el TAMAÑO de cada banner */
+.banner-tipo-vertical {
+    width: 250px; /* Mantenemos el tamaño para el banner vertical */
+}
+.banner-tipo-horizontal {
+    width: 300px; /* Le damos más ancho al banner horizontal para que sea más grande */
 }
 
+/* Posición: los acercamos al contenido */
+.banner-izquierdo {
+    left: 5vw; /* 5% del ancho de la ventana, se acerca en pantallas más estrechas */
+}
 .banner-derecho {
-    right: 20px;
+    right: 5vw; /* 5% del ancho de la ventana */
 }
 
 .banner img {
     width: 100%;
     height: auto;
     border-radius: 8px;
-    box-shadow: 0 4px S10px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     display: block;
 }
 
-/* Banner horizontal para móviles (oculto por defecto) */
+/* Banner horizontal para móviles (sigue igual) */
 .banner-movil {
     display: none;
     margin-bottom: 25px;
     text-align: center;
-    margin-top: 30px;
+    margin-top: 30px; 
 }
-
 .banner-movil img {
     max-width: 100%;
     height: auto;
     border-radius: 8px;
 }
 
-
 /* ========================================================== */
 /* --- REGLAS RESPONSIVE PARA MOSTRAR/OCULTAR LOS BANNERS --- */
 /* ========================================================== */
 
 /* Para pantallas grandes (PC), mostramos los banners laterales */
-@media (min-width: 1450px) {
+/* CAMBIO: Reducimos el valor para que aparezcan antes y no desaparezcan con el zoom */
+@media (min-width: 1380px) { 
     .banner {
         display: block;
     }
