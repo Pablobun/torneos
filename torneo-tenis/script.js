@@ -158,4 +158,23 @@ document.addEventListener('DOMContentLoaded', function () {
         const errorMessages = form.querySelectorAll('.error-message');
         errorMessages.forEach(msg => msg.remove());
     }
+
+    // --- LÓGICA PARA EL MODAL DE SPONSORS ---
+const modal = document.getElementById('modal-sponsors');
+const cerrarBoton = document.getElementById('cerrar-modal');
+
+if (modal && cerrarBoton) { // Solo ejecuta si el modal existe en la página
+    const mostrarModal = () => modal.classList.add('visible');
+    const ocultarModal = () => modal.classList.remove('visible');
+
+    setTimeout(mostrarModal, 1500); // Aparece tras 1.5 segundos
+
+    cerrarBoton.addEventListener('click', ocultarModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) ocultarModal();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('visible')) ocultarModal();
+    });
+}
 });
