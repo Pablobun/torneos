@@ -201,6 +201,10 @@ footer { text-align: center; margin-top: 30px; color: #333; font-size: 0.9em; }
     }
 }
 
+.cerrar-modal {
+        top: 5px;   /* La bajamos un poco */
+        right: 5px; /* La movemos un poco a la izquierda */
+    }
 
 
 /* ========================================= */
