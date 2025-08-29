@@ -159,27 +159,48 @@ document.addEventListener('DOMContentLoaded', function () {
         errorMessages.forEach(msg => msg.remove());
     }
 
-    // --- LÓGICA PARA EL MODAL DE SPONSORS ---
+// ===============================================
+// --- LÓGICA PARA EL MODAL DE SPONSORS (CORREGIDA) --
+// ===============================================
+
+// 1. Obtenemos todos los elementos que necesitamos al principio
 const modal = document.getElementById('modal-sponsors');
 const cerrarBoton = document.getElementById('cerrar-modal');
-// cerrar con la leyenda ---
-const leyendaCerrar = document.querySelector('.modal-instruccion'); // 1. Seleccionamos el párrafo
-if(leyendaCerrar) { // 2. Nos aseguramos de que exista
-    leyendaCerrar.addEventListener('click', ocultarModal); // 3. Le asignamos la misma función de cierre
-}
+const leyendaCerrar = document.querySelector('.modal-instruccion');
 
-if (modal && cerrarBoton) { // Solo ejecuta si el modal existe en la página
+// 2. Nos aseguramos de que los elementos principales del modal existan
+if (modal && cerrarBoton) {
+
+    // 3. Definimos las funciones en un lugar visible para todos
     const mostrarModal = () => modal.classList.add('visible');
     const ocultarModal = () => modal.classList.remove('visible');
 
-    setTimeout(mostrarModal, 1500); // Aparece tras 1.5 segundos
+    // 4. Programamos que se muestre el modal
+    setTimeout(mostrarModal, 1500);
 
+    // 5. Asignamos los eventos de cierre a cada elemento
+
+    // Al botón de la 'X'
     cerrarBoton.addEventListener('click', ocultarModal);
+
+    // A la leyenda (si existe)
+    if (leyendaCerrar) {
+        leyendaCerrar.addEventListener('click', ocultarModal);
+    }
+
+    // Al fondo oscuro
     modal.addEventListener('click', (e) => {
-        if (e.target === modal) ocultarModal();
+        if (e.target === modal) {
+            ocultarModal();
+        }
     });
+
+    // A la tecla 'Escape'
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal.classList.contains('visible')) ocultarModal();
+        if (e.key === 'Escape' && modal.classList.contains('visible')) {
+            ocultarModal();
+        }
     });
 }
-});
+}
+);
