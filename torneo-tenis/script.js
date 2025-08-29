@@ -162,6 +162,11 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- LÓGICA PARA EL MODAL DE SPONSORS ---
 const modal = document.getElementById('modal-sponsors');
 const cerrarBoton = document.getElementById('cerrar-modal');
+// cerrar con la leyenda ---
+const leyendaCerrar = document.querySelector('.modal-instruccion'); // 1. Seleccionamos el párrafo
+if(leyendaCerrar) { // 2. Nos aseguramos de que exista
+    leyendaCerrar.addEventListener('click', ocultarModal); // 3. Le asignamos la misma función de cierre
+}
 
 if (modal && cerrarBoton) { // Solo ejecuta si el modal existe en la página
     const mostrarModal = () => modal.classList.add('visible');
