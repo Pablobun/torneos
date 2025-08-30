@@ -83,7 +83,48 @@ button[type="submit"] { width: 100%; padding: 15px; background-color: #4CAF50; c
 .hidden { display: none; }
 #confirmationMessage { background-color: #e8f5e9; border-left: 5px solid #4CAF50; padding: 20px; border-radius: 5px; text-align: center; }
 input.error, select.error { border-color: #e74c3c; background-color: #fbeae5; }
-footer { text-align: center; margin-top: 30px; color: #333; font-size: 0.9em; }
+footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.footer-texto {
+    color: #555;
+    font-size: 0.9em;
+}
+
+.footer-texto p {
+    margin: 0;
+    line-height: 1.4;
+}
+
+.footer-logos {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.footer-logos span {
+    font-size: 0.9em;
+    color: #777;
+}
+
+.footer-logos img {
+    height: 40px;
+    width: auto;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.footer-logos img:hover {
+    opacity: 1;
+}
 
 /* Estilo para el enlace a la lista de inscriptos */
 .view-list-link { text-align: center; margin-bottom: 30px; }
@@ -276,6 +317,10 @@ footer { text-align: center; margin-top: 30px; color: #333; font-size: 0.9em; }
 .banner-movil-slider {
     display: grid; /* Muestra el carrusel en móviles usando grid */
 }
+footer {
+        flex-direction: column;
+        text-align: center;
+    }
 }
 .modal-instruccion {
     cursor: pointer;
