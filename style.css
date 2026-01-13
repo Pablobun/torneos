@@ -1,0 +1,408 @@
+/* ========================================= */
+/* --- ESTILOS GENERALES Y DE ESCRITORIO --- */
+/* ========================================= */
+
+body {
+    font-family: 'Roboto', sans-serif;
+    color: #333;
+    line-height: 1.6;
+    margin: 0;
+    padding: 20px;
+    position: relative;
+    background-color: #d6c2ba;
+    background-image: linear-gradient(to bottom, #d9cdc8, #efebea);
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('logo.png');
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: 300px;
+    opacity: 0.1; /* Le subimos un poco la opacidad */
+    z-index: -1;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    background-color: rgba(255, 255, 255, 0.6); /* Fondo semi-transparente */
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+header {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+    border-bottom: 2px solid #4CAF50;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+.header-logo {
+    height: 100px;
+    width: 100px;
+    border-radius: 50%;
+    border: 2px solid #eee;
+}
+
+.header-text {
+    text-align: left;
+}
+
+header h1 {
+    color: #2c3e50;
+    margin-bottom: 5px;
+    margin-top: 0;
+}
+
+/* ... (el resto de tus estilos del formulario, etc. van aquí. Los pego para asegurar) ... */
+
+h2 { color: #4CAF50; border-left: 4px solid #bab3a8; padding-left: 10px; margin-bottom: 20px; }
+#info-torneo ul { list-style-type: none; padding: 0; }
+#info-torneo li { background-color: #f9f9f9; padding: 10px 15px; border-radius: 5px; margin-bottom: 8px; border-left: 3px solid #4CAF50; }
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; margin-bottom: 8px; font-weight: 700; color: #555; }
+.form-group input[type="text"], .form-group input[type="email"], .form-group input[type="tel"], .form-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 1em; }
+.availability-fieldset { border: 1px solid #ccc; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+.availability-fieldset legend { font-weight: 700; color: #555; padding: 0 10px; }
+.availability-instructions { font-size: 0.9em; color: #7f8c8d; margin-top: 0; margin-bottom: 15px; }
+.availability-grid { display: grid; grid-template-columns: max-content 1fr; gap: 10px 15px; align-items: center; }
+.availability-grid label { font-weight: normal; text-align: right; }
+.availability-grid input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+.checkbox-group { display: flex; align-items: center; margin-top: 25px; }
+.checkbox-group input[type="checkbox"] { margin-right: 10px; width: 20px; height: 20px; }
+button[type="submit"] { width: 100%; padding: 15px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; font-size: 1.2em; font-weight: 700; cursor: pointer; }
+.hidden { display: none; }
+#confirmationMessage { background-color: #e8f5e9; border-left: 5px solid #4CAF50; padding: 20px; border-radius: 5px; text-align: center; }
+input.error, select.error { border-color: #e74c3c; background-color: #fbeae5; }
+footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.footer-texto {
+    color: #555;
+    font-size: 0.9em;
+}
+
+.footer-texto p {
+    margin: 0;
+    line-height: 1.4;
+}
+
+.footer-logos {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.footer-logos span {
+    font-size: 0.9em;
+    color: #777;
+}
+
+.footer-logos img {
+    height: 40px;
+    width: auto;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.footer-logos img:hover {
+    opacity: 1;
+}
+
+/* Estilo para el enlace a la lista de inscriptos */
+.view-list-link { text-align: center; margin-bottom: 30px; }
+.view-list-link a { display: inline-block; padding: 10px 20px; background-color: #245c30; color: #fff; font-weight: bold; text-decoration: none; border-radius: 5px; transition: background-color 0.3s ease; }
+.view-list-link a:hover { background-color: #5ca78f; }
+/* ========================================= */
+/* --- ESTILOS página isncriptos --- */
+/* ========================================= */
+/* Estilos para la página de inscriptos */
+#filtros {
+    margin-bottom: 40px;
+    /* Hacemos el fondo blanco pero con 50% de transparencia */
+    background-color: rgba(255, 255, 255, 0.5); 
+    padding: 20px;
+    border-radius: 8px;
+    /* Hacemos el borde también un poco transparente para que no desentone */
+    border: 1px solid rgba(0, 0, 0, 0.1); 
+}
+
+.filtro-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.filtro-container label {
+    font-weight: 700;
+}
+
+.filtro-container select {
+    padding: 10px;
+    font-size: 1em;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    min-width: 250px;
+}
+
+/* Estilos para la tabla */
+#tabla-inscriptos {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+#tabla-inscriptos thead {
+    background-color: #4CAF50;
+    color: white;
+}
+
+#tabla-inscriptos th, #tabla-inscriptos td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+#tabla-inscriptos tbody tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+#tabla-inscriptos tbody tr:hover {
+    background-color: #e9e9e9;
+}
+
+#loading-message, .no-results {
+    text-align: center;
+    padding: 20px;
+    font-style: italic;
+    color: #777;
+}
+
+.back-link {
+    margin-top: 30px;
+    text-align: center;
+}
+
+.back-link a {
+    color: #4CAF50;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.back-link a:hover {
+    text-decoration: underline;
+}
+
+
+/* ========================================= */
+/* --- ESTILOS GENERALES PARA ERRORES --- */
+/* ========================================= */
+    
+/* Esta regla se aplicará a TODOS los mensajes de error */
+.error-message {
+    color: #e74c3c;
+    font-size: 0.9em;
+    margin-top: 5px;
+}
+
+/* Y esta regla ADICIONAL solo se aplicará al error genérico de disponibilidad */
+.availability-fieldset .error-message {
+    width: 100%;
+    text-align: center;
+    font-weight: bold;
+    margin-top: 15px;
+}
+/* ================================================= */
+/* --- ESTILOS PARA MODAL DE SPONSORS (VERSIÓN 2) -- */
+/* ================================================= */
+
+/* El fondo oscuro semi-transparente (sigue igual) */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.75);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    padding: 15px; /* Añadimos padding para que en móvil no pegue a los bordes */
+}
+
+.modal-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* El contenedor blanco de la ventana (con cambios importantes) */
+.modal-contenido {
+    background-color: #fff;
+    padding: 25px;
+    border-radius: 10px;
+    max-width: 700px; /* Un poco más ancho para la cuadrícula en PC */
+    width: 100%;
+    text-align: center;
+    position: relative;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+    
+    /* ¡LA MAGIA! Hacemos que el contenedor sea scrollable si el contenido es muy alto */
+    max-height: 90vh; /* Máximo 90% de la altura de la pantalla */
+    overflow-y: auto; /* Activa el scroll vertical SOLO si es necesario */
+}
+
+.modal-overlay.visible .modal-contenido {
+    transform: scale(1);
+}
+
+.modal-contenido h2 {
+    margin-top: 0;
+    color: #333;
+}
+
+/* La cuadrícula para los logos de los sponsors */
+.sponsors-grid {
+    display: grid;
+    /* Por defecto (PC), 2 columnas. grid-template-columns lo definimos en el responsive */
+    gap: 20px;
+    margin: 25px 0;
+}
+
+.sponsors-grid img {
+    width: 100%;
+    border-radius: 8px;
+    transition: transform 0.2s ease;
+    border: 1px solid #eee; /* Un borde sutil */
+}
+
+.sponsors-grid img:hover {
+    transform: scale(1.05);
+}
+
+/* NUEVO: Estilos para las leyendas de texto */
+.modal-instruccion {
+    font-weight: bold;
+    color: #4CAF50; /* Verde para que resalte */
+    margin-top: 20px;
+}
+.modal-agradecimiento {
+    font-style: italic;
+    color: #777;
+    margin-bottom: 0;
+}
+
+/* El botón de cierre (X) */
+.cerrar-modal {
+    position: sticky; /* Se queda "pegado" arriba al hacer scroll */
+    top: 0;
+    float: right; /* Lo alineamos a la derecha */
+    font-size: 2.5em;
+    font-weight: bold;
+    color: #aaa;
+    background: none;
+    border: none;
+    cursor: pointer;
+    line-height: 1;
+    z-index: 1001; /* Nos aseguramos que esté por encima de todo */
+    padding: 0 5px; /* Un poco de espacio para que no pegue al borde */
+}
+    
+/* ================================================= */
+/* --- REGLAS RESPONSIVE PARA EL MODAL --- */
+/* ================================================= */
+
+/* Para pantallas de PC, usamos 2 columnas */
+@media (min-width: 601px) {
+    .sponsors-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* Para pantallas de Móvil, usamos 1 sola columna */
+@media (max-width: 600px) {
+    .sponsors-grid {
+        grid-template-columns: 1fr;
+    }
+}
+/* ========================================= */
+/* --- ESTILOS PARA DISPOSITIVOS MÓVILES --- */
+/* ========================================= */
+@media (max-width: 600px) {
+    body { padding: 10px; }
+    .container { padding: 15px; }
+    .banner { display: none !important; } /* Oculta los banners laterales de PC en móvil */
+
+    header {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .header-text {
+        text-align: center;
+    }
+
+    header h1 {
+        font-size: 1.5em; /* Un poco más pequeño para móviles */
+    }
+    
+    .header-logo {
+        height: 80px;
+        width: 80px;
+    }
+    
+    .availability-grid {
+        grid-template-columns: 1fr;
+        gap: 5px 10px;
+    }
+
+    .availability-grid label {
+        text-align: left;
+        margin-bottom: -5px;
+    }
+
+    /* Reglas específicas para la página de inscriptos en móvil */
+    .filtro-container {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .filtro-container select {
+        width: 100%;
+    }
+    .banner-movil-slider {
+    display: flex; /* Muestra el carrusel en móviles */
+}
+.banner-movil-slider {
+    display: grid; /* Muestra el carrusel en móviles usando grid */
+}
+footer {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+.modal-instruccion {
+    cursor: pointer;
+}
