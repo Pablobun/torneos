@@ -31,11 +31,13 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             // 3. Agrupar horarios por día
-            const horariosPorDia = horarios.reduce((acc, horario) => {
-            const partesFecha = horario.fecha.split('-'); // Separa 'YYYY-MM-DD' en [YYYY, MM, DD]
-            const fechaFormateada = `${partesFecha[2]}/${partesFecha[1]}`; // Crea el formato 'DD/MM'
-
-const diaKey = `${horario.dia_semana} ${fechaFormateada}`;
+           const horariosPorDia = horarios.reduce((acc, horario) => {
+            // 1. Separamos la fecha 'YYYY-MM-DD'
+            const partesFecha = horario.fecha.split('-');
+            // 2. Creamos el formato 'DD/MM'
+            const fechaFormateada = `${partesFecha[2]}/${partesFecha[1]}`;
+            // 3. Creamos la clave combinando el día de la semana y nuestra fecha formateada
+            const diaKey = `${horario.dia_semana} ${fechaFormateada}`;
                 if (!acc[diaKey]) acc[diaKey] = [];
                 acc[diaKey].push(horario);
                 return acc;
