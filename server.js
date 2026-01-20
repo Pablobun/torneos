@@ -76,7 +76,7 @@ app.post('/api/inscribir', async (req, res) => {
         `;
         const valuesInscriptos = [
             data.id_torneo_fk,
-            data.integrantes,
+            data.integrantes.toUpperCase(),
             data.email,
             data.telefono,
             data.categoria,
