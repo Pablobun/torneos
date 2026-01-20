@@ -53,44 +53,66 @@ app.get('/api/horarios/:idTorneo', async (req, res) => {
     }
 });
 
+
 // ==========================================================
-// ENDPOINT MODIFICADO PARA GUARDAR INSCRIPCIONES
+// ENDPOINT PARA GUARDAR INSCRIPCIONES (VERSIÓN FINAL CON TRANSACCIÓN)
 // ==========================================================
 app.post('/api/inscribir', async (req, res) => {
     const data = req.body;
-
-    // Convertimos el array de horarios seleccionados a un texto JSON para guardarlo.
-    const horariosSeleccionadosJSON = JSON.stringify(data.horarios);
-
-    // Vaciamos las columnas de los días que ya no usamos.
-    // Guardaremos el JSON de horarios en la columna 'sabado'. Es una solución temporal.
-    const sql = `
-        INSERT INTO inscriptos (
-          id_torneo_fk, integrantes, correo, telefono, categoria,
-          sabado, domingo, lunes, martes, miercoles, jueves, viernes, sabadof,
-          acepto
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-    `;
-    
-    const values = [
-        data.id_torneo_fk,
-        data.integrantes,
-        data.email,
-        data.telefono,
-        data.categoria,
-        horariosSeleccionadosJSON, // Guardamos el JSON aquí
-        null, null, null, null, null, null, null, // El resto de días van nulos
-        data.terminos ? 1 : 0
-    ];
+    let connection; // Definimos la conexión aquí para poder usarla en el catch
 
     try {
-        const connection = await mysql.createConnection(connectionConfig);
-        await connection.execute(sql, values);
-        await connection.end();
+        // Iniciamos la conexión a la base de datos
+        connection = await mysql.createConnection(connectionConfig);
+        
+        // --- INICIAMOS UNA TRANSACCIÓN ---
+        // Esto asegura que todas las inserciones se completen con éxito, o ninguna lo haga.
+        await connection.beginTransaction();
+
+        // 1. Insertamos los datos principales en la tabla 'inscriptos'
+        const sqlInscriptos = `
+            INSERT INTO inscriptos (id_torneo_fk, integrantes, correo, telefono, categoria, acepto)
+            VALUES (?, ?, ?, ?, ?, ?);
+        `;
+        const valuesInscriptos = [
+            data.id_torneo_fk,
+            data.integrantes,
+            data.email,
+            data.telefono,
+            data.categoria,
+            data.terminos ? 1 : 0
+        ];
+        
+        // Ejecutamos la inserción y obtenemos el ID del nuevo inscripto
+        const [result] = await connection.execute(sqlInscriptos, valuesInscriptos);
+        const nuevoInscriptoId = result.insertId;
+
+        // 2. Insertamos los horarios seleccionados en la tabla 'inscriptos_horarios'
+        if (data.horarios && data.horarios.length > 0) {
+            const sqlHorarios = 'INSERT INTO inscriptos_horarios (id_inscripto_fk, id_horario_fk) VALUES ?';
+            
+            // Preparamos los datos para una inserción múltiple
+            const valuesHorarios = data.horarios.map(idHorario => [nuevoInscriptoId, idHorario]);
+            
+            await connection.query(sqlHorarios, [valuesHorarios]);
+        }
+        
+        // --- CONFIRMAMOS LA TRANSACCIÓN ---
+        // Si llegamos hasta aquí sin errores, guardamos todos los cambios permanentemente.
+        await connection.commit();
+        
         res.status(200).json({ message: 'Inscripción guardada correctamente' });
+
     } catch (error) {
+        // --- REVERTIMOS LA TRANSACCIÓN ---
+        // Si ocurrió cualquier error, deshacemos todos los cambios.
+        if (connection) await connection.rollback();
+        
         console.error('Error al guardar en la base de datos:', error);
         res.status(500).json({ error: 'No se pudo guardar la inscripción.' });
+    } finally {
+        // Nos aseguramos de cerrar la conexión, pase lo que pase.
+        if (connection) await connection.end();
     }
 });
 
