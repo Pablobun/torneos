@@ -10,7 +10,7 @@ body {
     padding: 20px;
     position: relative;
     background-color: #80b97f;
-    background-image: linear-gradient(to bottom, #b1b1f5, #a3a9aa);
+    background-image: linear-gradient(to bottom, #f2f0cc, #a3a9aa);
 }
 
 body::before {
