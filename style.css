@@ -210,7 +210,57 @@ footer {
 .back-link a:hover {
     text-decoration: underline;
 }
+/* --- Estilos para Horarios Checkbox --- */
+.horarios-container {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
 
+.horarios-container h4 {
+    margin-top: 0;
+    color: #555;
+}
+
+.dia-grupo {
+    margin-bottom: 20px;
+}
+.dia-grupo:last-child {
+    margin-bottom: 0;
+}
+
+.dia-grupo h5 {
+    margin: 0 0 10px 0;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+    font-size: 1.1em;
+}
+
+.horarios-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 15px;
+}
+
+.horario-item {
+    display: flex;
+    align-items: center;
+    background-color: #f9f9f9;
+    padding: 8px;
+    border-radius: 5px;
+}
+
+.horario-item input[type="checkbox"] {
+    margin-right: 8px;
+    width: 18px;
+    height: 18px;
+}
+
+.horario-item label {
+    font-weight: normal;
+    margin-bottom: 0;
+}
 
 /* ========================================= */
 /* --- ESTILOS GENERALES PARA ERRORES --- */
