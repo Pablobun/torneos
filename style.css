@@ -9,8 +9,8 @@ body {
     margin: 0;
     padding: 20px;
     position: relative;
-    background-color: #d6c2ba;
-    background-image: linear-gradient(to bottom, #d9cdc8, #efebea);
+    background-color: #80b97f;
+    background-image: linear-gradient(to bottom, #b3fb9e, #efebea);
 }
 
 body::before {
@@ -249,6 +249,8 @@ footer {
     background-color: #f9f9f9;
     padding: 8px;
     border-radius: 5px;
+    border: 1px solid #4CAF50; /* <-- BORDE VERDE AÑADIDO */
+    transition: background-color 0.2s ease; /* Transición suave */
 }
 
 .horario-item input[type="checkbox"] {
