@@ -57,33 +57,44 @@ app.get('/api/horarios/:idTorneo', async (req, res) => {
 // ENDPOINT MODIFICADO PARA GUARDAR INSCRIPCIONES
 // ==========================================================
 app.post('/api/inscribir', async (req, res) => {
-    // ... (El código de esta función no cambia, lo omito por brevedad)
-    // ... (Asegúrate de que tienes la versión con la tabla de enlace 'inscriptos_horarios')
     const data = req.body;
     let connection;
-      // --- NUEVA LÓGICA PARA UNIR LOS NOMBRES ---
+
+    // Unimos los nombres de los integrantes
     const integrantesUnidos = `${data.integrante_masculino}/${data.integrante_femenino}`;
-    // ------------------------------------------
+
     try {
         connection = await mysql.createConnection(connectionConfig);
         await connection.beginTransaction();
+
+        // 1. Insertamos en 'inscriptos'. La consulta ahora es más corta.
         const sqlInscriptos = `
             INSERT INTO inscriptos (id_torneo_fk, integrantes, correo, telefono, categoria, acepto)
             VALUES (?, ?, ?, ?, ?, ?);
         `;
+        // El array de valores ahora coincide perfectamente con la consulta
         const valuesInscriptos = [
-            data.id_torneo_fk, data.integrantesUnidos.toUpperCase(), data.email, data.telefono,
-            data.categoria, data.terminos ? 1 : 0
+            data.id_torneo_fk,
+            integrantesUnidos.toUpperCase(),
+            data.email,
+            data.telefono,
+            data.categoria,
+            data.terminos ? 1 : 0
         ];
+        
         const [result] = await connection.execute(sqlInscriptos, valuesInscriptos);
         const nuevoInscriptoId = result.insertId;
+
+        // 2. Insertamos los horarios en la tabla de enlace 'inscriptos_horarios'
         if (data.horarios && data.horarios.length > 0) {
             const sqlHorarios = 'INSERT INTO inscriptos_horarios (id_inscripto_fk, id_horario_fk) VALUES ?';
             const valuesHorarios = data.horarios.map(idHorario => [nuevoInscriptoId, idHorario]);
             await connection.query(sqlHorarios, [valuesHorarios]);
         }
+        
         await connection.commit();
         res.status(200).json({ message: 'Inscripción guardada correctamente' });
+
     } catch (error) {
         if (connection) await connection.rollback();
         console.error('Error al guardar en la base de datos:', error);
