@@ -53,93 +53,58 @@ app.get('/api/horarios/:idTorneo', async (req, res) => {
     }
 });
 
-
 // ==========================================================
-// ENDPOINT PARA GUARDAR INSCRIPCIONES (VERSIÓN FINAL CON TRANSACCIÓN)
+// ENDPOINT MODIFICADO PARA GUARDAR INSCRIPCIONES
 // ==========================================================
 app.post('/api/inscribir', async (req, res) => {
+    // ... (El código de esta función no cambia, lo omito por brevedad)
+    // ... (Asegúrate de que tienes la versión con la tabla de enlace 'inscriptos_horarios')
     const data = req.body;
-    let connection; // Definimos la conexión aquí para poder usarla en el catch
-
+    let connection;
     try {
-        // Iniciamos la conexión a la base de datos
         connection = await mysql.createConnection(connectionConfig);
-        
-        // --- INICIAMOS UNA TRANSACCIÓN ---
-        // Esto asegura que todas las inserciones se completen con éxito, o ninguna lo haga.
         await connection.beginTransaction();
-
-        // 1. Insertamos los datos principales en la tabla 'inscriptos'
         const sqlInscriptos = `
             INSERT INTO inscriptos (id_torneo_fk, integrantes, correo, telefono, categoria, acepto)
             VALUES (?, ?, ?, ?, ?, ?);
         `;
         const valuesInscriptos = [
-            data.id_torneo_fk,
-            data.integrantes.toUpperCase(),
-            data.email,
-            data.telefono,
-            data.categoria,
-            data.terminos ? 1 : 0
+            data.id_torneo_fk, data.integrantes.toUpperCase(), data.email, data.telefono,
+            data.categoria, data.terminos ? 1 : 0
         ];
-        
-        // Ejecutamos la inserción y obtenemos el ID del nuevo inscripto
         const [result] = await connection.execute(sqlInscriptos, valuesInscriptos);
         const nuevoInscriptoId = result.insertId;
-
-        // 2. Insertamos los horarios seleccionados en la tabla 'inscriptos_horarios'
         if (data.horarios && data.horarios.length > 0) {
             const sqlHorarios = 'INSERT INTO inscriptos_horarios (id_inscripto_fk, id_horario_fk) VALUES ?';
-            
-            // Preparamos los datos para una inserción múltiple
             const valuesHorarios = data.horarios.map(idHorario => [nuevoInscriptoId, idHorario]);
-            
             await connection.query(sqlHorarios, [valuesHorarios]);
         }
-        
-        // --- CONFIRMAMOS LA TRANSACCIÓN ---
-        // Si llegamos hasta aquí sin errores, guardamos todos los cambios permanentemente.
         await connection.commit();
-        
         res.status(200).json({ message: 'Inscripción guardada correctamente' });
-
     } catch (error) {
-        // --- REVERTIMOS LA TRANSACCIÓN ---
-        // Si ocurrió cualquier error, deshacemos todos los cambios.
         if (connection) await connection.rollback();
-        
         console.error('Error al guardar en la base de datos:', error);
         res.status(500).json({ error: 'No se pudo guardar la inscripción.' });
     } finally {
-        // Nos aseguramos de cerrar la conexión, pase lo que pase.
         if (connection) await connection.end();
     }
 });
 
 // ==========================================================
-// ENDPOINT PARA LISTAR INSCRIPTOS (MODIFICADO PARA FILTRAR POR TORNEO)
+// ENDPOINT PARA LISTAR INSCRIPTOS (VERSIÓN ÚNICA Y CORRECTA)
 // ==========================================================
 app.get('/api/inscriptos', async (req, res) => {
-    // Obtenemos los filtros desde la URL (query parameters)
     const { id_torneo_fk, categoria } = req.query;
-
-    // Si no nos envían el ID del torneo, es un error.
     if (!id_torneo_fk) {
         return res.status(400).json({ error: 'Se requiere el ID del torneo.' });
     }
-
-    // Preparamos la base de la consulta SQL y los parámetros
     let sql = 'SELECT integrantes, categoria FROM inscriptos WHERE id_torneo_fk = ?';
     const params = [id_torneo_fk];
-
-    // Si además nos envían un filtro de categoría, lo añadimos a la consulta
     if (categoria) {
         sql += ' AND categoria = ?';
         params.push(categoria);
     }
-    
-    sql += ' ORDER BY id DESC'; // Añadimos el orden al final
-
+    sql += ' ORDER BY id DESC';
     try {
         const connection = await mysql.createConnection(connectionConfig);
         const [rows] = await connection.execute(sql, params);
@@ -149,4 +114,10 @@ app.get('/api/inscriptos', async (req, res) => {
         console.error('Error al obtener inscriptos:', error);
         res.status(500).json({ error: 'No se pudo obtener la lista de inscriptos.' });
     }
+});
+
+// 5. Puerto de escucha
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => {
+  console.log(`Servidor escuchando en el puerto ${PORT}`);
 });
