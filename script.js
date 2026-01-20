@@ -32,7 +32,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // 3. Agrupar horarios por día
             const horariosPorDia = horarios.reduce((acc, horario) => {
-                const diaKey = `${horario.dia_semana} ${new Date(horario.fecha + 'T00:00:00').toLocaleDateString('es-ES', {day: '2-digit', month: '2-digit'})}`;
+            const partesFecha = horario.fecha.split('-'); // Separa 'YYYY-MM-DD' en [YYYY, MM, DD]
+            const fechaFormateada = `${partesFecha[2]}/${partesFecha[1]}`; // Crea el formato 'DD/MM'
+
+const diaKey = `${horario.dia_semana} ${fechaFormateada}`;
                 if (!acc[diaKey]) acc[diaKey] = [];
                 acc[diaKey].push(horario);
                 return acc;
