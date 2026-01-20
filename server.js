@@ -61,6 +61,9 @@ app.post('/api/inscribir', async (req, res) => {
     // ... (Asegúrate de que tienes la versión con la tabla de enlace 'inscriptos_horarios')
     const data = req.body;
     let connection;
+      // --- NUEVA LÓGICA PARA UNIR LOS NOMBRES ---
+    const integrantesUnidos = `${data.integrante_masculino}/${data.integrante_femenino}`;
+    // ------------------------------------------
     try {
         connection = await mysql.createConnection(connectionConfig);
         await connection.beginTransaction();
@@ -69,7 +72,7 @@ app.post('/api/inscribir', async (req, res) => {
             VALUES (?, ?, ?, ?, ?, ?);
         `;
         const valuesInscriptos = [
-            data.id_torneo_fk, data.integrantes.toUpperCase(), data.email, data.telefono,
+            data.id_torneo_fk, data.integrantesUnidos.toUpperCase(), data.email, data.telefono,
             data.categoria, data.terminos ? 1 : 0
         ];
         const [result] = await connection.execute(sqlInscriptos, valuesInscriptos);

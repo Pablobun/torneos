@@ -46,10 +46,16 @@
             <section id="formulario-inscripcion">
                 <h2>Formulario de Inscripción</h2>
                 <form id="registrationForm" novalidate>
+                <div class="form-group-duo">
                     <div class="form-group">
-                        <label for="integrantes">Integrantes de la Pareja:</label>
-                        <input type="text" id="integrantes" name="integrantes" placeholder="Ej: Juan Pérez y Luis García" required>
+                    <label for="integrante_masculino">Integrante Masculino:</label>
+                    <input type="text" id="integrante_masculino" name="integrante_masculino" placeholder="Nombre y Apellido" required>
                     </div>
+                    <div class="form-group">
+                    <label for="integrante_femenino">Integrante Femenino:</label>
+                    <input type="text" id="integrante_femenino" name="integrante_femenino" placeholder="Nombre y Apellido" required>
+                    </div>
+                </div>
                     
                     <div class="form-group">
                         <label for="email">Correo Electrónico de Contacto:</label>

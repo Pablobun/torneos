@@ -129,13 +129,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function validateForm() {
         let isValid = true;
-        const integrantes = document.getElementById('integrantes');
+        const integranteMasculino = document.getElementById('integrante_masculino');
+        const integranteFemenino = document.getElementById('integrante_femenino');
         const email = document.getElementById('email');
         const categoria = document.getElementById('categoria');
         const terminos = document.getElementById('terminos');
         const telefono = document.getElementById('telefono');
 
-        if (integrantes.value.trim() === '') { showError(integrantes, 'El nombre de los integrantes es obligatorio.'); isValid = false; }
+        if (integranteMasculino.value.trim() === '') {showError(integranteMasculino, 'El nombre del integrante masculino es obligatorio.');isValid = false; }
+        if (integranteFemenino.value.trim() === '') {showError(integranteFemenino, 'El nombre del integrante femenino es obligatorio.');isValid = false;}
         if (email.value.trim() === '') { showError(email, 'El correo electrónico es obligatorio.'); isValid = false; }
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) { showError(email, 'Por favor, introduce un correo electrónico válido.'); isValid = false; }
         if (categoria.value === '') { showError(categoria, 'Debes seleccionar una categoría.'); isValid = false; }

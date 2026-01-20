@@ -68,6 +68,11 @@ header h1 {
 h2 { color: #4CAF50; border-left: 4px solid #bab3a8; padding-left: 10px; margin-bottom: 20px; }
 #info-torneo ul { list-style-type: none; padding: 0; }
 #info-torneo li { background-color: #f9f9f9; padding: 10px 15px; border-radius: 5px; margin-bottom: 8px; border-left: 3px solid #4CAF50; }
+.form-group-duo {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
 .form-group { margin-bottom: 20px; }
 .form-group label { display: block; margin-bottom: 8px; font-weight: 700; color: #555; }
 .form-group input[type="text"], .form-group input[type="email"], .form-group input[type="tel"], .form-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 1em; }
@@ -415,7 +420,10 @@ footer {
     .header-text {
         text-align: center;
     }
-
+ /* NUEVA REGLA RESPONSIVE PARA LOS CAMPOS DUO */
+    .form-group-duo {
+        grid-template-columns: 1fr;
+    }    
     header h1 {
         font-size: 1.5em; /* Un poco más pequeño para móviles */
     }
