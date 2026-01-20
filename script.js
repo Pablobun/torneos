@@ -31,14 +31,22 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             // 3. Agrupar horarios por día
-           const horariosPorDia = horarios.reduce((acc, horario) => {
-            // 1. Separamos la fecha 'YYYY-MM-DD'
-            const partesFecha = horario.fecha.split('-');
-            // 2. Creamos el formato 'DD/MM'
-            const fechaFormateada = `${partesFecha[2]}/${partesFecha[1]}`;
-            // 3. Creamos la clave combinando el día de la semana y nuestra fecha formateada
-            const diaKey = `${horario.dia_semana} ${fechaFormateada}`;
-                if (!acc[diaKey]) acc[diaKey] = [];
+            const horariosPorDia = horarios.reduce((acc, horario) => {
+                // La fecha llega como 'YYYY-MM-DD'
+                const anio = horario.fecha.substring(2, 4); // Obtiene '25' de '2025'
+                const mes = horario.fecha.substring(5, 7); // Obtiene '10'
+                const dia = horario.fecha.substring(8, 10); // Obtiene '09'
+
+                // Creamos el formato DD/MM/AA
+                const fechaFormateada = `${dia}/${mes}/${anio}`;
+
+                // Creamos la clave combinando el día de la semana y nuestra fecha formateada
+                const diaKey = `${horario.dia_semana} ${fechaFormateada}`;
+
+                // El resto de la lógica de agrupación sigue igual
+                if (!acc[diaKey]) {
+                    acc[diaKey] = [];
+                }
                 acc[diaKey].push(horario);
                 return acc;
             }, {});
