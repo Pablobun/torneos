@@ -117,16 +117,29 @@ app.post('/api/inscribir', async (req, res) => {
 });
 
 // ==========================================================
-// ENDPOINT PARA LISTAR INSCRIPTOS (SIN CAMBIOS POR AHORA)
+// ENDPOINT PARA LISTAR INSCRIPTOS (MODIFICADO PARA FILTRAR POR TORNEO)
 // ==========================================================
 app.get('/api/inscriptos', async (req, res) => {
-    const { categoria } = req.query;
-    let sql = 'SELECT integrantes, categoria FROM inscriptos ORDER BY id DESC';
-    const params = [];
+    // Obtenemos los filtros desde la URL (query parameters)
+    const { id_torneo_fk, categoria } = req.query;
+
+    // Si no nos envían el ID del torneo, es un error.
+    if (!id_torneo_fk) {
+        return res.status(400).json({ error: 'Se requiere el ID del torneo.' });
+    }
+
+    // Preparamos la base de la consulta SQL y los parámetros
+    let sql = 'SELECT integrantes, categoria FROM inscriptos WHERE id_torneo_fk = ?';
+    const params = [id_torneo_fk];
+
+    // Si además nos envían un filtro de categoría, lo añadimos a la consulta
     if (categoria) {
-        sql = 'SELECT integrantes, categoria FROM inscriptos WHERE categoria = ? ORDER BY id DESC';
+        sql += ' AND categoria = ?';
         params.push(categoria);
     }
+    
+    sql += ' ORDER BY id DESC'; // Añadimos el orden al final
+
     try {
         const connection = await mysql.createConnection(connectionConfig);
         const [rows] = await connection.execute(sql, params);
@@ -136,10 +149,4 @@ app.get('/api/inscriptos', async (req, res) => {
         console.error('Error al obtener inscriptos:', error);
         res.status(500).json({ error: 'No se pudo obtener la lista de inscriptos.' });
     }
-});
-
-// 5. Puerto de escucha
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log(`Servidor escuchando en el puerto ${PORT}`);
 });
