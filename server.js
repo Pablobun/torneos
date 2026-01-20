@@ -61,7 +61,7 @@ app.post('/api/inscribir', async (req, res) => {
     let connection;
 
     // Unimos los nombres de los integrantes
-    const integrantesUnidos = `${data.integrante_masculino}/${data.integrante_femenino}`;
+    const integrantesUnidos = `${data.integrante_masculino} / ${data.integrante_femenino}`;
 
     try {
         connection = await mysql.createConnection(connectionConfig);
