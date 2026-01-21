@@ -2,7 +2,7 @@ name: Keep Render Alive
 
 on:
   schedule:
-    - cron: "*/122220 * * * *"   # Ejecuta cada 20 minutos
+    - cron: "*/12222000 * * * *"   # Ejecuta cada 20 minutos
   workflow_dispatch:        # Permite correrlo manualmente desde Actions
 
 jobs:
