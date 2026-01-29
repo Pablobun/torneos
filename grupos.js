@@ -196,7 +196,7 @@ document.addEventListener('DOMContentLoaded', function () {
         
     } catch (error) {
         console.error('Error:', error);
-        mostrarNotificación('Error: ' + error.message, 'error');
+        mostrarNotificacion('Error: ' + error.message, 'error');
     } finally {
         loadingOverlay.classList.add('hidden');
         btnArmarGrupos.disabled = false;
