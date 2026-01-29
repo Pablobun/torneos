@@ -345,7 +345,8 @@ async function buscarGrupoCompatible(inscriptos, usados, tamaño, capacidadHorar
     if (disponibles.length < tamaño) return null;
     
     // Obtener compatibilidades entre todos los inscriptos
-    const compatibilidades = await obtenerCompatibilidades(disponibles, capacidadHorarios, connection);
+    const compatibilidades = obtenerCompatibilidades(disponibles, capacidadHorarios);
+
     
     // Buscar grupo donde todos compartan al menos un horario con capacidad disponible
     for (let i = 0; i < disponibles.length - (tamaño - 1); i++) {
@@ -378,7 +379,7 @@ async function buscarGrupoCompatible(inscriptos, usados, tamaño, capacidadHorar
     return null;
 }
 
-async function obtenerCompatibilidades(inscriptos, capacidadHorarios, connection) {
+function obtenerCompatibilidades(inscriptos, capacidadHorarios) {
     const compatibilidades = {};
     
     // Para cada inscripto, obtener sus horarios
@@ -391,8 +392,10 @@ async function obtenerCompatibilidades(inscriptos, capacidadHorarios, connection
             
             const otrosHorarios = otro.horarios ? otro.horarios.split(',').map(h => parseInt(h)) : [];
             
-            // Encontrar horarios comunes
-            const comunes = horarios.filter(h => otrosHorarios.includes(h) && capacidadHorarios[h] > 0);
+            // Encontrar horarios comunes con capacidad disponible
+            const comunes = horarios.filter(h => 
+                otrosHorarios.includes(h) && capacidadHorarios[h] > 0
+            );
             
             if (comunes.length > 0) {
                 if (!compatibilidades[inscripto.id]) {
