@@ -172,23 +172,37 @@ document.addEventListener('DOMContentLoaded', function () {
             })
         });
 
-        if (!response.ok) {
-            throw new Error('Error al armar grupos');
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+        
+        // Agregar esto para debug
+        const responseText = await response.text();
+        console.log('Response text:', responseText);
+        
+        // Intentar parsear JSON
+        let result;
+        try {
+            result = JSON.parse(responseText);
+        } catch (e) {
+            console.error('Error parsing JSON:', e);
+            console.error('Response text:', responseText);
+            throw new Error('Respuesta inválida del servidor');
         }
-
-        const result = await response.json();
+        
         gruposGenerados = result.grupos;
         
         mostrarGruposFormados();
         mostrarNotificacion('Grupos generados exitosamente', 'success');
         
     } catch (error) {
-        mostrarNotificacion('Error: ' + error.message, 'error');
+        console.error('Error:', error);
+        mostrarNotificación('Error: ' + error.message, 'error');
     } finally {
         loadingOverlay.classList.add('hidden');
         btnArmarGrupos.disabled = false;
     }
 });
+
 
 
     btnReiniciar.addEventListener('click', () => {
