@@ -387,6 +387,69 @@ footer {
     padding: 0 5px; /* Un poco de espacio para que no pegue al borde */
 }
 /* ========================================= */
+/* --- ESTILOS PARA GRUPOS FORMADOS --- */
+/* ========================================= */
+
+.grupos-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin: 2rem 0;
+}
+
+.grupo-card {
+    background: rgba(255, 255, 255, 0.95);
+    padding: 2rem;
+    border-radius: 12px;
+    border: 2px solid #4CAF50;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.2);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.grupo-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(76, 175, 80, 0.3);
+}
+
+.grupo-card h3 {
+    margin: 0 0 1rem 0;
+    color: #2c3e50;
+    font-size: 1.3rem;
+    text-align: center;
+    border-bottom: 2px solid #4CAF50;
+    padding-bottom: 0.5rem;
+}
+
+.integrantes-count {
+    color: #4CAF50;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+}
+
+.integrantes-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.integrantes-list li {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 0.8rem 1rem;
+    margin: 0.5rem 0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    border-left: 4px solid #4CAF50;
+    transition: all 0.2s ease;
+}
+
+.integrantes-list li:hover {
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+    transform: translateX(5px);
+}
+
+/* ========================================= */
 /* --- ESTILOS PÁGINA GRUPOS (ESCRITORIO) --- */
 /* ========================================= */
 
@@ -662,4 +725,17 @@ footer {
 }
 .modal-instruccion {
     cursor: pointer;
+}
+/* --- RESPONSIVE GRUPOS --- */
+.grupos-list {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+.grupo-card {
+    padding: 1.5rem;
+}
+
+.grupo-card h3 {
+    font-size: 1.1rem;
 }
