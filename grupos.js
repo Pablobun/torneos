@@ -199,7 +199,18 @@ document.addEventListener('DOMContentLoaded', function () {
     inicializar();
 });
 function mostrarGruposFormados() {
-    gruposFormadosSection.classList.remove('hidden');
+    console.log('mostrarGruposFormados llamado');
+    console.log('gruposGenerados:', gruposGenerados);
+    
+    const section = document.getElementById('grupos-formados');
+    console.log('section:', section);
+    
+    if (!section) {
+        console.error('No se encontró el elemento grupos-formados');
+        return;
+    }
+    
+    section.classList.remove('hidden');
     
     let html = '<div class="grupos-list">';
     
@@ -219,3 +230,4 @@ function mostrarGruposFormados() {
     gruposContainer.innerHTML = html;
     btnGuardarGrupos.disabled = false;
 }
+
