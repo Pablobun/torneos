@@ -4,6 +4,10 @@ const express = require('express');
 const mysql = require('mysql2/promise');
 
 const app = express();
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 //app.use(cors());
 // Middleware para manejar CORS
 app.use((req, res, next) => {
