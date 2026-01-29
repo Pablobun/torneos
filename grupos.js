@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             <input type="number" id="grupos5_${categoria}" min="0" max="${Math.floor(inscriptos.length / 5)}" value="0">
                         </div>
                         <div class="grupo-resumen">
-                            <span class="total-usados">Usados: <span id="usados_${categoria}">0</span></span>
+                            <span class="total-usados">Requeridos: <span id="usados_${categoria}">0</span></span>
                             <span class="total-disponibles">Disponibles: ${inscriptos.length}</span>
                         </div>
                     </div>

@@ -640,7 +640,7 @@ footer {
 .banner-movil-slider {
     display: grid; /* Muestra el carrusel en móviles usando grid */
 }
-.categorias-grid {
+.categorias-grid { /* aca medio elcambio*/
     grid-template-columns: 1fr;
 }
 
@@ -654,7 +654,7 @@ footer {
 
 .action-buttons button {
     width: 100%;
-}
+}/* hasta aca*/
 footer {
         flex-direction: column;
         text-align: center;
