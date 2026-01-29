@@ -174,15 +174,29 @@ app.get('/api/horarios-compatibles/:idTorneo', async (req, res) => {
 // ENDPOINT PARA ARMAR GRUPOS (SISTEMA EXPERTO)
 // ==========================================================
 app.post('/api/armar-grupos', async (req, res) => {
+    console.log('=== DEBUG POST /api/armar-grupos ===');
+    console.log('req.body:', req.body);
+    
     const { configuracionGrupos, idTorneo } = req.body;
     
     try {
-        // Por ahora, lógica básica (después mejoramos con IA)
+        console.log('Llamando a armarGruposBasico...');
+        console.log('configuracionGrupos:', JSON.stringify(configuracionGrupos, null, 2));
+        console.log('idTorneo:', idTorneo);
+        
         const grupos = await armarGruposBasico(configuracionGrupos, idTorneo);
+        console.log('Grupos generados:', grupos);
+        
         res.status(200).json({ grupos, mensaje: 'Grupos generados exitosamente' });
     } catch (error) {
-        console.error('Error al armar grupos:', error);
-        res.status(500).json({ error: 'Error al armar los grupos.' });
+        console.error('=== ERROR COMPLETO ===');
+        console.error('Mensaje:', error.message);
+        console.error('Stack:', error.stack);
+        res.status(500).json({ 
+            error: 'Error al armar los grupos.', 
+            details: error.message,
+            stack: error.stack 
+        });
     }
 });
 
