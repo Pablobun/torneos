@@ -19,8 +19,6 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use(express.json());
-
 //hasta aca
 app.use(express.json());
 
