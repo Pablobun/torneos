@@ -155,11 +155,40 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Event listeners
-    btnArmarGrupos.addEventListener('click', () => {
-        mostrarNotificación('Conectando con el sistema inteligente...', 'info');
-        // Por ahora solo muestra mensaje
-        console.log('Configuración de grupos:', configuracionGrupos);
-    });
+    btnArmarGrupos.addEventListener('click', async () => {
+    loadingOverlay.classList.remove('hidden');
+    btnArmarGrupos.disabled = true;
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/armar-grupos`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                configuracionGrupos: configuracionGrupos,
+                idTorneo: torneoActivo.id
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Error al armar grupos');
+        }
+
+        const result = await response.json();
+        gruposGenerados = result.grupos;
+        
+        mostrarGruposFormados();
+        mostrarNotificacion('Grupos generados exitosamente', 'success');
+        
+    } catch (error) {
+        mostrarNotificacion('Error: ' + error.message, 'error');
+    } finally {
+        loadingOverlay.classList.add('hidden');
+        btnArmarGrupos.disabled = false;
+    }
+});
+
 
     btnReiniciar.addEventListener('click', () => {
         location.reload();
@@ -168,3 +197,24 @@ document.addEventListener('DOMContentLoaded', function () {
     // Iniciar la aplicación
     inicializar();
 });
+function mostrarGruposFormados() {
+    gruposFormadosSection.classList.remove('hidden');
+    
+    let html = '<div class="grupos-list">';
+    
+    for (const grupo of gruposGenerados) {
+        html += `
+            <div class="grupo-card">
+                <h3>Grupo ${grupo.numero} - ${grupo.categoria}</h3>
+                <p class="integrantes-count">${grupo.cantidad} integrantes</p>
+                <ul class="integrantes-list">
+                    ${grupo.integrantes.map(i => `<li>${i.integrantes}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+    
+    html += '</div>';
+    gruposContainer.innerHTML = html;
+    btnGuardarGrupos.disabled = false;
+}
