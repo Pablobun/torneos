@@ -178,31 +178,22 @@ app.get('/api/horarios-compatibles/:idTorneo', async (req, res) => {
 // ENDPOINT PARA ARMAR GRUPOS (SISTEMA EXPERTO)
 // ==========================================================
 app.post('/api/armar-grupos', async (req, res) => {
-    console.log('=== DEBUG POST /api/armar-grupos ===');
-    console.log('req.body:', req.body);
-    
     const { configuracionGrupos, idTorneo } = req.body;
     
     try {
-        console.log('Llamando a armarGruposBasico...');
-        console.log('configuracionGrupos:', JSON.stringify(configuracionGrupos, null, 2));
-        console.log('idTorneo:', idTorneo);
-        
-        const grupos = await armarGruposBasico(configuracionGrupos, idTorneo);
-        console.log('Grupos generados:', grupos);
-        
-        res.status(200).json({ grupos, mensaje: 'Grupos generados exitosamente' });
-    } catch (error) {
-        console.error('=== ERROR COMPLETO ===');
-        console.error('Mensaje:', error.message);
-        console.error('Stack:', error.stack);
-        res.status(500).json({ 
-            error: 'Error al armar los grupos.', 
-            details: error.message,
-            stack: error.stack 
+        const resultado = await armarGruposBasico(configuracionGrupos, idTorneo);
+        res.status(200).json({ 
+            grupos: resultado.grupos, 
+            partidos: resultado.partidos,
+            advertencias: resultado.advertencias,
+            mensaje: 'Grupos y horarios generados exitosamente con IA' 
         });
+    } catch (error) {
+        console.error('Error al armar grupos:', error);
+        res.status(500).json({ error: 'Error al armar los grupos.', details: error.message });
     }
 });
+
 
 // ==========================================================
 // ENDPOINT PARA GUARDAR GRUPOS EN LA BD
@@ -282,150 +273,104 @@ app.get('/api/grupos/:idTorneo', async (req, res) => {
 // ==========================================================
 async function armarGruposBasico(configuracionGrupos, idTorneo) {
     const connection = await mysql.createConnection(connectionConfig);
-    const grupos = [];
-    let numeroCategoria = 1;
     
-    for (const [categoria, config] of Object.entries(configuracionGrupos)) {
-        // 1. Obtener inscriptos con sus horarios
-        const sql = `
-            SELECT i.id, i.integrantes, i.categoria,
-                   GROUP_CONCAT(ih.id_horario_fk) as horarios
-            FROM inscriptos i
-            LEFT JOIN inscriptos_horarios ih ON i.id = ih.id_inscripto_fk
-            WHERE i.id_torneo_fk = ? AND i.categoria = ?
-            GROUP BY i.id
-        `;
-        const [inscriptos] = await connection.execute(sql, [idTorneo, categoria]);
-        
-        // 2. Analizar compatibilidad
-        const { gruposFormados, sinCompatibilidad } = await analizarCompatibilidad(inscriptos, config, connection);
-        
-        // 3. Agregar grupos formados
-        for (const grupo of gruposFormados) {
-            grupos.push({
-                numero: numeroCategoria++,
-                categoria,
-                cantidad: grupo.integrantes.length,
-                integrantes: grupo.integrantes
-            });
-        }
-        
-        // 4. Si hay inscriptos sin compatibilidad, lanzar error
-        if (sinCompatibilidad.length > 0) {
-            const nombres = sinCompatibilidad.map(i => i.integrantes).join(', ');
-            throw new Error(`Inscriptos sin horarios compatibles en ${categoria}: ${nombres}`);
-        }
+    // Obtener datos completos
+    const [horariosResult] = await connection.execute(
+        'SELECT id, dia_semana, fecha, hora_inicio, Canchas FROM horarios WHERE id_torneo_fk = ?',
+        [idTorneo]
+    );
+    
+    const [inscriptosResult] = await connection.execute(
+        `SELECT i.id, i.integrantes, i.categoria, 
+                GROUP_CONCAT(ih.id_horario_fk) as horarios
+         FROM inscriptos i 
+         LEFT JOIN inscriptos_horarios ih ON i.id = ih.id_inscripto_fk 
+         WHERE i.id_torneo_fk = ? 
+         GROUP BY i.id`,
+        [idTorneo]
+    );
+    
+    // PROMPT PARA LA IA - ACÁ TERMINA EL PROMPT
+    const prompt = `
+Como organizador experto en torneos de tenis, genera horarios para grupos usando sistema round robin.
+
+DATOS DISPONIBLES:
+- Horarios disponibles con capacidad de canchas: ${JSON.stringify(horariosResult, null, 2)}
+- Inscriptos con sus horarios disponibles: ${JSON.stringify(inscriptosResult, null, 2)}
+- Configuración de grupos solicitada: ${JSON.stringify(configuracionGrupos, null, 2)}
+
+REGLAS IMPORTANTES:
+1. Round robin: cada par de integrantes debe jugar un partido entre sí
+2. Solo asignar horarios donde AMBOS jugadores/integrantes puedan jugar
+3. Respetar estrictamente el límite de canchas disponibles por horario
+4. Si hay inscriptos sin horarios compatibles, incluirlos en "advertencias"
+5. Priorizar horarios con mayor disponibilidad
+6. El horario_id debe corresponder a un ID real de los horarios disponibles
+7. Cada partido ocupa 1 cancha del total disponible en ese horario
+
+FORMATO DE RESPUESTA OBLIGATORIO (solo JSON, sin texto adicional):
+{
+  "grupos": [
+    {
+      "numero": 1,
+      "categoria": "Categoria-B",
+      "cantidad": 3,
+      "integrantes": [
+        {"id": 100, "integrantes": "NOMBRE1 / NOMBRE2"},
+        {"id": 101, "integrantes": "NOMBRE3 / NOMBRE4"},
+        {"id": 102, "integrantes": "NOMBRE5 / NOMBRE6"}
+      ]
     }
-    
-    await connection.end();
-    return grupos;
+  ],
+  "partidos": [
+    {
+      "grupo": 1,
+      "local": {"id": 100, "integrantes": "NOMBRE1 / NOMBRE2"},
+      "visitante": {"id": 101, "integrantes": "NOMBRE3 / NOMBRE4"},
+      "horario_id": 1,
+      "dia": "Lunes 09/03",
+      "hora": "14:30"
+    }
+  ],
+  "advertencias": [
+    {
+      "categoria": "Categoria-B",
+      "mensaje": "El inscripto X no tiene horarios compatibles",
+      "id_inscripto": 103
+    }
+  ]
 }
 
-async function analizarCompatibilidad(inscriptos, config, connection) {
-    const grupos = [];
-    const sinCompatibilidad = [];
-    const usados = new Set();
-    
-    // 1. Obtener capacidad de canchas por horario
-    const sqlCanchas = 'SELECT id, Canchas FROM horarios WHERE id_torneo_fk = ?';
-    const [horarios] = await connection.execute(sqlCanchas, [1]); // torneo activo
-    
-    const capacidadHorarios = {};
-    horarios.forEach(h => {
-        capacidadHorarios[h.id] = h.Canchas;
-    });
-    
-    // 2. Para cada tamaño de grupo requerido
-    for (const [tamano, cantidad] of Object.entries({grupos3: 3, grupos4: 4, grupos5: 5})) {
-        for (let i = 0; i < (config[tamano] || 0); i++) {
-            // 3. Buscar combinación compatible
-            const grupo = await buscarGrupoCompatible(inscriptos, usados, parseInt(tamano.slice(6)), capacidadHorarios, connection);
-            
-            if (grupo) {
-                grupos.push(grupo);
-                grupo.integrantes.forEach(i => usados.add(i.id));
-            } else {
-                // No se encontró grupo compatible, buscar inscriptos sin compatibilidad
-                const restantes = inscriptos.filter(i => !usados.has(i.id));
-                sinCompatibilidad.push(...restantes);
-                break;
-            }
-        }
-    }
-    
-    return { gruposFormados: grupos, sinCompatibilidad };
-}
+Analiza los datos y genera el JSON solicitado:
+`;
 
-async function buscarGrupoCompatible(inscriptos, usados, tamaño, capacidadHorarios, connection) {
-    const disponibles = inscriptos.filter(i => !usados.has(i.id));
-    
-    // Si no hay suficientes inscriptos disponibles
-    if (disponibles.length < tamaño) return null;
-    
-    // Obtener compatibilidades entre todos los inscriptos
-    const compatibilidades = obtenerCompatibilidades(disponibles, capacidadHorarios);
-
-    
-    // Buscar grupo donde todos compartan al menos un horario con capacidad disponible
-    for (let i = 0; i < disponibles.length - (tamaño - 1); i++) {
-        for (let j = i + 1; j < disponibles.length; j++) {
-            if (tamaño === 2 && compatibilidades[disponibles[i].id]?.has(disponibles[j].id)) {
-                return { integrantes: [disponibles[i], disponibles[j]] };
-            }
-            
-            for (let k = j + 1; k < disponibles.length; k++) {
-                if (tamaño === 3 && compatibilidades[disponibles[i].id]?.has(disponibles[j].id) &&
-                    compatibilidades[disponibles[i].id]?.has(disponibles[k].id) &&
-                    compatibilidades[disponibles[j].id]?.has(disponibles[k].id)) {
-                    return { integrantes: [disponibles[i], disponibles[j], disponibles[k]] };
-                }
-                
-                for (let l = k + 1; l < disponibles.length; l++) {
-                    if (tamaño === 4 && compatibilidades[disponibles[i].id]?.has(disponibles[j].id) &&
-                        compatibilidades[disponibles[i].id]?.has(disponibles[k].id) &&
-                        compatibilidades[disponibles[i].id]?.has(disponibles[l].id) &&
-                        compatibilidades[disponibles[j].id]?.has(disponibles[k].id) &&
-                        compatibilidades[disponibles[j].id]?.has(disponibles[l].id) &&
-                        compatibilidades[disponibles[k].id]?.has(disponibles[l].id)) {
-                        return { integrantes: [disponibles[i], disponibles[j], disponibles[k], disponibles[l]] };
-                    }
-                }
-            }
-        }
-    }
-    
-    return null;
-}
-
-function obtenerCompatibilidades(inscriptos, capacidadHorarios) {
-    const compatibilidades = {};
-    
-    // Para cada inscripto, obtener sus horarios
-    for (const inscripto of inscriptos) {
-        const horarios = inscripto.horarios ? inscripto.horarios.split(',').map(h => parseInt(h)) : [];
+    try {
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
         
-        // Para cada otro inscripto, verificar compatibilidad
-        for (const otro of inscriptos) {
-            if (inscripto.id === otro.id) continue;
-            
-            const otrosHorarios = otro.horarios ? otro.horarios.split(',').map(h => parseInt(h)) : [];
-            
-            // Encontrar horarios comunes con capacidad disponible
-            const comunes = horarios.filter(h => 
-                otrosHorarios.includes(h) && capacidadHorarios[h] > 0
-            );
-            
-            if (comunes.length > 0) {
-                if (!compatibilidades[inscripto.id]) {
-                    compatibilidades[inscripto.id] = new Set();
-                }
-                compatibilidades[inscripto.id].add(otro.id);
-            }
+        // Limpiar el texto para extraer solo el JSON
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            throw new Error('No se pudo extraer JSON válido de la respuesta de Gemini');
         }
+        
+        const resultado = JSON.parse(jsonMatch[0]);
+        await connection.end();
+        
+        return {
+            grupos: resultado.grupos || [],
+            partidos: resultado.partidos || [],
+            advertencias: resultado.advertencias || []
+        };
+        
+    } catch (error) {
+        await connection.end();
+        console.error('Error con Gemini:', error);
+        throw new Error('Error al generar horarios con IA: ' + error.message);
     }
-    
-    return compatibilidades;
 }
+
 
 
 
