@@ -129,6 +129,173 @@ app.get('/api/inscriptos', async (req, res) => {
         res.status(500).json({ error: 'No se pudo obtener la lista de inscriptos.' });
     }
 });
+// ==========================================================
+// ENDPOINT PARA OBTENER HORARIOS CON DETALLES DE INSCRIPTOS
+// ==========================================================
+app.get('/api/horarios-compatibles/:idTorneo', async (req, res) => {
+    const { idTorneo } = req.params;
+    const sql = `
+        SELECT h.id, h.dia_semana, h.fecha, h.hora_inicio, h.Canchas,
+               COUNT(ih.id_inscripto_fk) as inscriptos_disponibles
+        FROM horarios h
+        LEFT JOIN inscriptos_horarios ih ON h.id = ih.id_horario_fk
+        LEFT JOIN inscriptos i ON ih.id_inscripto_fk = i.id
+        WHERE h.id_torneo_fk = ? AND h.activo = 1
+        GROUP BY h.id
+        ORDER BY h.fecha, h.hora_inicio
+    `;
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        const [rows] = await connection.execute(sql, [idTorneo]);
+        await connection.end();
+        res.status(200).json(rows);
+    } catch (error) {
+        console.error('Error al obtener horarios compatibles:', error);
+        res.status(500).json({ error: 'Error del servidor al obtener horarios.' });
+    }
+});
+
+// ==========================================================
+// ENDPOINT PARA ARMAR GRUPOS (SISTEMA EXPERTO)
+// ==========================================================
+app.post('/api/armar-grupos', async (req, res) => {
+    const { configuracionGrupos, idTorneo } = req.body;
+    
+    try {
+        // Por ahora, lógica básica (después mejoramos con IA)
+        const grupos = await armarGruposBasico(configuracionGrupos, idTorneo);
+        res.status(200).json({ grupos, mensaje: 'Grupos generados exitosamente' });
+    } catch (error) {
+        console.error('Error al armar grupos:', error);
+        res.status(500).json({ error: 'Error al armar los grupos.' });
+    }
+});
+
+// ==========================================================
+// ENDPOINT PARA GUARDAR GRUPOS EN LA BD
+// ==========================================================
+app.post('/api/guardar-grupos', async (req, res) => {
+    const { grupos, idTorneo } = req.body;
+    let connection;
+
+    try {
+        connection = await mysql.createConnection(connectionConfig);
+        await connection.beginTransaction();
+
+        // Insertar grupos
+        for (const grupo of grupos) {
+            const sqlGrupo = `
+                INSERT INTO grupos (numero_grupo, id_torneo_fk, categoria, cantidad_integrantes, estado)
+                VALUES (?, ?, ?, ?, 'armado')
+            `;
+            const [resultGrupo] = await connection.execute(sqlGrupo, [
+                grupo.numero,
+                idTorneo,
+                grupo.categoria,
+                grupo.cantidad
+            ]);
+            
+            const idGrupo = resultGrupo.insertId;
+            
+            // Insertar integrantes del grupo
+            for (const integrante of grupo.integrantes) {
+                const sqlIntegrante = `
+                    INSERT INTO grupo_integrantes (id_grupo, id_inscripto)
+                    VALUES (?, ?)
+                `;
+                await connection.execute(sqlIntegrante, [idGrupo, integrante.id]);
+            }
+        }
+
+        await connection.commit();
+        res.status(200).json({ mensaje: 'Grupos guardados exitosamente' });
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Error al guardar grupos:', error);
+        res.status(500).json({ error: 'Error al guardar los grupos.' });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// ==========================================================
+// ENDPOINT PARA OBTENER GRUPOS FORMADOS
+// ==========================================================
+app.get('/api/grupos/:idTorneo', async (req, res) => {
+    const { idTorneo } = req.params;
+    const sql = `
+        SELECT g.id, g.numero_grupo, g.categoria, g.cantidad_integrantes, g.estado,
+               GROUP_CONCAT(i.integrantes SEPARATOR ' | ') as integrantes
+        FROM grupos g
+        LEFT JOIN grupo_integrantes gi ON g.id = gi.id_grupo
+        LEFT JOIN inscriptos i ON gi.id_inscripto = i.id
+        WHERE g.id_torneo_fk = ?
+        GROUP BY g.id
+        ORDER BY g.categoria, g.numero_grupo
+    `;
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        const [rows] = await connection.execute(sql, [idTorneo]);
+        await connection.end();
+        res.status(200).json(rows);
+    } catch (error) {
+        console.error('Error al obtener grupos:', error);
+        res.status(500).json({ error: 'Error al obtener los grupos.' });
+    }
+});
+
+// ==========================================================
+// FUNCIÓN BÁSICA PARA ARMAR GRUPOS (TEMPORAL)
+// ==========================================================
+async function armarGruposBasico(configuracionGrupos, idTorneo) {
+    // Obtener inscriptos por categoría
+    const connection = await mysql.createConnection(connectionConfig);
+    const grupos = [];
+    let numeroGrupo = 1;
+
+    for (const [categoria, config] of Object.entries(configuracionGrupos)) {
+        const sql = 'SELECT id, integrantes, categoria FROM inscriptos WHERE id_torneo_fk = ? AND categoria = ?';
+        const [inscriptos] = await connection.execute(sql, [idTorneo, categoria]);
+        
+        let indiceActual = 0;
+
+        // Crear grupos de 3
+        for (let i = 0; i < config.grupos3; i++) {
+            grupos.push({
+                numero: numeroGrupo++,
+                categoria,
+                cantidad: 3,
+                integrantes: inscriptos.slice(indiceActual, indiceActual + 3)
+            });
+            indiceActual += 3;
+        }
+
+        // Crear grupos de 4
+        for (let i = 0; i < config.grupos4; i++) {
+            grupos.push({
+                numero: numeroGrupo++,
+                categoria,
+                cantidad: 4,
+                integrantes: inscriptos.slice(indiceActual, indiceActual + 4)
+            });
+            indiceActual += 4;
+        }
+
+        // Crear grupos de 5
+        for (let i = 0; i < config.grupos5; i++) {
+            grupos.push({
+                numero: numeroGrupo++,
+                categoria,
+                cantidad: 5,
+                integrantes: inscriptos.slice(indiceActual, indiceActual + 5)
+            });
+            indiceActual += 5;
+        }
+    }
+
+    await connection.end();
+    return grupos;
+}
 
 // 5. Puerto de escucha
 const PORT = process.env.PORT || 10000;
