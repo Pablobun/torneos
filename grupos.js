@@ -154,7 +154,41 @@ document.addEventListener('DOMContentLoaded', function () {
             notification.remove();
         }, 5000);
     }
+    //aca la puse
+    function mostrarGruposFormados() {
+    console.log('mostrarGruposFormados llamado');
+    console.log('gruposGenerados:', gruposGenerados);
+    
+    const section = document.getElementById('grupos-formados');
+    console.log('section:', section);
+    
+    if (!section) {
+        console.error('No se encontró el elemento grupos-formados');
+        return;
+    }
+    
+    section.classList.remove('hidden');
+    
+    let html = '<div class="grupos-list">';
+    
+    for (const grupo of gruposGenerados) {
+        html += `
+            <div class="grupo-card">
+                <h3>Grupo ${grupo.numero} - ${grupo.categoria}</h3>
+                <p class="integrantes-count">${grupo.cantidad} integrantes</p>
+                <ul class="integrantes-list">
+                    ${grupo.integrantes.map(i => `<li>${i.integrantes}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+    
+    html += '</div>';
+    gruposContainer.innerHTML = html;
+    btnGuardarGrupos.disabled = false;
+}
 
+//ojo
     // Event listeners
     btnArmarGrupos.addEventListener('click', async () => {
     loadingOverlay.classList.remove('hidden');
@@ -212,36 +246,3 @@ document.addEventListener('DOMContentLoaded', function () {
     // Iniciar la aplicación
     inicializar();
 });
-function mostrarGruposFormados() {
-    console.log('mostrarGruposFormados llamado');
-    console.log('gruposGenerados:', gruposGenerados);
-    
-    const section = document.getElementById('grupos-formados');
-    console.log('section:', section);
-    
-    if (!section) {
-        console.error('No se encontró el elemento grupos-formados');
-        return;
-    }
-    
-    section.classList.remove('hidden');
-    
-    let html = '<div class="grupos-list">';
-    
-    for (const grupo of gruposGenerados) {
-        html += `
-            <div class="grupo-card">
-                <h3>Grupo ${grupo.numero} - ${grupo.categoria}</h3>
-                <p class="integrantes-count">${grupo.cantidad} integrantes</p>
-                <ul class="integrantes-list">
-                    ${grupo.integrantes.map(i => `<li>${i.integrantes}</li>`).join('')}
-                </ul>
-            </div>
-        `;
-    }
-    
-    html += '</div>';
-    gruposContainer.innerHTML = html;
-    btnGuardarGrupos.disabled = false;
-}
-
