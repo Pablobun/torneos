@@ -263,54 +263,149 @@ app.get('/api/grupos/:idTorneo', async (req, res) => {
 // FUNCIÓN BÁSICA PARA ARMAR GRUPOS (TEMPORAL)
 // ==========================================================
 async function armarGruposBasico(configuracionGrupos, idTorneo) {
-    // Obtener inscriptos por categoría
     const connection = await mysql.createConnection(connectionConfig);
     const grupos = [];
-
+    let numeroCategoria = 1;
+    
     for (const [categoria, config] of Object.entries(configuracionGrupos)) {
-        const sql = 'SELECT id, integrantes, categoria FROM inscriptos WHERE id_torneo_fk = ? AND categoria = ?';
+        // 1. Obtener inscriptos con sus horarios
+        const sql = `
+            SELECT i.id, i.integrantes, i.categoria,
+                   GROUP_CONCAT(ih.id_horario_fk) as horarios
+            FROM inscriptos i
+            LEFT JOIN inscriptos_horarios ih ON i.id = ih.id_inscripto_fk
+            WHERE i.id_torneo_fk = ? AND i.categoria = ?
+            GROUP BY i.id
+        `;
         const [inscriptos] = await connection.execute(sql, [idTorneo, categoria]);
         
-        let indiceActual = 0;
-        let numeroCategoria = 1; // <- CAMBIO ACÁ: reiniciar número por categoría
-
-        // Crear grupos de 3
-        for (let i = 0; i < config.grupos3; i++) {
+        // 2. Analizar compatibilidad
+        const { gruposFormados, sinCompatibilidad } = await analizarCompatibilidad(inscriptos, config, connection);
+        
+        // 3. Agregar grupos formados
+        for (const grupo of gruposFormados) {
             grupos.push({
-                numero: numeroCategoria++, // <- CAMBIO ACÁ: usar numeroCategoria
+                numero: numeroCategoria++,
                 categoria,
-                cantidad: 3,
-                integrantes: inscriptos.slice(indiceActual, indiceActual + 3)
+                cantidad: grupo.integrantes.length,
+                integrantes: grupo.integrantes
             });
-            indiceActual += 3;
         }
-
-        // Crear grupos de 4
-        for (let i = 0; i < config.grupos4; i++) {
-            grupos.push({
-                numero: numeroCategoria++, // <- CAMBIO ACÁ: usar numeroCategoria
-                categoria,
-                cantidad: 4,
-                integrantes: inscriptos.slice(indiceActual, indiceActual + 4)
-            });
-            indiceActual += 4;
-        }
-
-        // Crear grupos de 5
-        for (let i = 0; i < config.grupos5; i++) {
-            grupos.push({
-                numero: numeroCategoria++, // <- CAMBIO ACÁ: usar numeroCategoria
-                categoria,
-                cantidad: 5,
-                integrantes: inscriptos.slice(indiceActual, indiceActual + 5)
-            });
-            indiceActual += 5;
+        
+        // 4. Si hay inscriptos sin compatibilidad, lanzar error
+        if (sinCompatibilidad.length > 0) {
+            const nombres = sinCompatibilidad.map(i => i.integrantes).join(', ');
+            throw new Error(`Inscriptos sin horarios compatibles en ${categoria}: ${nombres}`);
         }
     }
-
+    
     await connection.end();
     return grupos;
 }
+
+async function analizarCompatibilidad(inscriptos, config, connection) {
+    const grupos = [];
+    const sinCompatibilidad = [];
+    const usados = new Set();
+    
+    // 1. Obtener capacidad de canchas por horario
+    const sqlCanchas = 'SELECT id, Canchas FROM horarios WHERE id_torneo_fk = ?';
+    const [horarios] = await connection.execute(sqlCanchas, [1]); // torneo activo
+    
+    const capacidadHorarios = {};
+    horarios.forEach(h => {
+        capacidadHorarios[h.id] = h.Canchas;
+    });
+    
+    // 2. Para cada tamaño de grupo requerido
+    for (const [tamano, cantidad] of Object.entries({grupos3: 3, grupos4: 4, grupos5: 5})) {
+        for (let i = 0; i < (config[tamano] || 0); i++) {
+            // 3. Buscar combinación compatible
+            const grupo = await buscarGrupoCompatible(inscriptos, usados, parseInt(tamano.slice(6)), capacidadHorarios, connection);
+            
+            if (grupo) {
+                grupos.push(grupo);
+                grupo.integrantes.forEach(i => usados.add(i.id));
+            } else {
+                // No se encontró grupo compatible, buscar inscriptos sin compatibilidad
+                const restantes = inscriptos.filter(i => !usados.has(i.id));
+                sinCompatibilidad.push(...restantes);
+                break;
+            }
+        }
+    }
+    
+    return { gruposFormados: grupos, sinCompatibilidad };
+}
+
+async function buscarGrupoCompatible(inscriptos, usados, tamaño, capacidadHorarios, connection) {
+    const disponibles = inscriptos.filter(i => !usados.has(i.id));
+    
+    // Si no hay suficientes inscriptos disponibles
+    if (disponibles.length < tamaño) return null;
+    
+    // Obtener compatibilidades entre todos los inscriptos
+    const compatibilidades = await obtenerCompatibilidades(disponibles, capacidadHorarios, connection);
+    
+    // Buscar grupo donde todos compartan al menos un horario con capacidad disponible
+    for (let i = 0; i < disponibles.length - (tamaño - 1); i++) {
+        for (let j = i + 1; j < disponibles.length; j++) {
+            if (tamaño === 2 && compatibilidades[disponibles[i].id]?.has(disponibles[j].id)) {
+                return { integrantes: [disponibles[i], disponibles[j]] };
+            }
+            
+            for (let k = j + 1; k < disponibles.length; k++) {
+                if (tamaño === 3 && compatibilidades[disponibles[i].id]?.has(disponibles[j].id) &&
+                    compatibilidades[disponibles[i].id]?.has(disponibles[k].id) &&
+                    compatibilidades[disponibles[j].id]?.has(disponibles[k].id)) {
+                    return { integrantes: [disponibles[i], disponibles[j], disponibles[k]] };
+                }
+                
+                for (let l = k + 1; l < disponibles.length; l++) {
+                    if (tamaño === 4 && compatibilidades[disponibles[i].id]?.has(disponibles[j].id) &&
+                        compatibilidades[disponibles[i].id]?.has(disponibles[k].id) &&
+                        compatibilidades[disponibles[i].id]?.has(disponibles[l].id) &&
+                        compatibilidades[disponibles[j].id]?.has(disponibles[k].id) &&
+                        compatibilidades[disponibles[j].id]?.has(disponibles[l].id) &&
+                        compatibilidades[disponibles[k].id]?.has(disponibles[l].id)) {
+                        return { integrantes: [disponibles[i], disponibles[j], disponibles[k], disponibles[l]] };
+                    }
+                }
+            }
+        }
+    }
+    
+    return null;
+}
+
+async function obtenerCompatibilidades(inscriptos, capacidadHorarios, connection) {
+    const compatibilidades = {};
+    
+    // Para cada inscripto, obtener sus horarios
+    for (const inscripto of inscriptos) {
+        const horarios = inscripto.horarios ? inscripto.horarios.split(',').map(h => parseInt(h)) : [];
+        
+        // Para cada otro inscripto, verificar compatibilidad
+        for (const otro of inscriptos) {
+            if (inscripto.id === otro.id) continue;
+            
+            const otrosHorarios = otro.horarios ? otro.horarios.split(',').map(h => parseInt(h)) : [];
+            
+            // Encontrar horarios comunes
+            const comunes = horarios.filter(h => otrosHorarios.includes(h) && capacidadHorarios[h] > 0);
+            
+            if (comunes.length > 0) {
+                if (!compatibilidades[inscripto.id]) {
+                    compatibilidades[inscripto.id] = new Set();
+                }
+                compatibilidades[inscripto.id].add(otro.id);
+            }
+        }
+    }
+    
+    return compatibilidades;
+}
+
 
 
 // 5. Puerto de escucha
