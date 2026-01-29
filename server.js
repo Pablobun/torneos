@@ -266,18 +266,18 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
     // Obtener inscriptos por categoría
     const connection = await mysql.createConnection(connectionConfig);
     const grupos = [];
-    let numeroGrupo = 1;
 
     for (const [categoria, config] of Object.entries(configuracionGrupos)) {
         const sql = 'SELECT id, integrantes, categoria FROM inscriptos WHERE id_torneo_fk = ? AND categoria = ?';
         const [inscriptos] = await connection.execute(sql, [idTorneo, categoria]);
         
         let indiceActual = 0;
+        let numeroCategoria = 1; // <- CAMBIO ACÁ: reiniciar número por categoría
 
         // Crear grupos de 3
         for (let i = 0; i < config.grupos3; i++) {
             grupos.push({
-                numero: numeroGrupo++,
+                numero: numeroCategoria++, // <- CAMBIO ACÁ: usar numeroCategoria
                 categoria,
                 cantidad: 3,
                 integrantes: inscriptos.slice(indiceActual, indiceActual + 3)
@@ -288,7 +288,7 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
         // Crear grupos de 4
         for (let i = 0; i < config.grupos4; i++) {
             grupos.push({
-                numero: numeroGrupo++,
+                numero: numeroCategoria++, // <- CAMBIO ACÁ: usar numeroCategoria
                 categoria,
                 cantidad: 4,
                 integrantes: inscriptos.slice(indiceActual, indiceActual + 4)
@@ -299,7 +299,7 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
         // Crear grupos de 5
         for (let i = 0; i < config.grupos5; i++) {
             grupos.push({
-                numero: numeroGrupo++,
+                numero: numeroCategoria++, // <- CAMBIO ACÁ: usar numeroCategoria
                 categoria,
                 cantidad: 5,
                 integrantes: inscriptos.slice(indiceActual, indiceActual + 5)
@@ -311,6 +311,7 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
     await connection.end();
     return grupos;
 }
+
 
 // 5. Puerto de escucha
 const PORT = process.env.PORT || 10000;
