@@ -4,7 +4,24 @@ const cors = require('cors');
 const mysql = require('mysql2/promise');
 
 const app = express();
-app.use(cors());
+//app.use(cors());
+// Middleware para manejar CORS
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    if (req.method === 'OPTIONS') {
+        res.status(200).send();
+        return;
+    }
+    
+    next();
+});
+
+app.use(express.json());
+
+//hasta aca
 app.use(express.json());
 
 // 2. Configuración de la conexión a la BD

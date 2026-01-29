@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const loadingOverlay = document.getElementById('loading-overlay');
     const notificationContainer = document.getElementById('notification-container');
     const gruposFormadosSection = document.getElementById('grupos-formados');
+    
 
     let torneoActivo = null;
     let inscriptosPorCategoria = {};
