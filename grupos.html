@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Armado de Grupos - Torneo de Tenis "Copa Aero Club"</title>
+    <meta name="description" content="Armado inteligente de grupos para el Torneo de Tenis Copa Aero Club. Sistema automático de agrupación por categorías.">
+    <meta name="google-site-verification" content="guqR1lrPGf9LByj_rACLHm93SnAXCT2zkUGzhFnLRuA" />
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="logo.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <img src="logo.png" alt="Logo Academia de Tenis" class="header-logo">
+            <div class="header-text">
+                <h1>Armado de Grupos</h1>
+                <p class="subtitle">Sistema Inteligente de Agrupación</p>
+            </div>
+        </header>
+
+        <main>
+            <!-- Estado del torneo -->
+            <section id="estado-torneo">
+                <h2>Información del Torneo</h2>
+                <div id="info-torneo">
+                    <p>Cargando información del torneo activo...</p>
+                </div>
+            </section>
+
+            <!-- Resumen de inscriptos por categoría -->
+            <section id="resumen-categorias">
+                <h2>Inscriptos por Categoría</h2>
+                <div id="categorias-container">
+                    <p>Cargando categorías...</p>
+                </div>
+            </section>
+
+            <!-- Armado de grupos por categoría -->
+            <section id="armado-grupos">
+                <h2>Configurar Grupos por Categoría</h2>
+                <div id="categorias-config">
+                    <p>Seleccione la configuración de grupos para cada categoría:</p>
+                </div>
+                <div class="action-buttons">
+                    <button id="btn-armar-grupos" class="btn-primary" disabled>Armar Grupos</button>
+                </div>
+            </section>
+
+            <!-- Grupos formados -->
+            <section id="grupos-formados" class="hidden">
+                <h2>Grupos Formados</h2>
+                <div id="grupos-container">
+                    <p>No hay grupos formados aún.</p>
+                </div>
+                <div class="action-buttons">
+                    <button id="btn-guardar-grupos" class="btn-success" disabled>Guardar Grupos</button>
+                    <button id="btn-reiniciar" class="btn-secondary">Reiniciar</button>
+                </div>
+            </section>
+
+            <!-- Mensajes y notificaciones -->
+            <div id="notification-container"></div>
+            
+            <!-- Indicador de carga -->
+            <div id="loading-overlay" class="hidden">
+                <div class="loading-spinner">
+                    <p>Analizando compatibilidades...</p>
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <div class="footer-texto">
+                <p>&copy; 2025 Escuela de Tenis "Guido Ferrer".</p>
+                <p>Todos los derechos reservados.</p>
+            </div>
+            <div class="footer-logos">
+                <span>Desarrollado por:</span>
+                <a href="https://www.itecriocuarto.org.ar/itec-labs" target="_blank">
+                    <img src="logos/logoiteclabs.png" alt="ITECLABS SOFTWARE">
+                </a>
+            </div>
+        </footer>
+    </div>
+
+    <script src="grupos.js"></script>
+</body>
+</html>
