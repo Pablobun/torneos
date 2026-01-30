@@ -291,26 +291,26 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
             [idTorneo]
         );
 
-        // 2. OPTIMIZACIÓN: Limpiar datos para ahorrar tokens (Clave para evitar el error 429)
-        // Solo enviamos lo estrictamente necesario a la IA
-        const horariosSimples = horariosResult.map(h => ({
+        // 2. Preparar datos para la IA con las variables que se reemplazarán
+        const horariosConCupo = horariosResult.map(h => ({
             id: h.id,
-            dia: `${h.dia_semana} ${h.fecha} ${h.hora_inicio}`, // Unificamos para leer menos texto
+            fecha_formateada: `${h.fecha.substring(8,10)}/${h.fecha.substring(5,7)}/${h.fecha.substring(2,4)}`,
+            hora: h.hora_inicio.substring(0,5),
             cupo: h.Canchas
         }));
 
-        const inscriptosSimples = inscriptosResult.map(i => ({
+        const inscriptosConHorarios = inscriptosResult.map(i => ({
             id: i.id,
-            n: i.integrantes, // Abreviamos nombre variable
-            cat: i.categoria,
-            h: i.horarios ? i.horarios.split(',') : [] // Convertimos string a array real
+            integrantes: i.integrantes,
+            categoria: i.categoria,
+            horarios_disponibles: i.horarios ? i.horarios.split(',').map(h => parseInt(h)) : []
         }));
 
-        // 3. Prompt dinámico y detallado
+        // 3. Generar resumen de configuración
         const generarResumenConfiguracion = () => {
             return Object.entries(configuracionGrupos).map(([cat, config]) => {
                 const totalPorCategoria = (config.grupos3 || 0) * 3 + (config.grupos4 || 0) * 4 + (config.grupos5 || 0) * 5;
-                let detalle = `- ${cat}: Total requerido: ${totalPorCategoria} jugadores (`;
+                let detalle = `- ${cat}: Se necesitan ${totalPorCategoria} jugadores (`;
                 const partes = [];
                 if (config.grupos3 > 0) partes.push(`${config.grupos3} grupos de 3`);
                 if (config.grupos4 > 0) partes.push(`${config.grupos4} grupos de 4`);
@@ -319,22 +319,14 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
             }).join('\n');
         };
 
-        const generarValidaciones = () => {
-            return Object.entries(configuracionGrupos).map(([cat, config]) => {
-                const totalRequerido = (config.grupos3 || 0) * 3 + (config.grupos4 || 0) * 4 + (config.grupos5 || 0) * 5;
-                return `- ${cat}: Debe asignar EXACTAMENTE ${totalRequerido} jugadores únicos`;
-            }).join('\n');
-        };
-
+        // 4. Construir prompt con las variables que se reemplazarán
         const prompt = `
 Actúa como un organizador experto de torneos de tenis round robin. Genera un JSON válido.
 
 DATOS DISPONIBLES:
-- Horarios disponibles (id, dia, cupo): ${JSON.stringify(horariosSimples)}
-- Jugadores (id, nombre, categoria, ids_horarios_disponibles): ${JSON.stringify(inscriptosSimples)}
-
-CONFIGURACIÓN REQUERIDA EXACTA:
-${generarResumenConfiguracion()}
+- Horarios (id, fecha_formateada, hora, cupo): ${JSON.stringify(horariosConCupo)}
+- Jugadores (id, integrantes, categoria, horarios_disponibles): ${JSON.stringify(inscriptosConHorarios)}
+- Configuración: ${JSON.stringify(configuracionGrupos)}
 
 REGLAS IMPORTANTES:
 1. Round robin completo: cada jugador debe jugar contra todos los demás de su grupo
@@ -344,37 +336,34 @@ REGLAS IMPORTANTES:
 5. RESPETAR EXACTAMENTE las cantidades solicitadas en configuración
 6. Separar por categorías: NO MEZCLAR jugadores entre categorías
 
-VALIDACIONES OBLIGATORIAS:
-${generarValidaciones()}
+CONFIGURACIÓN REQUERIDA EXACTA:
+${generarResumenConfiguracion()}
 
 ESTRUCTURA JSON OBLIGATORIA (solo JSON, sin texto adicional):
 {
   "grupos": [
     {
-      "numero": 1,
+      "numero_grupo": 1,
       "categoria": "Categoria-B",
       "integrantes": [
-        {"id": 99, "integrantes": "NOMBRE1 / NOMBRE2"},
-        {"id": 100, "integrantes": "NOMBRE3 / NOMBRE4"},
-        {"id": 101, "integrantes": "NOMBRE5 / NOMBRE6"}
+        {"id_inscripto": 99, "integrantes": "NOMBRE1 / NOMBRE2"},
+        {"id_inscripto": 100, "integrantes": "NOMBRE3 / NOMBRE4"}
       ]
     }
   ],
   "partidos": [
     {
-      "grupo": 1,
-      "categoria": "Categoria-B",
-      "local": {"id": 99, "integrantes": "NOMBRE1 / NOMBRE2"},
-      "visitante": {"id": 100, "integrantes": "NOMBRE3 / NOMBRE4"},
-      "horario_id": 5,
-      "dia": "Lunes 09/03",
-      "hora": "14:30"
+      "numero_grupo": 1,
+      "local": {"id_inscripto": 99, "integrantes": "NOMBRE1 / NOMBRE2"},
+      "visitante": {"id_inscripto": 100, "integrantes": "NOMBRE3 / NOMBRE4"},
+      "id_horario_fk": 15,
+      "categoria": "Categoria-B"
     }
   ],
   "advertencias": [
     {
-      "categoria": "Categoria-B",
-      "mensaje": "El jugador X no tiene horarios compatibles",
+      "tipo": "JUGADOR_NO_ASIGNADO",
+      "mensaje": "El jugador no pudo ser asignado a ningún grupo por falta de espacio en la configuración.",
       "id_inscripto": 115
     }
   ]
@@ -383,14 +372,15 @@ ESTRUCTURA JSON OBLIGATORIA (solo JSON, sin texto adicional):
 Genera el JSON solicitado respetando exactamente todas las reglas:
 `;
 
-        // 4. Llamada a la IA sin responseMimeType para evitar errores
+        // 5. Llamada a la IA
         console.log('Enviando datos a Gemini...');
         
         const result = await model.generateContent(prompt);
         const response = await result.response;
         const text = response.text();
         
-        // Limpieza del JSON
+        // 6. Procesar respuesta
+        console.log('Respuesta de Gemini:', text);
         const jsonString = text.replace(/```json|```/g, '').trim();
         const resultado = JSON.parse(jsonString);
 
@@ -402,14 +392,13 @@ Genera el JSON solicitado respetando exactamente todas las reglas:
             advertencias: resultado.advertencias || []
         };
 
-
     } catch (error) {
         if (connection) await connection.end();
         console.error('CRITICAL ERROR GEMINI:', error);
-        // Devolvemos un objeto vacío en lugar de romper todo el servidor
-        return { grupos: [], partidos: [], advertencias: [{ mensaje: "La IA está saturada, intenta en 1 minuto.", error: error.message }] };
+        return { grupos: [], partidos: [], advertencias: [{ mensaje: "Error al generar horarios con IA. " + error.message }] };
     }
 }
+
 
 
 
