@@ -291,12 +291,12 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
             [idTorneo]
         );
 
-        // 2. Preparar datos para la IA con las variables que se reemplazarán
+                // 2. Preparar datos para la IA con validación de nulos
         const horariosConCupo = horariosResult.map(h => ({
             id: h.id,
-            fecha_formateada: `${h.fecha.substring(8,10)}/${h.fecha.substring(5,7)}/${h.fecha.substring(2,4)}`,
-            hora: h.hora_inicio.substring(0,5),
-            cupo: h.Canchas
+            fecha_formateada: h.fecha ? `${h.fecha.substring(8,10)}/${h.fecha.substring(5,7)}/${h.fecha.substring(2,4)}` : 'Sin fecha',
+            hora: h.hora_inicio ? h.hora_inicio.substring(0,5) : 'Sin hora',
+            cupo: h.Canchas || 0
         }));
 
         const inscriptosConHorarios = inscriptosResult.map(i => ({
@@ -305,6 +305,7 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
             categoria: i.categoria,
             horarios_disponibles: i.horarios ? i.horarios.split(',').map(h => parseInt(h)) : []
         }));
+
 
         // 3. Generar resumen de configuración
         const generarResumenConfiguracion = () => {
