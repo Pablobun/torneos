@@ -313,7 +313,7 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
                 integrantes: i.integrantes,
                 categoria: i.categoria,
                 horarios_disponibles: (typeof i.horarios === 'string') ? 
-                    i.horarios.split(',').map(h => parseInt(h.trim())).filter(h => !isNaN(h)) : []
+                    i.horarios.split(',').map(h => parseInt(h)).filter(h => !isNaN(h)) : []
             }));
 
         console.log('=== DATOS PROCESADOS PARA IA ===');
@@ -333,7 +333,7 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
             }).join('\n');
         };
 
-        // 4. Construir prompt
+        // 4. Construir prompt con variables que se reemplazarán
         const prompt = `
 Actúa como un organizador experto de torneos de tenis round robin.
 
@@ -353,15 +353,15 @@ REGLAS IMPORTANTES:
 CONFIGURACIÓN REQUERIDA:
 ${generarResumenConfiguracion()}
 
-ESTRUCTURA JSON OBLIGATORIA:
+ESTRUCTURA JSON OBLIGATORIA (solo JSON, sin texto adicional):
 {
   "grupos": [
     {
       "numero_grupo": 1,
       "categoria": "Categoria-B",
       "integrantes": [
-        {"id": 99, "integrantes": "NOMBRE1 / NOMBRE2"},
-        {"id": 100, "integrantes": "NOMBRE3 / NOMBRE4"}
+        {"id_inscripto": 99, "integrantes": "NOMBRE1 / NOMBRE2"},
+        {"id_inscripto": 100, "integrantes": "NOMBRE3 / NOMBRE4"}
       ]
     }
   ],
@@ -369,11 +369,10 @@ ESTRUCTURA JSON OBLIGATORIA:
     {
       "numero_grupo": 1,
       "categoria": "Categoria-B",
-      "local": {"id": 99, "integrantes": "NOMBRE1 / NOMBRE2"},
-      "visitante": {"id": 100, "integrantes": "NOMBRE3 / NOMBRE4"},
-      "id_horario_fk": 5,
-      "fecha": "09/03/26",
-      "hora": "14:00"
+      "local": {"id_inscripto": 99, "integrantes": "NOMBRE1 / NOMBRE2"},
+      "visitante": {"id_inscripto": 100, "integrantes": "NOMBRE3 / NOMBRE4"},
+      "id_horario_fk": 15,
+      "categoria": "Categoria-B"
     }
   ],
   "advertencias": [
@@ -388,22 +387,29 @@ ESTRUCTURA JSON OBLIGATORIA:
 Genera el JSON solicitado respetando exactamente todas las reglas:
 `;
 
-        // 5. Llamada a la IA
+        // 5. Llamada a la IA con formato forzado
         console.log('Enviando datos a Gemini...');
         
         try {
-            const result = await model.generateContent(prompt);
+            const result = await model.generateContent({
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: {
+                    temperature: 0.1,
+                    responseMimeType: "application/json"
+                }
+            });
+            
             const response = await result.response;
-            const text = response.text();
+            let text = response.text();
             
             console.log('Respuesta de Gemini:', text);
             
-            // 6. Procesar respuesta
+            // Limpiar y parsear JSON
             const jsonString = text.replace(/```json|```/g, '').trim();
             const resultado = JSON.parse(jsonString);
 
             await connection.end();
-
+            
             return {
                 grupos: resultado.grupos || [],
                 partidos: resultado.partidos || [],
@@ -419,7 +425,7 @@ Genera el JSON solicitado respetando exactamente todas las reglas:
                 partidos: [],
                 advertencias: [{
                     tipo: 'ERROR_GEMINI',
-                    mensaje: 'Error al generar horarios con IA. ' + geminiError.message
+                    mensaje: 'Error al comunicar con la IA. ' + geminiError.message
                 }]
             };
         }
@@ -436,7 +442,7 @@ Genera el JSON solicitado respetando exactamente todas las reglas:
                 mensaje: 'Error al generar horarios: ' + error.message
             }]
         };
-    }
+    } // ← ESTA ES LA LLAVE DE CIERRE DE LA FUNCIÓN
 }
 
 // 5. Puerto de escucha
