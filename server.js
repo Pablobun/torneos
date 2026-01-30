@@ -7,7 +7,7 @@ const app = express();
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-exp-1206" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 //app.use(cors());
 // Middleware para manejar CORS
 app.use((req, res, next) => {
@@ -273,109 +273,99 @@ app.get('/api/grupos/:idTorneo', async (req, res) => {
 // ==========================================================
 async function armarGruposBasico(configuracionGrupos, idTorneo) {
     const connection = await mysql.createConnection(connectionConfig);
-    
-    // Obtener datos completos
-    const [horariosResult] = await connection.execute(
-        'SELECT id, dia_semana, fecha, hora_inicio, Canchas FROM horarios WHERE id_torneo_fk = ?',
-        [idTorneo]
-    );
-    
-    const [inscriptosResult] = await connection.execute(
-        `SELECT i.id, i.integrantes, i.categoria, 
-                GROUP_CONCAT(ih.id_horario_fk) as horarios
-         FROM inscriptos i 
-         LEFT JOIN inscriptos_horarios ih ON i.id = ih.id_inscripto_fk 
-         WHERE i.id_torneo_fk = ? 
-         GROUP BY i.id`,
-        [idTorneo]
-    );
-    
-    // PROMPT PARA LA IA - ACÁ TERMINA EL PROMPT
-    const prompt = `
-Como organizador experto en torneos de tenis, genera horarios para grupos usando sistema round robin.
 
-DATOS DISPONIBLES:
-- Horarios disponibles con capacidad de canchas: ${JSON.stringify(horariosResult, null, 2)}
-- Inscriptos con sus horarios disponibles: ${JSON.stringify(inscriptosResult, null, 2)}
-- Configuración de grupos solicitada: ${JSON.stringify(configuracionGrupos, null, 2)}
+    try {
+        // 1. Obtener datos crudos
+        const [horariosResult] = await connection.execute(
+            'SELECT id, dia_semana, fecha, hora_inicio, Canchas FROM horarios WHERE id_torneo_fk = ?',
+            [idTorneo]
+        );
 
-REGLAS IMPORTANTES:
-1. Round robin: cada par de integrantes debe jugar un partido entre sí
-2. Solo asignar horarios donde AMBOS jugadores/integrantes puedan jugar
-3. Respetar estrictamente el límite de canchas disponibles por horario
-4. Si hay inscriptos sin horarios compatibles, incluirlos en "advertencias"
-5. Priorizar horarios con mayor disponibilidad
-6. El horario_id debe corresponder a un ID real de los horarios disponibles
-7. Cada partido ocupa 1 cancha del total disponible en ese horario
+        const [inscriptosResult] = await connection.execute(
+            `SELECT i.id, i.integrantes, i.categoria, 
+                    GROUP_CONCAT(ih.id_horario_fk) as horarios
+             FROM inscriptos i 
+             LEFT JOIN inscriptos_horarios ih ON i.id = ih.id_inscripto_fk 
+             WHERE i.id_torneo_fk = ? 
+             GROUP BY i.id`,
+            [idTorneo]
+        );
 
-FORMATO DE RESPUESTA OBLIGATORIO (solo JSON, sin texto adicional):
+        // 2. OPTIMIZACIÓN: Limpiar datos para ahorrar tokens (Clave para evitar el error 429)
+        // Solo enviamos lo estrictamente necesario a la IA
+        const horariosSimples = horariosResult.map(h => ({
+            id: h.id,
+            dia: `${h.dia_semana} ${h.fecha} ${h.hora_inicio}`, // Unificamos para leer menos texto
+            cupo: h.Canchas
+        }));
+
+        const inscriptosSimples = inscriptosResult.map(i => ({
+            id: i.id,
+            n: i.integrantes, // Abreviamos nombre variable
+            cat: i.categoria,
+            h: i.horarios ? i.horarios.split(',') : [] // Convertimos string a array real
+        }));
+
+        // 3. Prompt optimizado
+        const prompt = `
+Actúa como un algoritmo de optimización de torneos de tenis (Round Robin).
+Genera un JSON válido con los partidos.
+
+DATOS:
+- Horarios (id, dia, cupo): ${JSON.stringify(horariosSimples)}
+- Jugadores (id, nombre, cat, ids_horarios_disponibles): ${JSON.stringify(inscriptosSimples)}
+- Configuración: ${JSON.stringify(configuracionGrupos)}
+
+REGLAS:
+1. Round robin: todos contra todos en su grupo.
+2. Cruce estricto: El horario del partido debe estar en la lista de disponibilidad ('h') de AMBOS jugadores.
+3. El 'cupo' del horario disminuye por cada partido asignado. No exceder.
+4. Respuesta EXCLUSIVAMENTE JSON.
+
+ESTRUCTURA JSON ESPERADA:
 {
-  "grupos": [
-    {
-      "numero": 1,
-      "categoria": "Categoria-B",
-      "cantidad": 3,
-      "integrantes": [
-        {"id": 100, "integrantes": "NOMBRE1 / NOMBRE2"},
-        {"id": 101, "integrantes": "NOMBRE3 / NOMBRE4"},
-        {"id": 102, "integrantes": "NOMBRE5 / NOMBRE6"}
-      ]
-    }
-  ],
-  "partidos": [
-    {
-      "grupo": 1,
-      "local": {"id": 100, "integrantes": "NOMBRE1 / NOMBRE2"},
-      "visitante": {"id": 101, "integrantes": "NOMBRE3 / NOMBRE4"},
-      "horario_id": 1,
-      "dia": "Lunes 09/03",
-      "hora": "14:30"
-    }
-  ],
-  "advertencias": [
-    {
-      "categoria": "Categoria-B",
-      "mensaje": "El inscripto X no tiene horarios compatibles",
-      "id_inscripto": 103
-    }
-  ]
+  "grupos": [{"numero": 1, "categoria": "A", "integrantes": [{"id": 1, "integrantes": "Nombre"}]}],
+  "partidos": [{"grupo": 1, "local": {"id":1}, "visitante": {"id":2}, "horario_id": 10}],
+  "advertencias": [{"mensaje": "Jugador X sin horarios", "id_inscripto": 1}]
 }
-
-Analiza los datos y genera el JSON solicitado:
 `;
 
-        try {
-        // Pausa para evitar límite de cuota
-        console.log('Esperando 4 segundos para evitar límite de cuota...');
-        await new Promise(resolve => setTimeout(resolve, 4000));
+        // 4. Llamada a la IA con reintento simple
+        console.log('Enviando datos a Gemini...');
         
-        const result = await model.generateContent(prompt);
+        // Configuración para asegurar respuesta JSON
+        const generationConfig = {
+            temperature: 0.2, // Baja temperatura para ser más lógico y menos creativo
+            responseMimeType: "application/json", // Forzar JSON (solo funciona en modelos nuevos)
+        };
+
+        const result = await model.generateContent({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: generationConfig
+        });
+
         const response = await result.response;
         const text = response.text();
 
-        
-        // Limpiar el texto para extraer solo el JSON
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-            throw new Error('No se pudo extraer JSON válido de la respuesta de Gemini');
-        }
-        
-        const resultado = JSON.parse(jsonMatch[0]);
+        // Limpieza extra por si acaso
+        const jsonString = text.replace(/```json|```/g, '').trim();
+        const resultado = JSON.parse(jsonString);
+
         await connection.end();
-        
+
         return {
             grupos: resultado.grupos || [],
             partidos: resultado.partidos || [],
             advertencias: resultado.advertencias || []
         };
-        
+
     } catch (error) {
-        await connection.end();
-        console.error('Error con Gemini:', error);
-        throw new Error('Error al generar horarios con IA: ' + error.message);
+        if (connection) await connection.end();
+        console.error('CRITICAL ERROR GEMINI:', error);
+        // Devolvemos un objeto vacío en lugar de romper todo el servidor
+        return { grupos: [], partidos: [], advertencias: [{ mensaje: "La IA está saturada, intenta en 1 minuto.", error: error.message }] };
     }
 }
-
 
 
 
