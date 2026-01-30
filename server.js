@@ -275,11 +275,13 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
     const connection = await mysql.createConnection(connectionConfig);
 
     try {
-        // 1. Obtener datos crudos
+               // 1. Obtener datos crudos con logging
+        console.log('=== DATOS CRUDOS ===');
         const [horariosResult] = await connection.execute(
             'SELECT id, dia_semana, fecha, hora_inicio, Canchas FROM horarios WHERE id_torneo_fk = ?',
             [idTorneo]
         );
+        console.log('Horarios crudos:', horariosResult);
 
         const [inscriptosResult] = await connection.execute(
             `SELECT i.id, i.integrantes, i.categoria, 
@@ -290,13 +292,14 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
              GROUP BY i.id`,
             [idTorneo]
         );
+        console.log('Inscriptos crudos:', inscriptosResult);
 
-                // 2. Preparar datos para la IA con validación de nulos
+        // 2. Preparar datos para la IA con validación
         const horariosConCupo = horariosResult.map(h => ({
             id: h.id,
-            fecha_formateada: h.fecha ? `${h.fecha.substring(8,10)}/${h.fecha.substring(5,7)}/${h.fecha.substring(2,4)}` : 'Sin fecha',
-            hora: h.hora_inicio ? h.hora_inicio.substring(0,5) : 'Sin hora',
-            cupo: h.Canchas || 0
+            fecha_formateada: `${h.fecha.substring(8,10)}/${h.fecha.substring(5,7)}/${h.fecha.substring(2,4)}`,
+            hora: h.hora_inicio.substring(0,5),
+            cupo: h.Canchas
         }));
 
         const inscriptosConHorarios = inscriptosResult.map(i => ({
@@ -306,7 +309,10 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
             horarios_disponibles: i.horarios ? i.horarios.split(',').map(h => parseInt(h)) : []
         }));
 
+        console.log('Horarios procesados:', horariosConCupo);
+        console.log('Inscriptos procesados:', inscriptosConHorarios);
 
+              
         // 3. Generar resumen de configuración
         const generarResumenConfiguracion = () => {
             return Object.entries(configuracionGrupos).map(([cat, config]) => {
