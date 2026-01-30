@@ -295,10 +295,15 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
         console.log('Inscriptos crudos:', inscriptosResult);
 
         // 2. Preparar datos para la IA con validación
+               
         const horariosConCupo = horariosResult.map(h => ({
             id: h.id,
-            fecha_formateada: `${h.fecha.substring(8,10)}/${h.fecha.substring(5,7)}/${h.fecha.substring(2,4)}`,
-            hora: h.hora_inicio.substring(0,5),
+            fecha_formateada: h.fecha instanceof Date ? 
+                `${h.fecha.getUTCDate()}/${h.fecha.getUTCMonth() + 1}/${h.fecha.getUTCFullYear().toString().slice(2)}` :
+                `${h.fecha.substring(8,10)}/${h.fecha.substring(5,7)}/${h.fecha.substring(2,4)}`,
+            hora: h.hora_inicio instanceof Date ? 
+                `${h.hora_inicio.getUTCHours()}:${h.hora_inicio.getUTCMinutes().toString().padStart(2, '0')}` :
+                h.hora_inicio.substring(0,5),
             cupo: h.Canchas
         }));
 
@@ -306,11 +311,13 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
             id: i.id,
             integrantes: i.integrantes,
             categoria: i.categoria,
-            horarios_disponibles: i.horarios ? i.horarios.split(',').map(h => parseInt(h)) : []
+            horarios_disponibles: (typeof i.horarios === 'string') ? 
+                i.horarios.split(',').map(h => parseInt(h.trim())).filter(h => !isNaN(h)) : []
         }));
 
-        console.log('Horarios procesados:', horariosConCupo);
-        console.log('Inscriptos procesados:', inscriptosConHorarios);
+        console.log('=== DATOS PROCESADOS PARA IA ===');
+        console.log('Horarios procesados:', horariosConCupo.length);
+        console.log('Inscriptos procesados:', inscriptosConHorarios.length);
 
               
         // 3. Generar resumen de configuración
