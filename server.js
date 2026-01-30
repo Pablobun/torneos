@@ -367,12 +367,64 @@ Genera la solución óptima:
 `;
 
 
-        // 5. Llamada a la IA
+        // 5. Llamada a la IA con más validaciones
+                
         console.log('Enviando datos a Gemini...');
         
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
+        try {
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            const text = response.text();
+            
+            console.log('Respuesta de Gemini (length):', text.length);
+            console.log('Últimos 50 caracteres:', text.slice(-50));
+            
+            // Limpieza más robusta del JSON
+            let jsonString = text.replace(/```json|```/g, '').trim();
+            
+            // Intentar varios patrones de limpieza por si acaso
+            const jsonPatterns = [
+                /\{[\s\S]*\}/,  // Buscar objeto JSON completo
+                /\{[\s\S]*\}$/, // Buscar objeto JSON hasta el final
+                /\{[^}]*\}/   // Búsqueda más simple
+            ];
+            
+            for (const pattern of jsonPatterns) {
+                const match = text.match(pattern);
+                if (match) {
+                    jsonString = match[0];
+                    break;
+                }
+            }
+            
+            console.log('JSON a parsear:', jsonString);
+            const resultado = JSON.parse(jsonString);
+
+            await connection.end();
+            return {
+                grupos: resultado.grupos || [],
+                partidos: resultado.partidos || [],
+                advertencias: resultado.advertencias || []
+            };
+            
+        } catch (parseError) {
+            console.error('Error parsing JSON:', parseError);
+            console.error('Texto crudo:', text);
+            
+            // Fallback: devolver error estructurado
+            await connection.end();
+            return {
+                grupos: [],
+                partidos: [],
+                advertencias: [{
+                    tipo: 'ERROR_PARSE_JSON',
+                    mensaje: 'Error al procesar respuesta de la IA. Reintenta en 1 minuto.',
+                    detalles: parseError.message,
+                    texto_crudo: text.slice(0, 200) + '...'
+                }]
+            };
+        }
+
         
         // 6. Procesar respuesta
         console.log('Respuesta de Gemini:', text);
