@@ -334,57 +334,38 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
         };
 
         // 4. Construir prompt con las variables que se reemplazarán
-        const prompt = `
-Actúa como un organizador experto de torneos de tenis round robin. Genera un JSON válido.
+                const prompt = `
+Actúa como un organizador experto de torneos de tenis round robin.
 
 DATOS DISPONIBLES:
-- Horarios (id, fecha_formateada, hora, cupo): ${JSON.stringify(horariosConCupo)}
+- Horarios disponibles: ${JSON.stringify(horariosConCupo)}
 - Jugadores (id, integrantes, categoria, horarios_disponibles): ${JSON.stringify(inscriptosConHorarios)}
 - Configuración: ${JSON.stringify(configuracionGrupos)}
 
-REGLAS IMPORTANTES:
+ESTRATEGIA INTELIGENTE:
+1. Para cada categoría, analiza las disponibilidades horarias
+2. Los jugadores con solo un horario disponible deben incluirse en grupos si es posible
+3. Si un jugador con un solo horario no puede ser compatibilizado en grupos completos, irá a advertencias
+4. Los grupos deben ser lo más competitivos posible
+
+REGLAS:
 1. Round robin completo: cada jugador debe jugar contra todos los demás de su grupo
-2. Horarios de partido: DEBEN estar en los horarios disponibles de AMBOS jugadores
-3. Límite de cupos: cada partido ocupa 1 cupo del horario. NO EXCEDER cupos disponibles
-4. Excluir jugadores sin horarios (arrays vacíos)
-5. RESPETAR EXACTAMENTE las cantidades solicitadas en configuración
-6. Separar por categorías: NO MEZCLAR jugadores entre categorías
+2. Usar EXCLUSIVAMENTE los horarios listados en "Horarios disponibles"
+3. Respetar límite de cupos por horario
+4. Separar estrictamente por categorías
+5. Formar exactamente las cantidades solicitadas en configuración
 
-CONFIGURACIÓN REQUERIDA EXACTA:
-${generarResumenConfiguracion()}
-
-ESTRUCTURA JSON OBLIGATORIA (solo JSON, sin texto adicional):
+ESTRUCTURA JSON:
 {
-  "grupos": [
-    {
-      "numero_grupo": 1,
-      "categoria": "Categoria-B",
-      "integrantes": [
-        {"id_inscripto": 99, "integrantes": "NOMBRE1 / NOMBRE2"},
-        {"id_inscripto": 100, "integrantes": "NOMBRE3 / NOMBRE4"}
-      ]
-    }
-  ],
-  "partidos": [
-    {
-      "numero_grupo": 1,
-      "local": {"id_inscripto": 99, "integrantes": "NOMBRE1 / NOMBRE2"},
-      "visitante": {"id_inscripto": 100, "integrantes": "NOMBRE3 / NOMBRE4"},
-      "id_horario_fk": 15,
-      "categoria": "Categoria-B"
-    }
-  ],
-  "advertencias": [
-    {
-      "tipo": "JUGADOR_NO_ASIGNADO",
-      "mensaje": "El jugador no pudo ser asignado a ningún grupo por falta de espacio en la configuración.",
-      "id_inscripto": 115
-    }
-  ]
+  "grupos": [...],
+  "partidos": [...],
+  "jugadores_sin_grupo": [...],
+  "advertencias": [...]
 }
 
-Genera el JSON solicitado respetando exactamente todas las reglas:
+Genera la solución óptima:
 `;
+
 
         // 5. Llamada a la IA
         console.log('Enviando datos a Gemini...');
