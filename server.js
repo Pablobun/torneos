@@ -306,48 +306,91 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
             h: i.horarios ? i.horarios.split(',') : [] // Convertimos string a array real
         }));
 
-        // 3. Prompt optimizado
-        const prompt = `
-Actúa como un algoritmo de optimización de torneos de tenis (Round Robin).
-Genera un JSON válido con los partidos.
-
-DATOS:
-- Horarios (id, dia, cupo): ${JSON.stringify(horariosSimples)}
-- Jugadores (id, nombre, cat, ids_horarios_disponibles): ${JSON.stringify(inscriptosSimples)}
-- Configuración: ${JSON.stringify(configuracionGrupos)}
-
-REGLAS:
-1. Round robin: todos contra todos en su grupo.
-2. Cruce estricto: El horario del partido debe estar en la lista de disponibilidad ('h') de AMBOS jugadores.
-3. El 'cupo' del horario disminuye por cada partido asignado. No exceder.
-4. Respuesta EXCLUSIVAMENTE JSON.
-
-ESTRUCTURA JSON ESPERADA:
-{
-  "grupos": [{"numero": 1, "categoria": "A", "integrantes": [{"id": 1, "integrantes": "Nombre"}]}],
-  "partidos": [{"grupo": 1, "local": {"id":1}, "visitante": {"id":2}, "horario_id": 10}],
-  "advertencias": [{"mensaje": "Jugador X sin horarios", "id_inscripto": 1}]
-}
-`;
-
-        // 4. Llamada a la IA con reintento simple
-        console.log('Enviando datos a Gemini...');
-        
-        // Configuración para asegurar respuesta JSON
-        const generationConfig = {
-            temperature: 0.2, // Baja temperatura para ser más lógico y menos creativo
-            responseMimeType: "application/json", // Forzar JSON (solo funciona en modelos nuevos)
+        // 3. Prompt dinámico y detallado
+        const generarResumenConfiguracion = () => {
+            return Object.entries(configuracionGrupos).map(([cat, config]) => {
+                const totalPorCategoria = (config.grupos3 || 0) * 3 + (config.grupos4 || 0) * 4 + (config.grupos5 || 0) * 5;
+                let detalle = `- ${cat}: Total requerido: ${totalPorCategoria} jugadores (`;
+                const partes = [];
+                if (config.grupos3 > 0) partes.push(`${config.grupos3} grupos de 3`);
+                if (config.grupos4 > 0) partes.push(`${config.grupos4} grupos de 4`);
+                if (config.grupos5 > 0) partes.push(`${config.grupos5} grupos de 5`);
+                return detalle + partes.join(', ') + ')';
+            }).join('\n');
         };
 
-        const result = await model.generateContent({
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig: generationConfig
-        });
+        const generarValidaciones = () => {
+            return Object.entries(configuracionGrupos).map(([cat, config]) => {
+                const totalRequerido = (config.grupos3 || 0) * 3 + (config.grupos4 || 0) * 4 + (config.grupos5 || 0) * 5;
+                return `- ${cat}: Debe asignar EXACTAMENTE ${totalRequerido} jugadores únicos`;
+            }).join('\n');
+        };
 
+        const prompt = `
+Actúa como un organizador experto de torneos de tenis round robin. Genera un JSON válido.
+
+DATOS DISPONIBLES:
+- Horarios disponibles (id, dia, cupo): ${JSON.stringify(horariosSimples)}
+- Jugadores (id, nombre, categoria, ids_horarios_disponibles): ${JSON.stringify(inscriptosSimples)}
+
+CONFIGURACIÓN REQUERIDA EXACTA:
+${generarResumenConfiguracion()}
+
+REGLAS IMPORTANTES:
+1. Round robin completo: cada jugador debe jugar contra todos los demás de su grupo
+2. Horarios de partido: DEBEN estar en los horarios disponibles de AMBOS jugadores
+3. Límite de cupos: cada partido ocupa 1 cupo del horario. NO EXCEDER cupos disponibles
+4. Excluir jugadores sin horarios (arrays vacíos)
+5. RESPETAR EXACTAMENTE las cantidades solicitadas en configuración
+6. Separar por categorías: NO MEZCLAR jugadores entre categorías
+
+VALIDACIONES OBLIGATORIAS:
+${generarValidaciones()}
+
+ESTRUCTURA JSON OBLIGATORIA (solo JSON, sin texto adicional):
+{
+  "grupos": [
+    {
+      "numero": 1,
+      "categoria": "Categoria-B",
+      "integrantes": [
+        {"id": 99, "integrantes": "NOMBRE1 / NOMBRE2"},
+        {"id": 100, "integrantes": "NOMBRE3 / NOMBRE4"},
+        {"id": 101, "integrantes": "NOMBRE5 / NOMBRE6"}
+      ]
+    }
+  ],
+  "partidos": [
+    {
+      "grupo": 1,
+      "categoria": "Categoria-B",
+      "local": {"id": 99, "integrantes": "NOMBRE1 / NOMBRE2"},
+      "visitante": {"id": 100, "integrantes": "NOMBRE3 / NOMBRE4"},
+      "horario_id": 5,
+      "dia": "Lunes 09/03",
+      "hora": "14:30"
+    }
+  ],
+  "advertencias": [
+    {
+      "categoria": "Categoria-B",
+      "mensaje": "El jugador X no tiene horarios compatibles",
+      "id_inscripto": 115
+    }
+  ]
+}
+
+Genera el JSON solicitado respetando exactamente todas las reglas:
+`;
+
+        // 4. Llamada a la IA sin responseMimeType para evitar errores
+        console.log('Enviando datos a Gemini...');
+        
+        const result = await model.generateContent(prompt);
         const response = await result.response;
         const text = response.text();
-
-        // Limpieza extra por si acaso
+        
+        // Limpieza del JSON
         const jsonString = text.replace(/```json|```/g, '').trim();
         const resultado = JSON.parse(jsonString);
 
@@ -358,6 +401,7 @@ ESTRUCTURA JSON ESPERADA:
             partidos: resultado.partidos || [],
             advertencias: resultado.advertencias || []
         };
+
 
     } catch (error) {
         if (connection) await connection.end();
