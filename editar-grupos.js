@@ -46,6 +46,13 @@ document.addEventListener('DOMContentLoaded', function () {
         return `${day}/${month}/${year.slice(-2)}`; // DD/MM/AA
     }
 
+    // Helper function para formatear hora sin segundos
+    function formatearHora(hora) {
+        if (!hora) return '--:--';
+        // Si viene como "14:00:00", devolver "14:00"
+        return hora.substring(0, 5);
+    }
+
     // Cargar torneo activo
     async function cargarTorneoActivo() {
         const response = await fetch(`${API_BASE_URL}/torneo-activo`);
@@ -196,8 +203,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 grupo.partidos.forEach(partido => {
                     const local = partido.local_nombre || `ID ${partido.local_id}`;
                     const visitante = partido.visitante_nombre || `ID ${partido.visitante_id}`;
-                    const categoria = partido.categoria || 'Sin categoría';
-                    const hora = partido.horario || '';
+                    const categoria = partido.categoria || 'Sin cat';
+                    const hora = formatearHora(partido.horario);
                     const partidoId = partido.id;
                     
                     html += `
@@ -209,7 +216,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <span class="partido-visitante">${visitante}</span>
                             </div>
                             <div class="partido-categoria">${categoria}</div>
-                            <button class="btn-editar-horario" data-partido-id="${partidoId}">✏️ Editar</button>
+                            <button class="btn-editar-horario" data-partido-id="${partidoId}">✏️</button>
                         </div>
                     `;
                 });
