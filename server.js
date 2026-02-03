@@ -174,6 +174,29 @@ app.get('/api/horarios-compatibles/:idTorneo', async (req, res) => {
 });
 
 // ==========================================================
+// ENDPOINT PARA OBTENER HORARIOS DE UN INSCRIPTO
+// ==========================================================
+app.get('/api/inscriptos/:idInscripto/horarios', async (req, res) => {
+    const { idInscripto } = req.params;
+    const sql = `
+        SELECT h.id, h.dia_semana, h.fecha, h.hora_inicio
+        FROM inscriptos_horarios ih
+        INNER JOIN horarios h ON ih.id_horario_fk = h.id
+        WHERE ih.id_inscripto_fk = ?
+        ORDER BY h.fecha, h.hora_inicio
+    `;
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        const [rows] = await connection.execute(sql, [idInscripto]);
+        await connection.end();
+        res.status(200).json(rows);
+    } catch (error) {
+        console.error('Error al obtener horarios del inscripto:', error);
+        res.status(500).json({ error: 'Error al obtener los horarios del inscripto.' });
+    }
+});
+
+// ==========================================================
 // ENDPOINT PARA ARMAR GRUPOS (SISTEMA EXPERTO) - SIMPLIFICADO
 // ==========================================================
 app.post('/api/armar-grupos', async (req, res) => {

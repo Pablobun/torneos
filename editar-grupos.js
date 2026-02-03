@@ -193,17 +193,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 
                 html += `
                     <div class="horarios-disponibles-box">
-                        <h4>Horarios Disponibles</h4>
+                        <h4 class="horarios-titulo">Horarios Disponibles</h4>
                         <div class="horarios-jugadores">
                             <div class="horarios-jugador">
                                 <p class="jugador-nombre">${local}</p>
-                                <ul class="horarios-list">
+                                <ul class="horarios-lista">
                                     ${horariosLocal.length > 0 ? horariosLocal.map(h => `<li>${h.dia_semana} ${formatearFecha(h.fecha)} - ${h.hora_inicio}</li>`).join('') : '<li class="sin-horarios">Sin horarios registrados</li>'}
                                 </ul>
                             </div>
                             <div class="horarios-jugador">
                                 <p class="jugador-nombre">${visitante}</p>
-                                <ul class="horarios-list">
+                                <ul class="horarios-lista">
                                     ${horariosVisitante.length > 0 ? horariosVisitante.map(h => `<li>${h.dia_semana} ${formatearFecha(h.fecha)} - ${h.hora_inicio}</li>`).join('') : '<li class="sin-horarios">Sin horarios registrados</li>'}
                                 </ul>
                             </div>
