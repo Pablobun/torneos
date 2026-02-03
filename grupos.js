@@ -208,19 +208,50 @@ document.addEventListener('DOMContentLoaded', function () {
             html += '<div class="partidos-list">';
             
             for (const partido of partidosGenerados) {
-                const local = inscriptosPorId[partido.local];
-                const visitante = inscriptosPorId[partido.visitante];
-                const horarioAsignado = partido.horario ? `Horario: ${partido.horario}` : '<span class="horario-pendiente">⏳ Horario pendiente (sin compatibilidad)</span>';
+                // Usar nombre del backend si está disponible, sino buscar en el mapa
+                const localNombre = partido.localNombre || (inscriptosPorId[partido.local] ? inscriptosPorId[partido.local].integrantes : 'ID ' + partido.local);
+                const visitanteNombre = partido.visitanteNombre || (inscriptosPorId[partido.visitante] ? inscriptosPorId[partido.visitante].integrantes : 'ID ' + partido.visitante);
+                
+                // Mostrar fecha y hora real en lugar de ID
+                let horarioAsignado;
+                if (partido.horario && partido.horario.dia) {
+                    horarioAsignado = `${partido.horario.dia} - ${partido.horario.hora}`;
+                } else {
+                    // Partido pendiente - mostrar horarios disponibles de cada jugador
+                    horarioAsignado = '<span class="horario-pendiente">⏳ Horario pendiente</span>';
+                }
                 const clasePartido = partido.horario ? '' : 'partido-sin-horario';
                 
                 html += `
                     <div class="partido-item ${clasePartido}">
-                        <span class="partido-local">${local ? local.integrantes : 'ID ' + partido.local}</span>
+                        <span class="partido-local">${localNombre}</span>
                         <span class="partido-vs">VS</span>
-                        <span class="partido-visitante">${visitante ? visitante.integrantes : 'ID ' + partido.visitante}</span>
-                        <span class="partido-horario">(${horarioAsignado})</span>
+                        <span class="partido-visitante">${visitanteNombre}</span>
+                        <span class="partido-horario">${horarioAsignado}</span>
                     </div>
                 `;
+                
+                // Si es partido pendiente, mostrar horarios disponibles
+                if (!partido.horario && (partido.horariosDisponiblesLocal || partido.horariosDisponiblesVisitante)) {
+                    html += '<div class="horarios-disponibles">';
+                    html += '<div class="horarios-jugador">';
+                    html += `<strong>${localNombre}:</strong> `;
+                    if (partido.horariosDisponiblesLocal && partido.horariosDisponiblesLocal.length > 0) {
+                        html += partido.horariosDisponiblesLocal.map(h => `${h.dia} ${h.hora}`).join(', ');
+                    } else {
+                        html += 'Sin horarios disponibles';
+                    }
+                    html += '</div>';
+                    html += '<div class="horarios-jugador">';
+                    html += `<strong>${visitanteNombre}:</strong> `;
+                    if (partido.horariosDisponiblesVisitante && partido.horariosDisponiblesVisitante.length > 0) {
+                        html += partido.horariosDisponiblesVisitante.map(h => `${h.dia} ${h.hora}`).join(', ');
+                    } else {
+                        html += 'Sin horarios disponibles';
+                    }
+                    html += '</div>';
+                    html += '</div>';
+                }
             }
             
             html += '</div>';
@@ -229,7 +260,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Mostrar advertencias de partidos sin horario
         if (advertencias && advertencias.length > 0) {
             html += '<div class="advertencias-section">';
-            html += '<h3 class="advertencias-titulo">⚠️ Partidos con Problemas de Horarios</h3>';
+            html += '<h3 class="advertencias-titulo">⚠️ Resumen de Partidos sin Horario Compatible</h3>';
             html += '<ul class="advertencias-list">';
             
             for (const adv of advertencias) {

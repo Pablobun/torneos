@@ -369,12 +369,12 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
         
         // 1. OBTENER DATOS DE LA BASE
         const [horariosResult] = await connection.execute(
-            'SELECT id, Canchas FROM horarios WHERE id_torneo_fk = ?',
+            'SELECT id, dia_semana, horario, Canchas FROM horarios WHERE id_torneo_fk = ?',
             [idTorneo]
         );
 
         const [inscriptosResult] = await connection.execute(
-            `SELECT i.id, i.categoria, GROUP_CONCAT(ih.id_horario_fk) as horarios
+            `SELECT i.id, i.categoria, i.integrantes, GROUP_CONCAT(ih.id_horario_fk) as horarios
              FROM inscriptos i 
              LEFT JOIN inscriptos_horarios ih ON i.id = ih.id_inscripto_fk 
              WHERE i.id_torneo_fk = ? 
@@ -385,13 +385,22 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
         await connection.end();
 
         // 2. PREPARAR DATOS
-        const horarios = horariosResult.map(h => ({
-            id: h.id,
-            cupo: parseInt(h.Canchas) || 4
-        }));
+        // Crear mapa de horarios para búsqueda rápida
+        const horariosMap = {};
+        const horarios = horariosResult.map(h => {
+            const horarioInfo = {
+                id: h.id,
+                dia: h.dia_semana,
+                hora: h.horario,
+                cupo: parseInt(h.Canchas) || 4
+            };
+            horariosMap[h.id] = horarioInfo;
+            return horarioInfo;
+        });
 
         const inscriptos = inscriptosResult.map(i => ({
             id: i.id,
+            nombre: i.integrantes,
             categoria: i.categoria,
             horarios: (typeof i.horarios === 'string') ? 
                 i.horarios.split(',').map(h => parseInt(h)).filter(h => !isNaN(h)) : []
@@ -591,11 +600,44 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
                         }
                     }
                     
+                     // Preparar información del horario asignado
+                    let horarioInfo = null;
+                    if (horarioAsignado && horariosMap[horarioAsignado]) {
+                        const h = horariosMap[horarioAsignado];
+                        horarioInfo = {
+                            id: h.id,
+                            dia: h.dia,
+                            hora: h.hora
+                        };
+                    }
+                    
+                    // Preparar horarios disponibles de cada jugador para partidos pendientes
+                    let horariosLocal = [];
+                    let horariosVisitante = [];
+                    
+                    if (!horarioAsignado) {
+                        // Obtener información completa de horarios disponibles
+                        horariosLocal = jugadorLocal.horarios.map(hId => {
+                            const h = horariosMap[hId];
+                            return h ? { id: h.id, dia: h.dia, hora: h.hora } : null;
+                        }).filter(h => h !== null);
+                        
+                        horariosVisitante = jugadorVisitante.horarios.map(hId => {
+                            const h = horariosMap[hId];
+                            return h ? { id: h.id, dia: h.dia, hora: h.hora } : null;
+                        }).filter(h => h !== null);
+                    }
+                    
                     partidos.push({
                         local: localId,
+                        localNombre: jugadorLocal.nombre,
                         visitante: visitanteId,
-                        horario: horarioAsignado, // puede ser null si no se pudo asignar
-                        grupo: grupo.numero
+                        visitanteNombre: jugadorVisitante.nombre,
+                        horario: horarioInfo, // null si no se pudo asignar, o objeto con id, dia, hora
+                        grupo: grupo.numero,
+                        // Solo incluir si no hay horario asignado
+                        horariosDisponiblesLocal: horariosLocal,
+                        horariosDisponiblesVisitante: horariosVisitante
                     });
                 }
             }
