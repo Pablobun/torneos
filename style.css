@@ -925,68 +925,68 @@ footer {
     font-weight: 500;
     border: 1px solid #bee5eb;
 }
-    border-radius: 6px;
-    border-left: 4px solid #f39c12;
-    font-weight: 500;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
 
 /* ========================================= */
-/* --- ESTILOS EDICIÓN DE PARTIDOS --- */
+/* --- ESTILOS EDICIÓN DE PARTIDOS (SIMPLIFICADO) --- */
 /* ========================================= */
 
-.partido-acciones {
-    margin-top: 1rem;
-    text-align: center;
+.editar-grupos .partido-item {
+    position: relative;
+    padding-right: 120px;
 }
 
-.btn-editar-horario {
+.editar-grupos .btn-editar-horario {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
     background: #3498db;
     color: white;
     border: none;
-    padding: 8px 16px;
+    padding: 6px 12px;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 0.9rem;
-    transition: background 0.3s;
+    font-size: 0.85rem;
 }
 
-.btn-editar-horario:hover {
+.editar-grupos .btn-editar-horario:hover {
     background: #2980b9;
 }
 
-.selector-horario-modal {
+.editar-grupos .selector-horario-modal {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
     display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
+    gap: 8px;
     align-items: center;
-    justify-content: center;
-    padding: 10px;
     background: #fff;
     border: 2px solid #3498db;
-    border-radius: 8px;
-    margin-top: 10px;
+    border-radius: 6px;
+    padding: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
-.select-horario {
-    padding: 8px 12px;
+.editar-grupos .select-horario {
+    padding: 6px 10px;
     border: 1px solid #bdc3c7;
     border-radius: 4px;
-    font-size: 0.9rem;
-    min-width: 250px;
+    font-size: 0.85rem;
+    min-width: 200px;
 }
 
-.btn-guardar-horario {
+.editar-grupos .btn-guardar-horario {
     background: #27ae60;
     color: white;
     border: none;
-    padding: 8px 16px;
+    padding: 6px 12px;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
 }
 
-.btn-guardar-horario:hover {
+.editar-grupos .btn-guardar-horario:hover {
     background: #229954;
 }
 

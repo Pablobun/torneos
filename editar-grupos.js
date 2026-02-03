@@ -162,28 +162,21 @@ document.addEventListener('DOMContentLoaded', function () {
             
             // Formatear fecha y hora
             let fechaHoraTexto = '';
-            if (dia && fecha) {
-                fechaHoraTexto = `${dia} ${fecha}`;
-            } else if (dia) {
-                fechaHoraTexto = dia;
-            }
-            if (hora) {
-                fechaHoraTexto += fechaHoraTexto ? ` - ${hora}` : hora;
-            }
-            if (!fechaHoraTexto) {
-                fechaHoraTexto = 'Horario no especificado';
+            if (tieneHorarioAsignado && dia && fecha && hora) {
+                fechaHoraTexto = `${dia} ${fecha} - ${hora}`;
+            } else {
+                fechaHoraTexto = '<span class="horario-pendiente">⏳ Horario pendiente</span>';
             }
             
+            const clasePartido = tieneHorarioAsignado ? '' : 'partido-sin-horario';
+            
             html += `
-                <div class="partido-item ${!tieneHorarioAsignado ? 'partido-sin-horario' : ''}" data-partido-id="${partidoId}">
-                    <div class="partido-info">
-                        <span class="partido-local">${local}</span>
-                        <span class="partido-vs">VS</span>
-                        <span class="partido-visitante">${visitante}</span>
-                    </div>
-                    <div class="partido-detalles">
-                        <span class="partido-horario ${!tieneHorarioAsignado ? 'horario-pendiente' : ''}" id="horario-${partidoId}">${fechaHoraTexto}</span>
-                    </div>
+                <div class="partido-item ${clasePartido}" data-partido-id="${partidoId}">
+                    <span class="partido-local">${local}</span>
+                    <span class="partido-vs">VS</span>
+                    <span class="partido-visitante">${visitante}</span>
+                    <span class="partido-horario" id="horario-${partidoId}">${fechaHoraTexto}</span>
+                </div>
             `;
             
             // Si no tiene horario asignado, mostrar horarios disponibles de ambos jugadores
@@ -191,32 +184,24 @@ document.addEventListener('DOMContentLoaded', function () {
                 const horariosLocal = horariosPorInscripto[localId] || [];
                 const horariosVisitante = horariosPorInscripto[visitanteId] || [];
                 
+                const horariosLocalText = horariosLocal.length > 0 
+                    ? horariosLocal.map(h => `${h.dia_semana} ${h.hora_inicio}`).join(', ')
+                    : 'Sin horarios registrados';
+                    
+                const horariosVisitanteText = horariosVisitante.length > 0 
+                    ? horariosVisitante.map(h => `${h.dia_semana} ${h.hora_inicio}`).join(', ')
+                    : 'Sin horarios registrados';
+                
                 html += `
-                    <div class="horarios-disponibles-box">
-                        <h4 class="horarios-titulo">Horarios Disponibles</h4>
-                        <div class="horarios-jugadores">
-                            <div class="horarios-jugador">
-                                <p class="jugador-nombre">${local}</p>
-                                <ul class="horarios-lista">
-                                    ${horariosLocal.length > 0 ? horariosLocal.map(h => `<li>${h.dia_semana} ${formatearFecha(h.fecha)} - ${h.hora_inicio}</li>`).join('') : '<li class="sin-horarios">Sin horarios registrados</li>'}
-                                </ul>
-                            </div>
-                            <div class="horarios-jugador">
-                                <p class="jugador-nombre">${visitante}</p>
-                                <ul class="horarios-lista">
-                                    ${horariosVisitante.length > 0 ? horariosVisitante.map(h => `<li>${h.dia_semana} ${formatearFecha(h.fecha)} - ${h.hora_inicio}</li>`).join('') : '<li class="sin-horarios">Sin horarios registrados</li>'}
-                                </ul>
-                            </div>
-                        </div>
+                    <div class="horarios-disponibles">
+                        <div class="horarios-jugador">Jugador Local: ${horariosLocalText}</div>
+                        <div class="horarios-jugador">Jugador Visitante: ${horariosVisitanteText}</div>
                     </div>
                 `;
             }
             
             html += `
-                    <div class="partido-acciones">
-                        <button class="btn-editar-horario" data-partido-id="${partidoId}">✏️ Editar Horario</button>
-                    </div>
-                </div>
+                <button class="btn-editar-horario" data-partido-id="${partidoId}">✏️ Editar Horario</button>
             `;
         }
         
