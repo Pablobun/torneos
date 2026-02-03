@@ -397,7 +397,35 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
                 i.horarios.split(',').map(h => parseInt(h)).filter(h => !isNaN(h)) : []
         }));
 
-        // 3. ALGORITMO DE DISTRIBUCIÓN EN GRUPOS
+        // 3. FUNCIÓN PARA CALCULAR COMPATIBILIDAD ENTRE DOS JUGADORES
+        function calcularCompatibilidad(jugador1, jugador2) {
+            const horarios1 = new Set(jugador1.horarios);
+            const horarios2 = new Set(jugador2.horarios);
+            
+            // Contar horarios en común
+            let comunes = 0;
+            for (const h of horarios1) {
+                if (horarios2.has(h)) comunes++;
+            }
+            
+            return comunes;
+        }
+
+        // 4. FUNCIÓN PARA CALCULAR COMPATIBILIDAD DE UN JUGADOR CON UN GRUPO
+        function calcularCompatibilidadConGrupo(jugador, grupoIntegrantes, todosJugadores) {
+            let compatibilidadTotal = 0;
+            
+            for (const idIntegrante of grupoIntegrantes) {
+                const integrante = todosJugadores.find(j => j.id === idIntegrante);
+                if (integrante) {
+                    compatibilidadTotal += calcularCompatibilidad(jugador, integrante);
+                }
+            }
+            
+            return compatibilidadTotal;
+        }
+
+        // 5. ALGORITMO DE DISTRIBUCIÓN EN GRUPOS POR COMPATIBILIDAD
         let grupos = [];
         let partidos = [];
         let sinGrupo = [];
@@ -415,84 +443,77 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
             
             const totalJugadoresNecesarios = (grupos3 * 3) + (grupos4 * 4) + (grupos5 * 5);
             
-            // Si queremos más jugadores de los disponibles, algunos quedarán sin grupo
-            let jugadoresAsignados = [];
+            // Separar jugadores que entrarán en grupos vs los que quedarán sin grupo
+            let jugadoresDisponibles = [...jugadoresCat];
             let jugadoresSinGrupoCat = [];
             
             if (totalJugadoresNecesarios <= jugadoresCat.length) {
-                jugadoresAsignados = jugadoresCat.slice(0, totalJugadoresNecesarios);
-                jugadoresSinGrupoCat = jugadoresCat.slice(totalJugadoresNecesarios);
-            } else {
-                // Si faltan jugadores, armamos grupos incompletos
-                jugadoresAsignados = jugadoresCat;
+                // Hay más jugadores de los necesarios, algunos quedarán fuera
+                // Los que quedan fuera son los que menos horarios tienen (menos flexibles)
+                jugadoresDisponibles.sort((a, b) => b.horarios.length - a.horarios.length);
+                jugadoresSinGrupoCat = jugadoresDisponibles.slice(totalJugadoresNecesarios);
+                jugadoresDisponibles = jugadoresDisponibles.slice(0, totalJugadoresNecesarios);
             }
             
             // Agregar a la lista global de sin_grupo
             sinGrupo = sinGrupo.concat(jugadoresSinGrupoCat.map(j => j.id));
             
-            // Distribuir jugadores en grupos
-            let indiceJugador = 0;
+            // Crear grupos usando algoritmo greedy por compatibilidad
+            const configGrupos = [
+                ...Array(grupos5).fill(5),
+                ...Array(grupos4).fill(4),
+                ...Array(grupos3).fill(3)
+            ];
             
-            // Grupos de 3
-            for (let g = 0; g < grupos3 && indiceJugador < jugadoresAsignados.length; g++) {
-                const integrantes = jugadoresAsignados.slice(indiceJugador, indiceJugador + 3);
-                const incompleto = integrantes.length < 3;
+            for (const tamanoGrupo of configGrupos) {
+                if (jugadoresDisponibles.length === 0) break;
+                
+                // Tomar el primer jugador disponible como semilla
+                const jugadorSemilla = jugadoresDisponibles.shift();
+                const integrantesGrupo = [jugadorSemilla];
+                
+                // Completar el grupo con los jugadores más compatibles
+                while (integrantesGrupo.length < tamanoGrupo && jugadoresDisponibles.length > 0) {
+                    // Calcular compatibilidad de cada jugador disponible con el grupo actual
+                    const jugadoresConScore = jugadoresDisponibles.map(j => ({
+                        jugador: j,
+                        score: calcularCompatibilidadConGrupo(j, integrantesGrupo.map(i => i.id), inscriptos)
+                    }));
+                    
+                    // Ordenar por score descendente (mayor compatibilidad primero)
+                    jugadoresConScore.sort((a, b) => b.score - a.score);
+                    
+                    // Tomar el más compatible
+                    const masCompatible = jugadoresConScore[0];
+                    integrantesGrupo.push(masCompatible.jugador);
+                    
+                    // Remover de disponibles
+                    const index = jugadoresDisponibles.findIndex(j => j.id === masCompatible.jugador.id);
+                    if (index > -1) jugadoresDisponibles.splice(index, 1);
+                }
+                
+                // Crear el grupo
+                const incompleto = integrantesGrupo.length < tamanoGrupo;
                 
                 grupos.push({
                     numero: numeroGrupoGlobal++,
                     categoria: categoria,
-                    integrantes: integrantes.map(j => j.id),
+                    integrantes: integrantesGrupo.map(j => j.id),
                     incompleto: incompleto,
-                    cantidad: 3
+                    cantidad: tamanoGrupo
                 });
-                
-                indiceJugador += integrantes.length;
             }
             
-            // Grupos de 4
-            for (let g = 0; g < grupos4 && indiceJugador < jugadoresAsignados.length; g++) {
-                const integrantes = jugadoresAsignados.slice(indiceJugador, indiceJugador + 4);
-                const incompleto = integrantes.length < 4;
-                
-                grupos.push({
-                    numero: numeroGrupoGlobal++,
-                    categoria: categoria,
-                    integrantes: integrantes.map(j => j.id),
-                    incompleto: incompleto,
-                    cantidad: 4
-                });
-                
-                indiceJugador += integrantes.length;
-            }
-            
-            // Grupos de 5
-            for (let g = 0; g < grupos5 && indiceJugador < jugadoresAsignados.length; g++) {
-                const integrantes = jugadoresAsignados.slice(indiceJugador, indiceJugador + 5);
-                const incompleto = integrantes.length < 5;
-                
-                grupos.push({
-                    numero: numeroGrupoGlobal++,
-                    categoria: categoria,
-                    integrantes: integrantes.map(j => j.id),
-                    incompleto: incompleto,
-                    cantidad: 5
-                });
-                
-                indiceJugador += integrantes.length;
-            }
-            
-            // Si sobraron jugadores (caso de grupos incompletos), los agregamos al último grupo
-            if (indiceJugador < jugadoresAsignados.length) {
-                const sobrantes = jugadoresAsignados.slice(indiceJugador);
-                if (grupos.length > 0) {
-                    const ultimoGrupo = grupos[grupos.length - 1];
-                    if (ultimoGrupo.categoria === categoria) {
-                        ultimoGrupo.integrantes.push(...sobrantes.map(j => j.id));
-                        ultimoGrupo.incompleto = ultimoGrupo.integrantes.length < ultimoGrupo.cantidad;
-                    }
+            // Si sobraron jugadores, los agregamos al último grupo de esta categoría
+            if (jugadoresDisponibles.length > 0) {
+                const grupoCategoria = grupos.filter(g => g.categoria === categoria);
+                if (grupoCategoria.length > 0) {
+                    const ultimoGrupo = grupoCategoria[grupoCategoria.length - 1];
+                    ultimoGrupo.integrantes.push(...jugadoresDisponibles.map(j => j.id));
+                    ultimoGrupo.incompleto = ultimoGrupo.integrantes.length < ultimoGrupo.cantidad;
                 } else {
-                    // Si no hay grupos, crear uno con los sobrantes
-                    sinGrupo = sinGrupo.concat(sobrantes.map(j => j.id));
+                    // No hay grupos en esta categoría, mandar a sin_grupo
+                    sinGrupo = sinGrupo.concat(jugadoresDisponibles.map(j => j.id));
                 }
             }
         }
