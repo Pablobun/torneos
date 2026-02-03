@@ -301,14 +301,15 @@ app.get('/api/grupos/:idTorneo', async (req, res) => {
 });
 
 // ==========================================================
-// FUNCIÓN PARA ARMAR GRUPOS (CON IA) - VERSIÓN SIMPLIFICADA
+// FUNCIÓN PARA ARMAR GRUPOS (ALGORITMO LOCAL - SIN IA)
 // ==========================================================
 async function armarGruposBasico(configuracionGrupos, idTorneo) {
     const connection = await mysql.createConnection(connectionConfig);
 
     try {
-        // 1. Obtener datos crudos
-        console.log('=== DATOS CRUDOS ===');
+        console.log('=== ARMANDO GRUPOS CON ALGORITMO LOCAL ===');
+        
+        // 1. OBTENER DATOS DE LA BASE
         const [horariosResult] = await connection.execute(
             'SELECT id, Canchas FROM horarios WHERE id_torneo_fk = ?',
             [idTorneo]
@@ -323,79 +324,179 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
             [idTorneo]
         );
 
-        // 2. Preparar datos simplificados para la IA
-        const horariosSimples = horariosResult.map(h => ({
+        await connection.end();
+
+        // 2. PREPARAR DATOS
+        const horarios = horariosResult.map(h => ({
             id: h.id,
-            cupo: h.Canchas
+            cupo: parseInt(h.Canchas) || 4
         }));
 
-        const inscriptosSimples = inscriptosResult.map(i => ({
+        const inscriptos = inscriptosResult.map(i => ({
             id: i.id,
             categoria: i.categoria,
             horarios: (typeof i.horarios === 'string') ? 
                 i.horarios.split(',').map(h => parseInt(h)).filter(h => !isNaN(h)) : []
         }));
 
-        // 3. Construir prompt simplificado
-        const prompt = `
-Organizador de torneos. Genera JSON con grupos round robin.
+        // 3. ALGORITMO DE DISTRIBUCIÓN EN GRUPOS
+        let grupos = [];
+        let partidos = [];
+        let sinGrupo = [];
+        let numeroGrupoGlobal = 1;
 
-HORARIOS: ${JSON.stringify(horariosSimples)}
-JUGADORES: ${JSON.stringify(inscriptosSimples)}
-CONFIG: ${JSON.stringify(configuracionGrupos)}
+        for (const [categoria, config] of Object.entries(configuracionGrupos)) {
+            const jugadoresCat = inscriptos.filter(i => i.categoria === categoria);
+            
+            if (jugadoresCat.length === 0) continue;
 
-REGLAS:
-1. Round robin: todos vs todos en cada grupo
-2. Usar SOLO horarios de la lista (ids válidos: ${horariosSimples.map(h => h.id).join(', ')})
-3. Respetar cupos de canchas (no exceder)
-4. Si hay grupos incompletos, armarlos igual y reportar cuántos faltan
-5. Si un jugador no entra en ningún grupo, incluirlo en sin_grupo
-
-DEVOLVER SOLO IDs NUMÉRICOS, sin nombres:
-{
-  "grupos": [
-    {"numero": 1, "categoria": "B", "integrantes": [99, 101, 102, 103], "incompleto": false}
-  ],
-  "partidos": [
-    {"local": 99, "visitante": 101, "horario": 9}
-  ],
-  "sin_grupo": [115]
-}
-`;
-
-        // 4. Llamada a la IA
-        console.log('Enviando datos a Gemini...');
-        
-        try {
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            let text = response.text();
+            // Calcular cuántos jugadores queremos usar según configuración
+            const grupos3 = config.grupos3 || 0;
+            const grupos4 = config.grupos4 || 0;
+            const grupos5 = config.grupos5 || 0;
             
-            console.log('Respuesta de Gemini:', text);
+            const totalJugadoresNecesarios = (grupos3 * 3) + (grupos4 * 4) + (grupos5 * 5);
             
-            // Limpiar y parsear JSON
-            const jsonString = text.replace(/```json|```/g, '').trim();
-            const resultado = JSON.parse(jsonString);
-
-            await connection.end();
+            // Si queremos más jugadores de los disponibles, algunos quedarán sin grupo
+            let jugadoresAsignados = [];
+            let jugadoresSinGrupoCat = [];
             
-            return {
-                grupos: resultado.grupos || [],
-                partidos: resultado.partidos || [],
-                sin_grupo: resultado.sin_grupo || []
-            };
+            if (totalJugadoresNecesarios <= jugadoresCat.length) {
+                jugadoresAsignados = jugadoresCat.slice(0, totalJugadoresNecesarios);
+                jugadoresSinGrupoCat = jugadoresCat.slice(totalJugadoresNecesarios);
+            } else {
+                // Si faltan jugadores, armamos grupos incompletos
+                jugadoresAsignados = jugadoresCat;
+            }
             
-        } catch (geminiError) {
-            console.error('Error en Gemini:', geminiError);
-            await connection.end();
+            // Agregar a la lista global de sin_grupo
+            sinGrupo = sinGrupo.concat(jugadoresSinGrupoCat.map(j => j.id));
             
-            return {
-                grupos: [],
-                partidos: [],
-                sin_grupo: [],
-                error: 'Error al generar con IA: ' + geminiError.message
-            };
+            // Distribuir jugadores en grupos
+            let indiceJugador = 0;
+            
+            // Grupos de 3
+            for (let g = 0; g < grupos3 && indiceJugador < jugadoresAsignados.length; g++) {
+                const integrantes = jugadoresAsignados.slice(indiceJugador, indiceJugador + 3);
+                const incompleto = integrantes.length < 3;
+                
+                grupos.push({
+                    numero: numeroGrupoGlobal++,
+                    categoria: categoria,
+                    integrantes: integrantes.map(j => j.id),
+                    incompleto: incompleto,
+                    cantidad: 3
+                });
+                
+                indiceJugador += integrantes.length;
+            }
+            
+            // Grupos de 4
+            for (let g = 0; g < grupos4 && indiceJugador < jugadoresAsignados.length; g++) {
+                const integrantes = jugadoresAsignados.slice(indiceJugador, indiceJugador + 4);
+                const incompleto = integrantes.length < 4;
+                
+                grupos.push({
+                    numero: numeroGrupoGlobal++,
+                    categoria: categoria,
+                    integrantes: integrantes.map(j => j.id),
+                    incompleto: incompleto,
+                    cantidad: 4
+                });
+                
+                indiceJugador += integrantes.length;
+            }
+            
+            // Grupos de 5
+            for (let g = 0; g < grupos5 && indiceJugador < jugadoresAsignados.length; g++) {
+                const integrantes = jugadoresAsignados.slice(indiceJugador, indiceJugador + 5);
+                const incompleto = integrantes.length < 5;
+                
+                grupos.push({
+                    numero: numeroGrupoGlobal++,
+                    categoria: categoria,
+                    integrantes: integrantes.map(j => j.id),
+                    incompleto: incompleto,
+                    cantidad: 5
+                });
+                
+                indiceJugador += integrantes.length;
+            }
+            
+            // Si sobraron jugadores (caso de grupos incompletos), los agregamos al último grupo
+            if (indiceJugador < jugadoresAsignados.length) {
+                const sobrantes = jugadoresAsignados.slice(indiceJugador);
+                if (grupos.length > 0) {
+                    const ultimoGrupo = grupos[grupos.length - 1];
+                    if (ultimoGrupo.categoria === categoria) {
+                        ultimoGrupo.integrantes.push(...sobrantes.map(j => j.id));
+                        ultimoGrupo.incompleto = ultimoGrupo.integrantes.length < ultimoGrupo.cantidad;
+                    }
+                } else {
+                    // Si no hay grupos, crear uno con los sobrantes
+                    sinGrupo = sinGrupo.concat(sobrantes.map(j => j.id));
+                }
+            }
         }
+
+        // 4. GENERAR PARTIDOS ROUND ROBIN
+        let horariosDisponibles = [...horarios];
+        let usoHorarios = {}; // Seguimiento de cuántos partidos hay en cada horario
+        
+        // Inicializar contador de uso para cada horario
+        horarios.forEach(h => {
+            usoHorarios[h.id] = 0;
+        });
+
+        for (const grupo of grupos) {
+            const integrantes = grupo.integrantes;
+            
+            // Generar todos los partidos del round robin
+            for (let i = 0; i < integrantes.length; i++) {
+                for (let j = i + 1; j < integrantes.length; j++) {
+                    const local = integrantes[i];
+                    const visitante = integrantes[j];
+                    
+                    // Buscar un horario disponible
+                    let horarioAsignado = null;
+                    
+                    // Ordenar horarios por uso (menos usados primero)
+                    const horariosOrdenados = horariosDisponibles.sort((a, b) => {
+                        return usoHorarios[a.id] - usoHorarios[b.id];
+                    });
+                    
+                    for (const horario of horariosOrdenados) {
+                        if (usoHorarios[horario.id] < horario.cupo) {
+                            horarioAsignado = horario.id;
+                            usoHorarios[horario.id]++;
+                            break;
+                        }
+                    }
+                    
+                    // Si no hay horarios disponibles, usar el primero igual (se notificará como problema)
+                    if (!horarioAsignado && horarios.length > 0) {
+                        horarioAsignado = horarios[0].id;
+                    }
+                    
+                    partidos.push({
+                        local: local,
+                        visitante: visitante,
+                        horario: horarioAsignado
+                    });
+                }
+            }
+        }
+
+        console.log(`✓ Generados ${grupos.length} grupos con ${partidos.length} partidos`);
+        if (sinGrupo.length > 0) {
+            console.log(`⚠ ${sinGrupo.length} jugadores sin grupo`);
+        }
+
+        return {
+            grupos: grupos,
+            partidos: partidos,
+            sin_grupo: sinGrupo
+        };
 
     } catch (error) {
         if (connection) await connection.end();
