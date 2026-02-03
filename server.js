@@ -555,8 +555,8 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
                     }
                     
                     // Encontrar horarios disponibles para AMBOS jugadores (intersección)
-                    const horariosLocal = new Set(jugadorLocal.horarios);
-                    const horariosComunes = jugadorVisitante.horarios.filter(h => horariosLocal.has(h));
+                    const horariosLocalSet = new Set(jugadorLocal.horarios);
+                    const horariosComunes = jugadorVisitante.horarios.filter(h => horariosLocalSet.has(h));
                     
                     let horarioAsignado = null;
                     
