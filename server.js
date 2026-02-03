@@ -181,6 +181,24 @@ app.post('/api/armar-grupos', async (req, res) => {
     
     try {
         const resultado = await armarGruposBasico(configuracionGrupos, idTorneo);
+        
+        // Verificar si hubo error en la generación (ej: Gemini falló)
+        if (resultado.error) {
+            console.error('Error en armarGruposBasico:', resultado.error);
+            return res.status(500).json({ 
+                error: 'Error al generar grupos con IA', 
+                details: resultado.error 
+            });
+        }
+        
+        // Verificar que se generaron grupos
+        if (!resultado.grupos || resultado.grupos.length === 0) {
+            return res.status(400).json({ 
+                error: 'No se pudieron formar grupos', 
+                details: 'La IA no pudo crear grupos con la configuración proporcionada. Intentá con otra distribución.' 
+            });
+        }
+        
         res.status(200).json({ 
             grupos: resultado.grupos, 
             partidos: resultado.partidos,

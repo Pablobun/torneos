@@ -272,6 +272,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 throw new Error('Respuesta inválida del servidor');
             }
             
+            // Verificar si el servidor devolvió un error
+            if (!response.ok || result.error) {
+                const errorMsg = result.error || 'Error desconocido del servidor';
+                const errorDetails = result.details || '';
+                throw new Error(`${errorMsg}${errorDetails ? ': ' + errorDetails : ''}`);
+            }
+            
             gruposGenerados = result.grupos || [];
             partidosGenerados = result.partidos || [];
             sinGrupo = result.sin_grupo || [];
