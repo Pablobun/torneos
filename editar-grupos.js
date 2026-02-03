@@ -37,11 +37,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Helper function para formatear fechas
+    // Helper function para formatear fechas a DD/MM/AA
     function formatearFecha(fecha) {
         if (!fecha) return '';
-        // Remover T00:00:00.000Z si existe
-        return fecha.split('T')[0];
+        // Remover T00:00:00.000Z si existe y convertir a DD/MM/AA
+        const fechaLimpia = fecha.split('T')[0];
+        const [year, month, day] = fechaLimpia.split('-');
+        return `${day}/${month}/${year.slice(-2)}`; // DD/MM/AA
     }
 
     // Cargar torneo activo
@@ -200,13 +202,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     
                     html += `
                         <div class="partido-item" data-partido-id="${partidoId}">
-                            <div class="partido-info">
-                                <span class="partido-categoria">${categoria}</span>
-                                <span class="partido-hora">${hora}</span>
+                            <div class="partido-hora">${hora}</div>
+                            <div class="partido-match">
                                 <span class="partido-local">${local}</span>
                                 <span class="partido-vs">VS</span>
                                 <span class="partido-visitante">${visitante}</span>
                             </div>
+                            <div class="partido-categoria">${categoria}</div>
                             <button class="btn-editar-horario" data-partido-id="${partidoId}">✏️ Editar</button>
                         </div>
                     `;
@@ -237,13 +239,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 
                 html += `
                     <div class="partido-item partido-sin-horario" data-partido-id="${partidoId}">
-                        <div class="partido-info">
-                            <span class="partido-categoria">${categoria}</span>
-                            <span class="partido-hora horario-pendiente">Pendiente</span>
+                        <div class="partido-hora horario-pendiente">--:--</div>
+                        <div class="partido-match">
                             <span class="partido-local">${local}</span>
                             <span class="partido-vs">VS</span>
                             <span class="partido-visitante">${visitante}</span>
                         </div>
+                        <div class="partido-categoria">${categoria}</div>
                         <button class="btn-editar-horario" data-partido-id="${partidoId}">✏️ Asignar</button>
                     </div>
                 `;
@@ -292,6 +294,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const partido = partidosData.find(p => p.id == partidoId);
         if (!partido) return;
 
+        // Encontrar el elemento del partido
+        const partidoItem = document.querySelector(`.partido-item[data-partido-id="${partidoId}"]`);
+        if (!partidoItem) return;
+
         // Crear modal o dropdown para seleccionar horario
         let opcionesHorarios = horariosData.map(h => 
             `<option value="${h.id}" ${h.id == partido.id_horario ? 'selected' : ''}>${h.dia_semana} ${formatearFecha(h.fecha) || ''} - ${h.hora_inicio}</option>`
@@ -308,8 +314,12 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
         `;
 
-        const horarioSpan = document.getElementById(`horario-${partidoId}`);
-        horarioSpan.innerHTML = selectorHtml;
+        // Reemplazar el botón de editar con el selector
+        const btnEditar = partidoItem.querySelector('.btn-editar-horario');
+        if (btnEditar) {
+            btnEditar.style.display = 'none';
+            partidoItem.insertAdjacentHTML('beforeend', selectorHtml);
+        }
 
         // Agregar event listeners
         document.querySelector(`#modal-${partidoId} .btn-guardar-horario`).addEventListener('click', async (e) => {

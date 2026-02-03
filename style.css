@@ -1079,7 +1079,7 @@ footer {
 
 .fecha-grupo .partido-item {
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: 80px 1fr auto auto;
     gap: 1rem;
     align-items: center;
     padding: 1rem;
@@ -1094,31 +1094,13 @@ footer {
     border-left-color: #f39c12;
 }
 
-.fecha-grupo .partido-info {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem 1rem;
-}
-
-.fecha-grupo .partido-categoria {
-    background: #e8f4f8;
-    color: #2980b9;
-    padding: 3px 10px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
 .fecha-grupo .partido-hora {
     background: #27ae60;
     color: white;
-    padding: 3px 10px;
+    padding: 5px 10px;
     border-radius: 4px;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     font-weight: 600;
-    min-width: 70px;
     text-align: center;
 }
 
@@ -1126,16 +1108,37 @@ footer {
     background: #e74c3c;
 }
 
+.fecha-grupo .partido-match {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+}
+
 .fecha-grupo .partido-local,
 .fecha-grupo .partido-visitante {
     font-weight: 600;
     color: #2c3e50;
+    font-size: 0.95rem;
 }
 
 .fecha-grupo .partido-vs {
     color: #e74c3c;
     font-weight: bold;
     font-size: 0.9rem;
+}
+
+.fecha-grupo .partido-categoria {
+    background: #e8f4f8;
+    color: #2980b9;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    text-align: center;
+    min-width: 80px;
 }
 
 .fecha-grupo .btn-editar-horario {
@@ -1151,6 +1154,55 @@ footer {
 
 .fecha-grupo .btn-editar-horario:hover {
     background: #2980b9;
+}
+
+.fecha-grupo .selector-horario-modal {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 10px;
+    background: #fff;
+    border: 2px solid #3498db;
+    border-radius: 6px;
+    margin-top: 10px;
+}
+
+.fecha-grupo .select-horario {
+    padding: 6px 10px;
+    border: 1px solid #bdc3c7;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    min-width: 250px;
+}
+
+.fecha-grupo .btn-guardar-horario {
+    background: #27ae60;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.fecha-grupo .btn-guardar-horario:hover {
+    background: #229954;
+}
+
+.fecha-grupo .btn-cancelar-horario {
+    background: #e74c3c;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.fecha-grupo .btn-cancelar-horario:hover {
+    background: #c0392b;
 }
 
 /* ========================================= */
