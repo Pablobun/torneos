@@ -124,11 +124,24 @@ document.addEventListener('DOMContentLoaded', function () {
         for (const partido of partidosData) {
             const local = partido.local_nombre || `ID ${partido.local_id}`;
             const visitante = partido.visitante_nombre || `ID ${partido.visitante_id}`;
-            const dia = partido.dia_semana || 'Día no especificado';
-            const hora = partido.horario || 'Hora no especificada';
-            const categoria = partido.categoria || 'Sin categoría';
-            const grupo = partido.grupo || '-';
+            const dia = partido.dia_semana || '';
+            const fecha = partido.fecha || '';
+            const hora = partido.horario || '';
             const partidoId = partido.id;
+            
+            // Formatear fecha y hora
+            let fechaHoraTexto = '';
+            if (dia && fecha) {
+                fechaHoraTexto = `${dia} ${fecha}`;
+            } else if (dia) {
+                fechaHoraTexto = dia;
+            }
+            if (hora) {
+                fechaHoraTexto += fechaHoraTexto ? ` - ${hora}` : hora;
+            }
+            if (!fechaHoraTexto) {
+                fechaHoraTexto = 'Horario no especificado';
+            }
             
             html += `
                 <div class="partido-item" data-partido-id="${partidoId}">
@@ -138,8 +151,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <span class="partido-visitante">${visitante}</span>
                     </div>
                     <div class="partido-detalles">
-                        <span class="partido-categoria">${categoria} - Grupo ${grupo}</span>
-                        <span class="partido-horario" id="horario-${partidoId}">${dia} - ${hora}</span>
+                        <span class="partido-horario" id="horario-${partidoId}">${fechaHoraTexto}</span>
                     </div>
                     <div class="partido-acciones">
                         <button class="btn-editar-horario" data-partido-id="${partidoId}">✏️ Editar Horario</button>

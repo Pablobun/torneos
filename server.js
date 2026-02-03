@@ -331,36 +331,35 @@ app.get('/api/grupos/:idTorneo', async (req, res) => {
 // ==========================================================
 app.get('/api/partidos/:idTorneo', async (req, res) => {
     const { idTorneo } = req.params;
+    
+    // Query simplificado para obtener partidos con info de horarios e inscriptos
     const sql = `
         SELECT 
             p.id,
             p.id_horario,
             h.dia_semana,
-            h.horario,
+            h.fecha,
+            h.hora_inicio as horario,
             h.Canchas as cupo,
             p.id_inscriptoL as local_id,
             il.integrantes as local_nombre,
             p.id_inscriptoV as visitante_id,
-            iv.integrantes as visitante_nombre,
-            g.categoria,
-            g.numero_grupo as grupo
+            iv.integrantes as visitante_nombre
         FROM partido p
-        LEFT JOIN horarios h ON p.id_horario = h.id
+        INNER JOIN horarios h ON p.id_horario = h.id AND h.id_torneo_fk = ?
         LEFT JOIN inscriptos il ON p.id_inscriptoL = il.id
         LEFT JOIN inscriptos iv ON p.id_inscriptoV = iv.id
-        LEFT JOIN grupo_integrantes gil ON p.id_inscriptoL = gil.id_inscripto
-        LEFT JOIN grupos g ON gil.id_grupo = g.id AND g.id_torneo_fk = ?
-        WHERE h.id_torneo_fk = ?
-        ORDER BY g.categoria, g.numero_grupo, h.dia_semana, h.horario
+        ORDER BY h.fecha, h.hora_inicio
     `;
+    
     try {
         const connection = await mysql.createConnection(connectionConfig);
-        const [rows] = await connection.execute(sql, [idTorneo, idTorneo]);
+        const [rows] = await connection.execute(sql, [idTorneo]);
         await connection.end();
         res.status(200).json(rows);
     } catch (error) {
         console.error('Error al obtener partidos:', error);
-        res.status(500).json({ error: 'Error al obtener los partidos.' });
+        res.status(500).json({ error: 'Error al obtener los partidos: ' + error.message });
     }
 });
 
