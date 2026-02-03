@@ -369,7 +369,7 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
         
         // 1. OBTENER DATOS DE LA BASE
         const [horariosResult] = await connection.execute(
-            'SELECT id, dia_semana, horario, Canchas FROM horarios WHERE id_torneo_fk = ?',
+            'SELECT id, dia_semana, fecha, hora_inicio, Canchas FROM horarios WHERE id_torneo_fk = ?',
             [idTorneo]
         );
 
@@ -391,7 +391,8 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
             const horarioInfo = {
                 id: h.id,
                 dia: h.dia_semana,
-                hora: h.horario,
+                fecha: h.fecha,
+                hora: h.hora_inicio,
                 cupo: parseInt(h.Canchas) || 4
             };
             horariosMap[h.id] = horarioInfo;
