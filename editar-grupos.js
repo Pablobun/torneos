@@ -140,7 +140,7 @@ document.addEventListener('DOMContentLoaded', function () {
         gruposContainer.innerHTML = html;
     }
 
-    // Mostrar partidos (con información de horarios reales y opción de edición)
+    // Mostrar partidos - MISMO DISEÑO QUE GRUPOS.HTML
     function mostrarPartidos() {
         if (partidosData.length === 0) {
             partidosContainer.innerHTML = '<p>No hay partidos guardados para este torneo.</p>';
@@ -161,25 +161,27 @@ document.addEventListener('DOMContentLoaded', function () {
             const tieneHorarioAsignado = partido.id_horario !== null;
             
             // Formatear fecha y hora
-            let fechaHoraTexto = '';
-            if (tieneHorarioAsignado && dia && fecha && hora) {
-                fechaHoraTexto = `${dia} ${fecha} - ${hora}`;
+            let horarioTexto;
+            if (tieneHorarioAsignado && dia && hora) {
+                horarioTexto = `${dia} - ${hora}`;
             } else {
-                fechaHoraTexto = '<span class="horario-pendiente">⏳ Horario pendiente</span>';
+                horarioTexto = '<span class="horario-pendiente">⏳ Horario pendiente</span>';
             }
             
             const clasePartido = tieneHorarioAsignado ? '' : 'partido-sin-horario';
             
+            // Partido item - MISMO FORMATO QUE GRUPOS.HTML
             html += `
                 <div class="partido-item ${clasePartido}" data-partido-id="${partidoId}">
                     <span class="partido-local">${local}</span>
                     <span class="partido-vs">VS</span>
                     <span class="partido-visitante">${visitante}</span>
-                    <span class="partido-horario" id="horario-${partidoId}">${fechaHoraTexto}</span>
+                    <span class="partido-horario" id="horario-${partidoId}">${horarioTexto}</span>
+                    <button class="btn-editar-horario" data-partido-id="${partidoId}">✏️ Editar</button>
                 </div>
             `;
             
-            // Si no tiene horario asignado, mostrar horarios disponibles de ambos jugadores
+            // Si no tiene horario asignado, mostrar horarios disponibles debajo (MISMO ESTILO QUE GRUPOS.HTML)
             if (!tieneHorarioAsignado) {
                 const horariosLocal = horariosPorInscripto[localId] || [];
                 const horariosVisitante = horariosPorInscripto[visitanteId] || [];
@@ -192,17 +194,18 @@ document.addEventListener('DOMContentLoaded', function () {
                     ? horariosVisitante.map(h => `${h.dia_semana} ${h.hora_inicio}`).join(', ')
                     : 'Sin horarios registrados';
                 
+                // Caja de horarios disponibles - MISMO ESTILO QUE GRUPOS.HTML
                 html += `
                     <div class="horarios-disponibles">
-                        <div class="horarios-jugador">Jugador Local: ${horariosLocalText}</div>
-                        <div class="horarios-jugador">Jugador Visitante: ${horariosVisitanteText}</div>
+                        <div class="horarios-jugador">
+                            <strong>${local}:</strong> ${horariosLocalText}
+                        </div>
+                        <div class="horarios-jugador">
+                            <strong>${visitante}:</strong> ${horariosVisitanteText}
+                        </div>
                     </div>
                 `;
             }
-            
-            html += `
-                <button class="btn-editar-horario" data-partido-id="${partidoId}">✏️ Editar Horario</button>
-            `;
         }
         
         html += '</div>';
