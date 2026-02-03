@@ -1028,6 +1028,132 @@ footer {
 }
 
 /* ========================================= */
+/* --- ESTILOS AGRUPACIÓN POR FECHAS (EDITAR GRUPOS) --- */
+/* ========================================= */
+
+.partidos-por-fecha {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.fecha-grupo {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.fecha-grupo.sin-horario {
+    background: #fff8e1;
+    border: 2px solid #f39c12;
+}
+
+.fecha-encabezado {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    color: white;
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.sin-horario .fecha-encabezado {
+    background: linear-gradient(135deg, #f39c12 0%, #d68910 100%);
+}
+
+.fecha-dia {
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.fecha-fecha {
+    font-size: 1.1rem;
+    opacity: 0.95;
+}
+
+.fecha-grupo .partidos-list {
+    padding: 1rem;
+}
+
+.fecha-grupo .partido-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 1rem;
+    align-items: center;
+    padding: 1rem;
+    margin: 0.5rem 0;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #3498db;
+}
+
+.fecha-grupo .partido-sin-horario {
+    background: #fff3cd;
+    border-left-color: #f39c12;
+}
+
+.fecha-grupo .partido-info {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+}
+
+.fecha-grupo .partido-categoria {
+    background: #e8f4f8;
+    color: #2980b9;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.fecha-grupo .partido-hora {
+    background: #27ae60;
+    color: white;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    min-width: 70px;
+    text-align: center;
+}
+
+.fecha-grupo .partido-hora.horario-pendiente {
+    background: #e74c3c;
+}
+
+.fecha-grupo .partido-local,
+.fecha-grupo .partido-visitante {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.fecha-grupo .partido-vs {
+    color: #e74c3c;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.fecha-grupo .btn-editar-horario {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.fecha-grupo .btn-editar-horario:hover {
+    background: #2980b9;
+}
+
+/* ========================================= */
 /* --- ESTILOS PARA DISPOSITIVOS MÓVILES --- */
 /* ========================================= */
 @media (max-width: 600px) {

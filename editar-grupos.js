@@ -140,49 +140,115 @@ document.addEventListener('DOMContentLoaded', function () {
         gruposContainer.innerHTML = html;
     }
 
-    // Mostrar partidos - MISMO DISEÑO QUE GRUPOS.HTML
+    // Mostrar partidos agrupados por fecha
     function mostrarPartidos() {
         if (partidosData.length === 0) {
             partidosContainer.innerHTML = '<p>No hay partidos guardados para este torneo.</p>';
             return;
         }
 
-        let html = '<div class="partidos-list">';
+        // Separar partidos con y sin horario
+        const partidosConHorario = partidosData.filter(p => p.id_horario !== null);
+        const partidosSinHorario = partidosData.filter(p => p.id_horario === null);
         
-        for (const partido of partidosData) {
-            const local = partido.local_nombre || `ID ${partido.local_id}`;
-            const visitante = partido.visitante_nombre || `ID ${partido.visitante_id}`;
-            const localId = partido.local_id;
-            const visitanteId = partido.visitante_id;
-            const dia = partido.dia_semana || '';
-            const fecha = formatearFecha(partido.fecha) || '';
-            const hora = partido.horario || '';
-            const partidoId = partido.id;
-            const tieneHorarioAsignado = partido.id_horario !== null;
+        let html = '<div class="partidos-por-fecha">';
+        
+        // 1. Mostrar partidos con horario agrupados por fecha
+        if (partidosConHorario.length > 0) {
+            // Agrupar por fecha
+            const partidosPorFecha = {};
+            partidosConHorario.forEach(partido => {
+                const fechaKey = partido.fecha || 'Sin fecha';
+                if (!partidosPorFecha[fechaKey]) {
+                    partidosPorFecha[fechaKey] = {
+                        dia: partido.dia_semana,
+                        fecha: fechaKey,
+                        partidos: []
+                    };
+                }
+                partidosPorFecha[fechaKey].partidos.push(partido);
+            });
             
-            // Formatear fecha y hora
-            let horarioTexto;
-            if (tieneHorarioAsignado && dia && hora) {
-                horarioTexto = `${dia} - ${hora}`;
-            } else {
-                horarioTexto = '<span class="horario-pendiente">⏳ Horario pendiente</span>';
-            }
+            // Ordenar fechas
+            const fechasOrdenadas = Object.keys(partidosPorFecha).sort();
             
-            const clasePartido = tieneHorarioAsignado ? '' : 'partido-sin-horario';
-            
-            // Partido item - MISMO FORMATO QUE GRUPOS.HTML
+            // Mostrar cada fecha con sus partidos
+            fechasOrdenadas.forEach(fechaKey => {
+                const grupo = partidosPorFecha[fechaKey];
+                const fechaFormateada = formatearFecha(grupo.fecha);
+                
+                html += `
+                    <div class="fecha-grupo">
+                        <div class="fecha-encabezado">
+                            <span class="fecha-dia">${grupo.dia}</span>
+                            <span class="fecha-fecha">${fechaFormateada}</span>
+                        </div>
+                        <div class="partidos-list">
+                `;
+                
+                // Ordenar partidos por horario
+                grupo.partidos.sort((a, b) => {
+                    return (a.horario || '').localeCompare(b.horario || '');
+                });
+                
+                grupo.partidos.forEach(partido => {
+                    const local = partido.local_nombre || `ID ${partido.local_id}`;
+                    const visitante = partido.visitante_nombre || `ID ${partido.visitante_id}`;
+                    const categoria = partido.categoria || 'Sin categoría';
+                    const hora = partido.horario || '';
+                    const partidoId = partido.id;
+                    
+                    html += `
+                        <div class="partido-item" data-partido-id="${partidoId}">
+                            <div class="partido-info">
+                                <span class="partido-categoria">${categoria}</span>
+                                <span class="partido-hora">${hora}</span>
+                                <span class="partido-local">${local}</span>
+                                <span class="partido-vs">VS</span>
+                                <span class="partido-visitante">${visitante}</span>
+                            </div>
+                            <button class="btn-editar-horario" data-partido-id="${partidoId}">✏️ Editar</button>
+                        </div>
+                    `;
+                });
+                
+                html += '</div></div>';
+            });
+        }
+        
+        // 2. Mostrar partidos sin horario al final
+        if (partidosSinHorario.length > 0) {
             html += `
-                <div class="partido-item ${clasePartido}" data-partido-id="${partidoId}">
-                    <span class="partido-local">${local}</span>
-                    <span class="partido-vs">VS</span>
-                    <span class="partido-visitante">${visitante}</span>
-                    <span class="partido-horario" id="horario-${partidoId}">${horarioTexto}</span>
-                    <button class="btn-editar-horario" data-partido-id="${partidoId}">✏️ Editar</button>
-                </div>
+                <div class="fecha-grupo sin-horario">
+                    <div class="fecha-encabezado">
+                        <span class="fecha-dia">⏳</span>
+                        <span class="fecha-fecha">Partidos sin horario asignado</span>
+                    </div>
+                    <div class="partidos-list">
             `;
             
-            // Si no tiene horario asignado, mostrar horarios disponibles debajo (MISMO ESTILO QUE GRUPOS.HTML)
-            if (!tieneHorarioAsignado) {
+            partidosSinHorario.forEach(partido => {
+                const local = partido.local_nombre || `ID ${partido.local_id}`;
+                const visitante = partido.visitante_nombre || `ID ${partido.visitante_id}`;
+                const categoria = partido.categoria || 'Sin categoría';
+                const localId = partido.local_id;
+                const visitanteId = partido.visitante_id;
+                const partidoId = partido.id;
+                
+                html += `
+                    <div class="partido-item partido-sin-horario" data-partido-id="${partidoId}">
+                        <div class="partido-info">
+                            <span class="partido-categoria">${categoria}</span>
+                            <span class="partido-hora horario-pendiente">Pendiente</span>
+                            <span class="partido-local">${local}</span>
+                            <span class="partido-vs">VS</span>
+                            <span class="partido-visitante">${visitante}</span>
+                        </div>
+                        <button class="btn-editar-horario" data-partido-id="${partidoId}">✏️ Asignar</button>
+                    </div>
+                `;
+                
+                // Mostrar horarios disponibles
                 const horariosLocal = horariosPorInscripto[localId] || [];
                 const horariosVisitante = horariosPorInscripto[visitanteId] || [];
                 
@@ -194,7 +260,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     ? horariosVisitante.map(h => `${h.dia_semana} ${h.hora_inicio}`).join(', ')
                     : 'Sin horarios registrados';
                 
-                // Caja de horarios disponibles - MISMO ESTILO QUE GRUPOS.HTML
                 html += `
                     <div class="horarios-disponibles">
                         <div class="horarios-jugador">
@@ -205,7 +270,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         </div>
                     </div>
                 `;
-            }
+            });
+            
+            html += '</div></div>';
         }
         
         html += '</div>';

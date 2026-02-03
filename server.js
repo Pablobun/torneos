@@ -359,7 +359,7 @@ app.get('/api/grupos/:idTorneo', async (req, res) => {
 app.get('/api/partidos/:idTorneo', async (req, res) => {
     const { idTorneo } = req.params;
     
-    // Query para obtener TODOS los partidos (con y sin horario)
+    // Query para obtener TODOS los partidos (con y sin horario) incluyendo categoria
     const sql = `
         SELECT 
             p.id,
@@ -371,11 +371,15 @@ app.get('/api/partidos/:idTorneo', async (req, res) => {
             p.id_inscriptoL as local_id,
             il.integrantes as local_nombre,
             p.id_inscriptoV as visitante_id,
-            iv.integrantes as visitante_nombre
+            iv.integrantes as visitante_nombre,
+            g.categoria,
+            g.numero_grupo as grupo
         FROM partido p
         LEFT JOIN horarios h ON p.id_horario = h.id
         LEFT JOIN inscriptos il ON p.id_inscriptoL = il.id
         LEFT JOIN inscriptos iv ON p.id_inscriptoV = iv.id
+        LEFT JOIN grupo_integrantes gil ON p.id_inscriptoL = gil.id_inscripto
+        LEFT JOIN grupos g ON gil.id_grupo = g.id AND g.id_torneo_fk = ?
         WHERE il.id_torneo_fk = ? OR iv.id_torneo_fk = ?
         ORDER BY 
             CASE WHEN h.fecha IS NOT NULL THEN 0 ELSE 1 END,
@@ -385,7 +389,7 @@ app.get('/api/partidos/:idTorneo', async (req, res) => {
     
     try {
         const connection = await mysql.createConnection(connectionConfig);
-        const [rows] = await connection.execute(sql, [idTorneo, idTorneo]);
+        const [rows] = await connection.execute(sql, [idTorneo, idTorneo, idTorneo]);
         await connection.end();
         res.status(200).json(rows);
     } catch (error) {
