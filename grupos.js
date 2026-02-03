@@ -358,6 +358,11 @@ document.addEventListener('DOMContentLoaded', function () {
             const result = await response.json();
             mostrarNotificacion(result.mensaje || 'Grupos y partidos guardados exitosamente', 'success');
             
+            // Redirigir a la página de edición después de 2 segundos
+            setTimeout(() => {
+                window.location.href = 'editar-grupos.html';
+            }, 2000);
+            
         } catch (error) {
             console.error('Error al guardar:', error);
             mostrarNotificacion('Error al guardar: ' + error.message, 'error');

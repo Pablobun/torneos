@@ -247,23 +247,43 @@ app.post('/api/guardar-grupos', async (req, res) => {
             }
         }
 
-        // 2. Insertar partidos
+        // 2. Insertar partidos (solo los que tienen horario asignado)
+        let partidosGuardados = 0;
+        let partidosPendientes = 0;
+        
         if (partidos && partidos.length > 0) {
             for (const partido of partidos) {
-                const sqlPartido = `
-                    INSERT INTO partido (id_horario, id_inscriptoL, id_inscriptoV)
-                    VALUES (?, ?, ?)
-                `;
-                await connection.execute(sqlPartido, [
-                    partido.horario,
-                    partido.local,
-                    partido.visitante
-                ]);
+                // Solo guardar partidos con horario asignado (no null)
+                if (partido.horario !== null && partido.horario !== undefined) {
+                    const sqlPartido = `
+                        INSERT INTO partido (id_horario, id_inscriptoL, id_inscriptoV)
+                        VALUES (?, ?, ?)
+                    `;
+                    await connection.execute(sqlPartido, [
+                        partido.horario,
+                        partido.local,
+                        partido.visitante
+                    ]);
+                    partidosGuardados++;
+                } else {
+                    partidosPendientes++;
+                }
             }
         }
 
         await connection.commit();
-        res.status(200).json({ mensaje: 'Grupos y partidos guardados exitosamente' });
+        
+        let mensajeRespuesta = 'Grupos y partidos guardados exitosamente';
+        if (partidosPendientes > 0) {
+            mensajeRespuesta += `. ${partidosPendientes} partidos quedaron pendientes (sin horario compatible).`;
+        }
+        
+        res.status(200).json({ 
+            mensaje: mensajeRespuesta,
+            gruposGuardados: grupos.length,
+            partidosGuardados: partidosGuardados,
+            partidosPendientes: partidosPendientes
+        });
         
     } catch (error) {
         if (connection) await connection.rollback();
@@ -297,6 +317,44 @@ app.get('/api/grupos/:idTorneo', async (req, res) => {
     } catch (error) {
         console.error('Error al obtener grupos:', error);
         res.status(500).json({ error: 'Error al obtener los grupos.' });
+    }
+});
+
+// ==========================================================
+// ENDPOINT PARA OBTENER PARTIDOS DE UN TORNEO
+// ==========================================================
+app.get('/api/partidos/:idTorneo', async (req, res) => {
+    const { idTorneo } = req.params;
+    const sql = `
+        SELECT 
+            p.id,
+            p.id_horario,
+            h.dia_semana,
+            h.horario,
+            h.Canchas as cupo,
+            p.id_inscriptoL as local_id,
+            il.integrantes as local_nombre,
+            p.id_inscriptoV as visitante_id,
+            iv.integrantes as visitante_nombre,
+            g.categoria,
+            g.numero_grupo as grupo
+        FROM partido p
+        LEFT JOIN horarios h ON p.id_horario = h.id
+        LEFT JOIN inscriptos il ON p.id_inscriptoL = il.id
+        LEFT JOIN inscriptos iv ON p.id_inscriptoV = iv.id
+        LEFT JOIN grupo_integrantes gil ON p.id_inscriptoL = gil.id_inscripto
+        LEFT JOIN grupos g ON gil.id_grupo = g.id AND g.id_torneo_fk = ?
+        WHERE h.id_torneo_fk = ?
+        ORDER BY g.categoria, g.numero_grupo, h.dia_semana, h.horario
+    `;
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        const [rows] = await connection.execute(sql, [idTorneo, idTorneo]);
+        await connection.end();
+        res.status(200).json(rows);
+    } catch (error) {
+        console.error('Error al obtener partidos:', error);
+        res.status(500).json({ error: 'Error al obtener los partidos.' });
     }
 });
 
