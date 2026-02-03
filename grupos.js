@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let gruposGenerados = [];
     let partidosGenerados = [];
     let sinGrupo = [];
+    let advertencias = [];
 
     // Inicialización
     async function inicializar() {
@@ -209,17 +210,35 @@ document.addEventListener('DOMContentLoaded', function () {
             for (const partido of partidosGenerados) {
                 const local = inscriptosPorId[partido.local];
                 const visitante = inscriptosPorId[partido.visitante];
+                const horarioAsignado = partido.horario ? `Horario: ${partido.horario}` : '<span class="horario-pendiente">⏳ Horario pendiente (sin compatibilidad)</span>';
+                const clasePartido = partido.horario ? '' : 'partido-sin-horario';
                 
                 html += `
-                    <div class="partido-item">
+                    <div class="partido-item ${clasePartido}">
                         <span class="partido-local">${local ? local.integrantes : 'ID ' + partido.local}</span>
                         <span class="partido-vs">VS</span>
                         <span class="partido-visitante">${visitante ? visitante.integrantes : 'ID ' + partido.visitante}</span>
-                        <span class="partido-horario">(Horario: ${partido.horario})</span>
+                        <span class="partido-horario">(${horarioAsignado})</span>
                     </div>
                 `;
             }
             
+            html += '</div>';
+        }
+        
+        // Mostrar advertencias de partidos sin horario
+        if (advertencias && advertencias.length > 0) {
+            html += '<div class="advertencias-section">';
+            html += '<h3 class="advertencias-titulo">⚠️ Partidos con Problemas de Horarios</h3>';
+            html += '<ul class="advertencias-list">';
+            
+            for (const adv of advertencias) {
+                const local = inscriptosPorId[adv.local];
+                const visitante = inscriptosPorId[adv.visitante];
+                html += `<li><strong>${local ? local.integrantes : 'ID ' + adv.local} vs ${visitante ? visitante.integrantes : 'ID ' + adv.visitante}</strong>: ${adv.mensaje}</li>`;
+            }
+            
+            html += '</ul>';
             html += '</div>';
         }
         
@@ -282,14 +301,24 @@ document.addEventListener('DOMContentLoaded', function () {
             gruposGenerados = result.grupos || [];
             partidosGenerados = result.partidos || [];
             sinGrupo = result.sin_grupo || [];
+            advertencias = result.advertencias || [];
             
             mostrarGruposFormados();
             
+            let mensajeNotificacion = `Se generaron ${gruposGenerados.length} grupos.`;
+            let tipoNotificacion = 'success';
+            
             if (sinGrupo.length > 0) {
-                mostrarNotificacion(`Se generaron ${gruposGenerados.length} grupos. ${sinGrupo.length} inscriptos no pudieron ser asignados.`, 'warning');
-            } else {
-                mostrarNotificacion('Grupos generados exitosamente', 'success');
+                mensajeNotificacion += ` ${sinGrupo.length} inscriptos no pudieron ser asignados.`;
+                tipoNotificacion = 'warning';
             }
+            
+            if (advertencias.length > 0) {
+                mensajeNotificacion += ` ${advertencias.length} partidos tienen problemas de horarios.`;
+                tipoNotificacion = 'warning';
+            }
+            
+            mostrarNotificacion(mensajeNotificacion, tipoNotificacion);
             
         } catch (error) {
             console.error('Error:', error);

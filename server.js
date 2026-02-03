@@ -439,9 +439,9 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
             }
         }
 
-        // 4. GENERAR PARTIDOS ROUND ROBIN
-        let horariosDisponibles = [...horarios];
+        // 4. GENERAR PARTIDOS ROUND ROBIN CON HORARIOS COMPATIBLES
         let usoHorarios = {}; // Seguimiento de cuántos partidos hay en cada horario
+        let advertencias = []; // Para partidos que no se pueden jugar
         
         // Inicializar contador de uso para cada horario
         horarios.forEach(h => {
@@ -449,39 +449,74 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
         });
 
         for (const grupo of grupos) {
-            const integrantes = grupo.integrantes;
+            const integrantesIds = grupo.integrantes;
             
             // Generar todos los partidos del round robin
-            for (let i = 0; i < integrantes.length; i++) {
-                for (let j = i + 1; j < integrantes.length; j++) {
-                    const local = integrantes[i];
-                    const visitante = integrantes[j];
+            for (let i = 0; i < integrantesIds.length; i++) {
+                for (let j = i + 1; j < integrantesIds.length; j++) {
+                    const localId = integrantesIds[i];
+                    const visitanteId = integrantesIds[j];
                     
-                    // Buscar un horario disponible
+                    // Obtener objetos completos de los jugadores
+                    const jugadorLocal = inscriptos.find(j => j.id === localId);
+                    const jugadorVisitante = inscriptos.find(j => j.id === visitanteId);
+                    
+                    if (!jugadorLocal || !jugadorVisitante) {
+                        console.error(`No se encontraron datos de jugadores ${localId} vs ${visitanteId}`);
+                        continue;
+                    }
+                    
+                    // Encontrar horarios disponibles para AMBOS jugadores (intersección)
+                    const horariosLocal = new Set(jugadorLocal.horarios);
+                    const horariosComunes = jugadorVisitante.horarios.filter(h => horariosLocal.has(h));
+                    
                     let horarioAsignado = null;
                     
-                    // Ordenar horarios por uso (menos usados primero)
-                    const horariosOrdenados = horariosDisponibles.sort((a, b) => {
-                        return usoHorarios[a.id] - usoHorarios[b.id];
-                    });
-                    
-                    for (const horario of horariosOrdenados) {
-                        if (usoHorarios[horario.id] < horario.cupo) {
-                            horarioAsignado = horario.id;
-                            usoHorarios[horario.id]++;
-                            break;
+                    if (horariosComunes.length === 0) {
+                        // No hay horario compatible entre estos dos jugadores
+                        advertencias.push({
+                            tipo: 'sin_horario_compatible',
+                            local: localId,
+                            visitante: visitanteId,
+                            grupo: grupo.numero,
+                            mensaje: `Los jugadores ${localId} y ${visitanteId} no tienen horarios disponibles en común`
+                        });
+                        console.warn(`⚠ No hay horario compatible entre ${localId} y ${visitanteId}`);
+                    } else {
+                        // Entre los horarios comunes, buscar uno con cupo disponible
+                        // Ordenar por uso (menos usados primero) para distribuir equitativamente
+                        const horariosComunesInfo = horariosComunes.map(id => ({
+                            id: id,
+                            uso: usoHorarios[id] || 0,
+                            cupo: horarios.find(h => h.id === id)?.cupo || 4
+                        })).sort((a, b) => a.uso - b.uso);
+                        
+                        for (const horarioInfo of horariosComunesInfo) {
+                            if (horarioInfo.uso < horarioInfo.cupo) {
+                                horarioAsignado = horarioInfo.id;
+                                usoHorarios[horarioInfo.id]++;
+                                break;
+                            }
+                        }
+                        
+                        // Si todos los horarios comunes están llenos, advertir
+                        if (!horarioAsignado) {
+                            advertencias.push({
+                                tipo: 'cupo_lleno',
+                                local: localId,
+                                visitante: visitanteId,
+                                grupo: grupo.numero,
+                                mensaje: `Los horarios comunes entre ${localId} y ${visitanteId} están todos ocupados`
+                            });
+                            console.warn(`⚠ Cupo lleno para partido ${localId} vs ${visitanteId}`);
                         }
                     }
                     
-                    // Si no hay horarios disponibles, usar el primero igual (se notificará como problema)
-                    if (!horarioAsignado && horarios.length > 0) {
-                        horarioAsignado = horarios[0].id;
-                    }
-                    
                     partidos.push({
-                        local: local,
-                        visitante: visitante,
-                        horario: horarioAsignado
+                        local: localId,
+                        visitante: visitanteId,
+                        horario: horarioAsignado, // puede ser null si no se pudo asignar
+                        grupo: grupo.numero
                     });
                 }
             }
@@ -491,11 +526,15 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
         if (sinGrupo.length > 0) {
             console.log(`⚠ ${sinGrupo.length} jugadores sin grupo`);
         }
+        if (advertencias.length > 0) {
+            console.log(`⚠ ${advertencias.length} partidos con problemas de horarios`);
+        }
 
         return {
             grupos: grupos,
             partidos: partidos,
-            sin_grupo: sinGrupo
+            sin_grupo: sinGrupo,
+            advertencias: advertencias
         };
 
     } catch (error) {

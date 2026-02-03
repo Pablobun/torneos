@@ -784,6 +784,62 @@ footer {
 }
 
 /* ========================================= */
+/* --- ESTILOS PARTIDOS SIN HORARIO --- */
+/* ========================================= */
+
+.partido-sin-horario {
+    background: #fff3cd !important;
+    border-left: 4px solid #f39c12 !important;
+}
+
+.horario-pendiente {
+    color: #e74c3c;
+    font-weight: bold;
+    background: #fff3cd;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #f39c12;
+}
+
+/* ========================================= */
+/* --- ESTILOS ADVERTENCIAS --- */
+/* ========================================= */
+
+.advertencias-section {
+    margin-top: 3rem;
+    padding: 2rem;
+    background: rgba(243, 156, 18, 0.1);
+    border: 3px solid #f39c12;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(243, 156, 18, 0.2);
+}
+
+.advertencias-titulo {
+    color: #d68910;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    font-size: 1.3rem;
+    border-bottom: 2px solid #f39c12;
+    padding-bottom: 0.5rem;
+}
+
+.advertencias-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.advertencias-list li {
+    padding: 0.8rem 1rem;
+    margin: 0.5rem 0;
+    background: #fff;
+    border-radius: 6px;
+    border-left: 4px solid #f39c12;
+    font-weight: 500;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* ========================================= */
 /* --- ESTILOS PARA DISPOSITIVOS MÓVILES --- */
 /* ========================================= */
 @media (max-width: 600px) {
