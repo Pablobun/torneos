@@ -247,48 +247,52 @@ app.post('/api/guardar-grupos', async (req, res) => {
             }
         }
 
-        // 2. Insertar partidos (solo los que tienen horario asignado)
+        // 2. Insertar TODOS los partidos (incluidos los sin horario asignado)
+        // La tabla ahora permite NULL en id_horario
         let partidosGuardados = 0;
-        let partidosPendientes = 0;
+        let partidosConHorario = 0;
+        let partidosSinHorario = 0;
         
         if (partidos && partidos.length > 0) {
             for (const partido of partidos) {
-                // Solo guardar partidos con horario asignado (no null)
                 // Manejar caso donde horario puede ser objeto {id, dia, hora} o número
                 let horarioId = null;
                 if (partido.horario !== null && partido.horario !== undefined) {
                     horarioId = typeof partido.horario === 'object' ? partido.horario.id : partido.horario;
                 }
                 
+                const sqlPartido = `
+                    INSERT INTO partido (id_horario, id_inscriptoL, id_inscriptoV)
+                    VALUES (?, ?, ?)
+                `;
+                await connection.execute(sqlPartido, [
+                    horarioId,
+                    partido.local,
+                    partido.visitante
+                ]);
+                partidosGuardados++;
+                
                 if (horarioId !== null) {
-                    const sqlPartido = `
-                        INSERT INTO partido (id_horario, id_inscriptoL, id_inscriptoV)
-                        VALUES (?, ?, ?)
-                    `;
-                    await connection.execute(sqlPartido, [
-                        horarioId,
-                        partido.local,
-                        partido.visitante
-                    ]);
-                    partidosGuardados++;
+                    partidosConHorario++;
                 } else {
-                    partidosPendientes++;
+                    partidosSinHorario++;
                 }
             }
         }
 
         await connection.commit();
         
-        let mensajeRespuesta = 'Grupos y partidos guardados exitosamente';
-        if (partidosPendientes > 0) {
-            mensajeRespuesta += `. ${partidosPendientes} partidos quedaron pendientes (sin horario compatible).`;
+        let mensajeRespuesta = `Grupos y ${partidosGuardados} partidos guardados exitosamente`;
+        if (partidosSinHorario > 0) {
+            mensajeRespuesta += `. ${partidosSinHorario} partidos sin horario asignado (se pueden editar después).`;
         }
         
         res.status(200).json({ 
             mensaje: mensajeRespuesta,
             gruposGuardados: grupos.length,
             partidosGuardados: partidosGuardados,
-            partidosPendientes: partidosPendientes
+            partidosConHorario: partidosConHorario,
+            partidosSinHorario: partidosSinHorario
         });
         
     } catch (error) {
@@ -449,12 +453,14 @@ function intentarFormarGrupos(jugadores, configuracionGrupos, horarios, horarios
     let grupos = [];
     let partidos = [];
     let sinGrupo = [];
-    let numeroGrupoGlobal = 1;
 
     for (const [categoria, config] of Object.entries(configuracionGrupos)) {
         const jugadoresCat = inscriptos.filter(i => i.categoria === categoria);
         
         if (jugadoresCat.length === 0) continue;
+
+        // Reiniciar numeración de grupos a 1 para cada categoría
+        let numeroGrupoCategoria = 1;
 
         const grupos3 = config.grupos3 || 0;
         const grupos4 = config.grupos4 || 0;
@@ -503,7 +509,7 @@ function intentarFormarGrupos(jugadores, configuracionGrupos, horarios, horarios
             const incompleto = integrantesGrupo.length < tamanoGrupo;
             
             grupos.push({
-                numero: numeroGrupoGlobal++,
+                numero: numeroGrupoCategoria++,
                 categoria: categoria,
                 integrantes: integrantesGrupo.map(j => j.id),
                 incompleto: incompleto,

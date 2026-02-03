@@ -17,13 +17,14 @@ document.addEventListener('DOMContentLoaded', function () {
     let partidosData = [];
     let inscriptosPorId = {};
     let horariosData = [];
+    let horariosPorInscripto = {}; // Mapa de horarios por inscripto ID
 
     // Inicialización
     async function inicializar() {
         try {
             loadingOverlay.classList.remove('hidden');
             await cargarTorneoActivo();
-            await cargarInscriptos();
+            await cargarInscriptosConHorarios();
             await cargarHorarios();
             await cargarGruposYPartidos();
             mostrarGrupos();
@@ -34,6 +35,13 @@ document.addEventListener('DOMContentLoaded', function () {
         } finally {
             loadingOverlay.classList.add('hidden');
         }
+    }
+
+    // Helper function para formatear fechas
+    function formatearFecha(fecha) {
+        if (!fecha) return '';
+        // Remover T00:00:00.000Z si existe
+        return fecha.split('T')[0];
     }
 
     // Cargar torneo activo
@@ -50,8 +58,9 @@ document.addEventListener('DOMContentLoaded', function () {
         `;
     }
 
-    // Cargar inscriptos para mostrar nombres
-    async function cargarInscriptos() {
+    // Cargar inscriptos con sus horarios disponibles
+    async function cargarInscriptosConHorarios() {
+        // 1. Cargar inscriptos básicos
         const response = await fetch(`${API_BASE_URL}/inscriptos?id_torneo_fk=${torneoActivo.id}`);
         if (!response.ok) throw new Error('No se pudieron cargar los inscriptos');
         
@@ -60,6 +69,25 @@ document.addEventListener('DOMContentLoaded', function () {
         inscriptos.forEach(i => {
             inscriptosPorId[i.id] = i;
         });
+        
+        // 2. Cargar horarios para cada inscripto desde inscriptos_horarios
+        horariosPorInscripto = {};
+        const horariosPromises = inscriptos.map(async (inscripto) => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/inscriptos/${inscripto.id}/horarios`);
+                if (response.ok) {
+                    const horarios = await response.json();
+                    horariosPorInscripto[inscripto.id] = horarios;
+                } else {
+                    horariosPorInscripto[inscripto.id] = [];
+                }
+            } catch (error) {
+                console.error(`Error cargando horarios para inscripto ${inscripto.id}:`, error);
+                horariosPorInscripto[inscripto.id] = [];
+            }
+        });
+        
+        await Promise.all(horariosPromises);
     }
 
     // Cargar horarios disponibles
@@ -124,10 +152,13 @@ document.addEventListener('DOMContentLoaded', function () {
         for (const partido of partidosData) {
             const local = partido.local_nombre || `ID ${partido.local_id}`;
             const visitante = partido.visitante_nombre || `ID ${partido.visitante_id}`;
+            const localId = partido.local_id;
+            const visitanteId = partido.visitante_id;
             const dia = partido.dia_semana || '';
-            const fecha = partido.fecha || '';
+            const fecha = formatearFecha(partido.fecha) || '';
             const hora = partido.horario || '';
             const partidoId = partido.id;
+            const tieneHorarioAsignado = partido.id_horario !== null;
             
             // Formatear fecha y hora
             let fechaHoraTexto = '';
@@ -144,15 +175,44 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             
             html += `
-                <div class="partido-item" data-partido-id="${partidoId}">
+                <div class="partido-item ${!tieneHorarioAsignado ? 'partido-sin-horario' : ''}" data-partido-id="${partidoId}">
                     <div class="partido-info">
                         <span class="partido-local">${local}</span>
                         <span class="partido-vs">VS</span>
                         <span class="partido-visitante">${visitante}</span>
                     </div>
                     <div class="partido-detalles">
-                        <span class="partido-horario" id="horario-${partidoId}">${fechaHoraTexto}</span>
+                        <span class="partido-horario ${!tieneHorarioAsignado ? 'horario-pendiente' : ''}" id="horario-${partidoId}">${fechaHoraTexto}</span>
                     </div>
+            `;
+            
+            // Si no tiene horario asignado, mostrar horarios disponibles de ambos jugadores
+            if (!tieneHorarioAsignado) {
+                const horariosLocal = horariosPorInscripto[localId] || [];
+                const horariosVisitante = horariosPorInscripto[visitanteId] || [];
+                
+                html += `
+                    <div class="horarios-disponibles-box">
+                        <h4>Horarios Disponibles</h4>
+                        <div class="horarios-jugadores">
+                            <div class="horarios-jugador">
+                                <p class="jugador-nombre">${local}</p>
+                                <ul class="horarios-list">
+                                    ${horariosLocal.length > 0 ? horariosLocal.map(h => `<li>${h.dia_semana} ${formatearFecha(h.fecha)} - ${h.hora_inicio}</li>`).join('') : '<li class="sin-horarios">Sin horarios registrados</li>'}
+                                </ul>
+                            </div>
+                            <div class="horarios-jugador">
+                                <p class="jugador-nombre">${visitante}</p>
+                                <ul class="horarios-list">
+                                    ${horariosVisitante.length > 0 ? horariosVisitante.map(h => `<li>${h.dia_semana} ${formatearFecha(h.fecha)} - ${h.hora_inicio}</li>`).join('') : '<li class="sin-horarios">Sin horarios registrados</li>'}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += `
                     <div class="partido-acciones">
                         <button class="btn-editar-horario" data-partido-id="${partidoId}">✏️ Editar Horario</button>
                     </div>
@@ -179,7 +239,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Crear modal o dropdown para seleccionar horario
         let opcionesHorarios = horariosData.map(h => 
-            `<option value="${h.id}" ${h.id == partido.id_horario ? 'selected' : ''}>${h.dia_semana} ${h.fecha || ''} - ${h.hora_inicio}</option>`
+            `<option value="${h.id}" ${h.id == partido.id_horario ? 'selected' : ''}>${h.dia_semana} ${formatearFecha(h.fecha) || ''} - ${h.hora_inicio}</option>`
         ).join('');
 
         const selectorHtml = `
