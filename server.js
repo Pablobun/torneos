@@ -361,11 +361,253 @@ app.get('/api/partidos/:idTorneo', async (req, res) => {
 // ==========================================================
 // FUNCIÓN PARA ARMAR GRUPOS (ALGORITMO LOCAL - SIN IA)
 // ==========================================================
+
+// Función para hacer shuffle determinista basado en semilla
+function shuffleArray(array, seed) {
+    const arr = [...array];
+    let seedValue = seed;
+    
+    for (let i = arr.length - 1; i > 0; i--) {
+        // Generar índice aleatorio basado en semilla
+        seedValue = (seedValue * 9301 + 49297) % 233280;
+        const j = Math.floor((seedValue / 233280) * (i + 1));
+        
+        // Intercambiar elementos
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    
+    return arr;
+}
+
+// Función para intentar formar grupos con una semilla específica
+function intentarFormarGrupos(jugadores, configuracionGrupos, horarios, horariosMap, semillaIndex) {
+    // Hacer copia de jugadores y mezclar según semilla
+    const inscriptos = shuffleArray(jugadores, semillaIndex + 1);
+    
+    // FUNCIÓN PARA CALCULAR COMPATIBILIDAD ENTRE DOS JUGADORES
+    function calcularCompatibilidad(jugador1, jugador2) {
+        const horarios1 = new Set(jugador1.horarios);
+        const horarios2 = new Set(jugador2.horarios);
+        
+        let comunes = 0;
+        for (const h of horarios1) {
+            if (horarios2.has(h)) comunes++;
+        }
+        
+        return comunes;
+    }
+
+    // FUNCIÓN PARA CALCULAR COMPATIBILIDAD DE UN JUGADOR CON UN GRUPO
+    function calcularCompatibilidadConGrupo(jugador, grupoIntegrantes, todosJugadores) {
+        let compatibilidadTotal = 0;
+        
+        for (const idIntegrante of grupoIntegrantes) {
+            const integrante = todosJugadores.find(j => j.id === idIntegrante);
+            if (integrante) {
+                compatibilidadTotal += calcularCompatibilidad(jugador, integrante);
+            }
+        }
+        
+        return compatibilidadTotal;
+    }
+
+    // ALGORITMO DE DISTRIBUCIÓN EN GRUPOS POR COMPATIBILIDAD
+    let grupos = [];
+    let partidos = [];
+    let sinGrupo = [];
+    let numeroGrupoGlobal = 1;
+
+    for (const [categoria, config] of Object.entries(configuracionGrupos)) {
+        const jugadoresCat = inscriptos.filter(i => i.categoria === categoria);
+        
+        if (jugadoresCat.length === 0) continue;
+
+        const grupos3 = config.grupos3 || 0;
+        const grupos4 = config.grupos4 || 0;
+        const grupos5 = config.grupos5 || 0;
+        
+        const totalJugadoresNecesarios = (grupos3 * 3) + (grupos4 * 4) + (grupos5 * 5);
+        
+        let jugadoresDisponibles = [...jugadoresCat];
+        let jugadoresSinGrupoCat = [];
+        
+        if (totalJugadoresNecesarios <= jugadoresCat.length) {
+            jugadoresDisponibles.sort((a, b) => b.horarios.length - a.horarios.length);
+            jugadoresSinGrupoCat = jugadoresDisponibles.slice(totalJugadoresNecesarios);
+            jugadoresDisponibles = jugadoresDisponibles.slice(0, totalJugadoresNecesarios);
+        }
+        
+        sinGrupo = sinGrupo.concat(jugadoresSinGrupoCat.map(j => j.id));
+        
+        const configGrupos = [
+            ...Array(grupos5).fill(5),
+            ...Array(grupos4).fill(4),
+            ...Array(grupos3).fill(3)
+        ];
+        
+        for (const tamanoGrupo of configGrupos) {
+            if (jugadoresDisponibles.length === 0) break;
+            
+            const jugadorSemilla = jugadoresDisponibles.shift();
+            const integrantesGrupo = [jugadorSemilla];
+            
+            while (integrantesGrupo.length < tamanoGrupo && jugadoresDisponibles.length > 0) {
+                const jugadoresConScore = jugadoresDisponibles.map(j => ({
+                    jugador: j,
+                    score: calcularCompatibilidadConGrupo(j, integrantesGrupo.map(i => i.id), inscriptos)
+                }));
+                
+                jugadoresConScore.sort((a, b) => b.score - a.score);
+                
+                const masCompatible = jugadoresConScore[0];
+                integrantesGrupo.push(masCompatible.jugador);
+                
+                const index = jugadoresDisponibles.findIndex(j => j.id === masCompatible.jugador.id);
+                if (index > -1) jugadoresDisponibles.splice(index, 1);
+            }
+            
+            const incompleto = integrantesGrupo.length < tamanoGrupo;
+            
+            grupos.push({
+                numero: numeroGrupoGlobal++,
+                categoria: categoria,
+                integrantes: integrantesGrupo.map(j => j.id),
+                incompleto: incompleto,
+                cantidad: tamanoGrupo
+            });
+        }
+        
+        if (jugadoresDisponibles.length > 0) {
+            const grupoCategoria = grupos.filter(g => g.categoria === categoria);
+            if (grupoCategoria.length > 0) {
+                const ultimoGrupo = grupoCategoria[grupoCategoria.length - 1];
+                ultimoGrupo.integrantes.push(...jugadoresDisponibles.map(j => j.id));
+                ultimoGrupo.incompleto = ultimoGrupo.integrantes.length < ultimoGrupo.cantidad;
+            } else {
+                sinGrupo = sinGrupo.concat(jugadoresDisponibles.map(j => j.id));
+            }
+        }
+    }
+
+    // GENERAR PARTIDOS ROUND ROBIN CON HORARIOS COMPATIBLES
+    let usoHorarios = {};
+    let advertencias = [];
+    
+    horarios.forEach(h => {
+        usoHorarios[h.id] = 0;
+    });
+
+    for (const grupo of grupos) {
+        const integrantesIds = grupo.integrantes;
+        
+        for (let i = 0; i < integrantesIds.length; i++) {
+            for (let j = i + 1; j < integrantesIds.length; j++) {
+                const localId = integrantesIds[i];
+                const visitanteId = integrantesIds[j];
+                
+                const jugadorLocal = inscriptos.find(j => j.id === localId);
+                const jugadorVisitante = inscriptos.find(j => j.id === visitanteId);
+                
+                if (!jugadorLocal || !jugadorVisitante) {
+                    console.error(`No se encontraron datos de jugadores ${localId} vs ${visitanteId}`);
+                    continue;
+                }
+                
+                const horariosLocalSet = new Set(jugadorLocal.horarios);
+                const horariosComunes = jugadorVisitante.horarios.filter(h => horariosLocalSet.has(h));
+                
+                let horarioAsignado = null;
+                
+                if (horariosComunes.length === 0) {
+                    advertencias.push({
+                        tipo: 'sin_horario_compatible',
+                        local: localId,
+                        visitante: visitanteId,
+                        grupo: grupo.numero,
+                        mensaje: `Los jugadores ${localId} y ${visitanteId} no tienen horarios disponibles en común`
+                    });
+                } else {
+                    const horariosComunesInfo = horariosComunes.map(id => ({
+                        id: id,
+                        uso: usoHorarios[id] || 0,
+                        cupo: horarios.find(h => h.id === id)?.cupo || 4
+                    })).sort((a, b) => a.uso - b.uso);
+                    
+                    for (const horarioInfo of horariosComunesInfo) {
+                        if (horarioInfo.uso < horarioInfo.cupo) {
+                            horarioAsignado = horarioInfo.id;
+                            usoHorarios[horarioInfo.id]++;
+                            break;
+                        }
+                    }
+                    
+                    if (!horarioAsignado) {
+                        advertencias.push({
+                            tipo: 'cupo_lleno',
+                            local: localId,
+                            visitante: visitanteId,
+                            grupo: grupo.numero,
+                            mensaje: `Los horarios comunes entre ${localId} y ${visitanteId} están todos ocupados`
+                        });
+                    }
+                }
+                
+                let horarioInfo = null;
+                if (horarioAsignado && horariosMap[horarioAsignado]) {
+                    const h = horariosMap[horarioAsignado];
+                    horarioInfo = {
+                        id: h.id,
+                        dia: h.dia,
+                        hora: h.hora
+                    };
+                }
+                
+                let horariosLocal = [];
+                let horariosVisitante = [];
+                
+                if (!horarioAsignado) {
+                    horariosLocal = jugadorLocal.horarios.map(hId => {
+                        const h = horariosMap[hId];
+                        return h ? { id: h.id, dia: h.dia, hora: h.hora } : null;
+                    }).filter(h => h !== null);
+                    
+                    horariosVisitante = jugadorVisitante.horarios.map(hId => {
+                        const h = horariosMap[hId];
+                        return h ? { id: h.id, dia: h.dia, hora: h.hora } : null;
+                    }).filter(h => h !== null);
+                }
+                
+                partidos.push({
+                    local: localId,
+                    localNombre: jugadorLocal.nombre,
+                    visitante: visitanteId,
+                    visitanteNombre: jugadorVisitante.nombre,
+                    horario: horarioInfo,
+                    grupo: grupo.numero,
+                    horariosDisponiblesLocal: horariosLocal,
+                    horariosDisponiblesVisitante: horariosVisitante
+                });
+            }
+        }
+    }
+
+    // Contar partidos pendientes (sin horario asignado)
+    const partidosPendientesCount = partidos.filter(p => p.horario === null).length;
+
+    return {
+        grupos,
+        partidos,
+        sinGrupo,
+        advertencias,
+        partidosPendientesCount
+    };
+}
+
 async function armarGruposBasico(configuracionGrupos, idTorneo) {
     const connection = await mysql.createConnection(connectionConfig);
 
     try {
-        console.log('=== ARMANDO GRUPOS CON ALGORITMO LOCAL ===');
+        console.log('=== ARMANDO GRUPOS CON ALGORITMO LOCAL (OPTIMIZACIÓN 10 INTENTOS) ===');
         
         // 1. OBTENER DATOS DE LA BASE
         const [horariosResult] = await connection.execute(
@@ -385,7 +627,6 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
         await connection.end();
 
         // 2. PREPARAR DATOS
-        // Crear mapa de horarios para búsqueda rápida
         const horariosMap = {};
         const horarios = horariosResult.map(h => {
             const horarioInfo = {
@@ -407,256 +648,46 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
                 i.horarios.split(',').map(h => parseInt(h)).filter(h => !isNaN(h)) : []
         }));
 
-        // 3. FUNCIÓN PARA CALCULAR COMPATIBILIDAD ENTRE DOS JUGADORES
-        function calcularCompatibilidad(jugador1, jugador2) {
-            const horarios1 = new Set(jugador1.horarios);
-            const horarios2 = new Set(jugador2.horarios);
-            
-            // Contar horarios en común
-            let comunes = 0;
-            for (const h of horarios1) {
-                if (horarios2.has(h)) comunes++;
-            }
-            
-            return comunes;
-        }
-
-        // 4. FUNCIÓN PARA CALCULAR COMPATIBILIDAD DE UN JUGADOR CON UN GRUPO
-        function calcularCompatibilidadConGrupo(jugador, grupoIntegrantes, todosJugadores) {
-            let compatibilidadTotal = 0;
-            
-            for (const idIntegrante of grupoIntegrantes) {
-                const integrante = todosJugadores.find(j => j.id === idIntegrante);
-                if (integrante) {
-                    compatibilidadTotal += calcularCompatibilidad(jugador, integrante);
-                }
-            }
-            
-            return compatibilidadTotal;
-        }
-
-        // 5. ALGORITMO DE DISTRIBUCIÓN EN GRUPOS POR COMPATIBILIDAD
-        let grupos = [];
-        let partidos = [];
-        let sinGrupo = [];
-        let numeroGrupoGlobal = 1;
-
-        for (const [categoria, config] of Object.entries(configuracionGrupos)) {
-            const jugadoresCat = inscriptos.filter(i => i.categoria === categoria);
-            
-            if (jugadoresCat.length === 0) continue;
-
-            // Calcular cuántos jugadores queremos usar según configuración
-            const grupos3 = config.grupos3 || 0;
-            const grupos4 = config.grupos4 || 0;
-            const grupos5 = config.grupos5 || 0;
-            
-            const totalJugadoresNecesarios = (grupos3 * 3) + (grupos4 * 4) + (grupos5 * 5);
-            
-            // Separar jugadores que entrarán en grupos vs los que quedarán sin grupo
-            let jugadoresDisponibles = [...jugadoresCat];
-            let jugadoresSinGrupoCat = [];
-            
-            if (totalJugadoresNecesarios <= jugadoresCat.length) {
-                // Hay más jugadores de los necesarios, algunos quedarán fuera
-                // Los que quedan fuera son los que menos horarios tienen (menos flexibles)
-                jugadoresDisponibles.sort((a, b) => b.horarios.length - a.horarios.length);
-                jugadoresSinGrupoCat = jugadoresDisponibles.slice(totalJugadoresNecesarios);
-                jugadoresDisponibles = jugadoresDisponibles.slice(0, totalJugadoresNecesarios);
-            }
-            
-            // Agregar a la lista global de sin_grupo
-            sinGrupo = sinGrupo.concat(jugadoresSinGrupoCat.map(j => j.id));
-            
-            // Crear grupos usando algoritmo greedy por compatibilidad
-            const configGrupos = [
-                ...Array(grupos5).fill(5),
-                ...Array(grupos4).fill(4),
-                ...Array(grupos3).fill(3)
-            ];
-            
-            for (const tamanoGrupo of configGrupos) {
-                if (jugadoresDisponibles.length === 0) break;
-                
-                // Tomar el primer jugador disponible como semilla
-                const jugadorSemilla = jugadoresDisponibles.shift();
-                const integrantesGrupo = [jugadorSemilla];
-                
-                // Completar el grupo con los jugadores más compatibles
-                while (integrantesGrupo.length < tamanoGrupo && jugadoresDisponibles.length > 0) {
-                    // Calcular compatibilidad de cada jugador disponible con el grupo actual
-                    const jugadoresConScore = jugadoresDisponibles.map(j => ({
-                        jugador: j,
-                        score: calcularCompatibilidadConGrupo(j, integrantesGrupo.map(i => i.id), inscriptos)
-                    }));
-                    
-                    // Ordenar por score descendente (mayor compatibilidad primero)
-                    jugadoresConScore.sort((a, b) => b.score - a.score);
-                    
-                    // Tomar el más compatible
-                    const masCompatible = jugadoresConScore[0];
-                    integrantesGrupo.push(masCompatible.jugador);
-                    
-                    // Remover de disponibles
-                    const index = jugadoresDisponibles.findIndex(j => j.id === masCompatible.jugador.id);
-                    if (index > -1) jugadoresDisponibles.splice(index, 1);
-                }
-                
-                // Crear el grupo
-                const incompleto = integrantesGrupo.length < tamanoGrupo;
-                
-                grupos.push({
-                    numero: numeroGrupoGlobal++,
-                    categoria: categoria,
-                    integrantes: integrantesGrupo.map(j => j.id),
-                    incompleto: incompleto,
-                    cantidad: tamanoGrupo
-                });
-            }
-            
-            // Si sobraron jugadores, los agregamos al último grupo de esta categoría
-            if (jugadoresDisponibles.length > 0) {
-                const grupoCategoria = grupos.filter(g => g.categoria === categoria);
-                if (grupoCategoria.length > 0) {
-                    const ultimoGrupo = grupoCategoria[grupoCategoria.length - 1];
-                    ultimoGrupo.integrantes.push(...jugadoresDisponibles.map(j => j.id));
-                    ultimoGrupo.incompleto = ultimoGrupo.integrantes.length < ultimoGrupo.cantidad;
-                } else {
-                    // No hay grupos en esta categoría, mandar a sin_grupo
-                    sinGrupo = sinGrupo.concat(jugadoresDisponibles.map(j => j.id));
-                }
-            }
-        }
-
-        // 4. GENERAR PARTIDOS ROUND ROBIN CON HORARIOS COMPATIBLES
-        let usoHorarios = {}; // Seguimiento de cuántos partidos hay en cada horario
-        let advertencias = []; // Para partidos que no se pueden jugar
+        // 3. OPTIMIZACIÓN: PROBAR 10 INTENTOS CON DIFERENTES ORDENES
+        let mejorSolucion = null;
+        let mejorPuntaje = Infinity;
         
-        // Inicializar contador de uso para cada horario
-        horarios.forEach(h => {
-            usoHorarios[h.id] = 0;
-        });
-
-        for (const grupo of grupos) {
-            const integrantesIds = grupo.integrantes;
+        for (let intento = 0; intento < 10; intento++) {
+            const resultado = intentarFormarGrupos(
+                inscriptos,
+                configuracionGrupos,
+                horarios,
+                horariosMap,
+                intento
+            );
             
-            // Generar todos los partidos del round robin
-            for (let i = 0; i < integrantesIds.length; i++) {
-                for (let j = i + 1; j < integrantesIds.length; j++) {
-                    const localId = integrantesIds[i];
-                    const visitanteId = integrantesIds[j];
-                    
-                    // Obtener objetos completos de los jugadores
-                    const jugadorLocal = inscriptos.find(j => j.id === localId);
-                    const jugadorVisitante = inscriptos.find(j => j.id === visitanteId);
-                    
-                    if (!jugadorLocal || !jugadorVisitante) {
-                        console.error(`No se encontraron datos de jugadores ${localId} vs ${visitanteId}`);
-                        continue;
-                    }
-                    
-                    // Encontrar horarios disponibles para AMBOS jugadores (intersección)
-                    const horariosLocalSet = new Set(jugadorLocal.horarios);
-                    const horariosComunes = jugadorVisitante.horarios.filter(h => horariosLocalSet.has(h));
-                    
-                    let horarioAsignado = null;
-                    
-                    if (horariosComunes.length === 0) {
-                        // No hay horario compatible entre estos dos jugadores
-                        advertencias.push({
-                            tipo: 'sin_horario_compatible',
-                            local: localId,
-                            visitante: visitanteId,
-                            grupo: grupo.numero,
-                            mensaje: `Los jugadores ${localId} y ${visitanteId} no tienen horarios disponibles en común`
-                        });
-                        console.warn(`⚠ No hay horario compatible entre ${localId} y ${visitanteId}`);
-                    } else {
-                        // Entre los horarios comunes, buscar uno con cupo disponible
-                        // Ordenar por uso (menos usados primero) para distribuir equitativamente
-                        const horariosComunesInfo = horariosComunes.map(id => ({
-                            id: id,
-                            uso: usoHorarios[id] || 0,
-                            cupo: horarios.find(h => h.id === id)?.cupo || 4
-                        })).sort((a, b) => a.uso - b.uso);
-                        
-                        for (const horarioInfo of horariosComunesInfo) {
-                            if (horarioInfo.uso < horarioInfo.cupo) {
-                                horarioAsignado = horarioInfo.id;
-                                usoHorarios[horarioInfo.id]++;
-                                break;
-                            }
-                        }
-                        
-                        // Si todos los horarios comunes están llenos, advertir
-                        if (!horarioAsignado) {
-                            advertencias.push({
-                                tipo: 'cupo_lleno',
-                                local: localId,
-                                visitante: visitanteId,
-                                grupo: grupo.numero,
-                                mensaje: `Los horarios comunes entre ${localId} y ${visitanteId} están todos ocupados`
-                            });
-                            console.warn(`⚠ Cupo lleno para partido ${localId} vs ${visitanteId}`);
-                        }
-                    }
-                    
-                     // Preparar información del horario asignado
-                    let horarioInfo = null;
-                    if (horarioAsignado && horariosMap[horarioAsignado]) {
-                        const h = horariosMap[horarioAsignado];
-                        horarioInfo = {
-                            id: h.id,
-                            dia: h.dia,
-                            hora: h.hora
-                        };
-                    }
-                    
-                    // Preparar horarios disponibles de cada jugador para partidos pendientes
-                    let horariosLocal = [];
-                    let horariosVisitante = [];
-                    
-                    if (!horarioAsignado) {
-                        // Obtener información completa de horarios disponibles
-                        horariosLocal = jugadorLocal.horarios.map(hId => {
-                            const h = horariosMap[hId];
-                            return h ? { id: h.id, dia: h.dia, hora: h.hora } : null;
-                        }).filter(h => h !== null);
-                        
-                        horariosVisitante = jugadorVisitante.horarios.map(hId => {
-                            const h = horariosMap[hId];
-                            return h ? { id: h.id, dia: h.dia, hora: h.hora } : null;
-                        }).filter(h => h !== null);
-                    }
-                    
-                    partidos.push({
-                        local: localId,
-                        localNombre: jugadorLocal.nombre,
-                        visitante: visitanteId,
-                        visitanteNombre: jugadorVisitante.nombre,
-                        horario: horarioInfo, // null si no se pudo asignar, o objeto con id, dia, hora
-                        grupo: grupo.numero,
-                        // Solo incluir si no hay horario asignado
-                        horariosDisponiblesLocal: horariosLocal,
-                        horariosDisponiblesVisitante: horariosVisitante
-                    });
+            console.log(`Intento ${intento + 1}: ${resultado.partidosPendientesCount} partidos pendientes`);
+            
+            if (resultado.partidosPendientesCount < mejorPuntaje) {
+                mejorPuntaje = resultado.partidosPendientesCount;
+                mejorSolucion = resultado;
+                
+                // Si encontramos solución perfecta, salir temprano
+                if (mejorPuntaje === 0) {
+                    console.log('✓ Solución perfecta encontrada en intento', intento + 1);
+                    break;
                 }
             }
         }
 
-        console.log(`✓ Generados ${grupos.length} grupos con ${partidos.length} partidos`);
-        if (sinGrupo.length > 0) {
-            console.log(`⚠ ${sinGrupo.length} jugadores sin grupo`);
+        console.log(`\n✓ Mejor solución: ${mejorSolucion.grupos.length} grupos, ${mejorPuntaje} partidos pendientes`);
+        if (mejorSolucion.sinGrupo.length > 0) {
+            console.log(`⚠ ${mejorSolucion.sinGrupo.length} jugadores sin grupo`);
         }
-        if (advertencias.length > 0) {
-            console.log(`⚠ ${advertencias.length} partidos con problemas de horarios`);
+        if (mejorSolucion.advertencias.length > 0) {
+            console.log(`⚠ ${mejorSolucion.advertencias.length} advertencias de horarios`);
         }
 
         return {
-            grupos: grupos,
-            partidos: partidos,
-            sin_grupo: sinGrupo,
-            advertencias: advertencias
+            grupos: mejorSolucion.grupos,
+            partidos: mejorSolucion.partidos,
+            sin_grupo: mejorSolucion.sinGrupo,
+            advertencias: mejorSolucion.advertencias
         };
 
     } catch (error) {
