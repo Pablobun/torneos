@@ -254,13 +254,19 @@ app.post('/api/guardar-grupos', async (req, res) => {
         if (partidos && partidos.length > 0) {
             for (const partido of partidos) {
                 // Solo guardar partidos con horario asignado (no null)
+                // Manejar caso donde horario puede ser objeto {id, dia, hora} o número
+                let horarioId = null;
                 if (partido.horario !== null && partido.horario !== undefined) {
+                    horarioId = typeof partido.horario === 'object' ? partido.horario.id : partido.horario;
+                }
+                
+                if (horarioId !== null) {
                     const sqlPartido = `
                         INSERT INTO partido (id_horario, id_inscriptoL, id_inscriptoV)
                         VALUES (?, ?, ?)
                     `;
                     await connection.execute(sqlPartido, [
-                        partido.horario,
+                        horarioId,
                         partido.local,
                         partido.visitante
                     ]);
@@ -355,6 +361,35 @@ app.get('/api/partidos/:idTorneo', async (req, res) => {
     } catch (error) {
         console.error('Error al obtener partidos:', error);
         res.status(500).json({ error: 'Error al obtener los partidos.' });
+    }
+});
+
+// ==========================================================
+// ENDPOINT PARA ACTUALIZAR HORARIO DE UN PARTIDO
+// ==========================================================
+app.put('/api/partidos/:idPartido', async (req, res) => {
+    const { idPartido } = req.params;
+    const { id_horario } = req.body;
+    
+    if (!id_horario) {
+        return res.status(400).json({ error: 'Se requiere id_horario' });
+    }
+    
+    const sql = 'UPDATE partido SET id_horario = ? WHERE id = ?';
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        const [result] = await connection.execute(sql, [id_horario, idPartido]);
+        await connection.end();
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Partido no encontrado' });
+        }
+        
+        res.status(200).json({ mensaje: 'Horario actualizado exitosamente' });
+    } catch (error) {
+        console.error('Error al actualizar partido:', error);
+        res.status(500).json({ error: 'Error al actualizar el horario del partido.' });
     }
 });
 

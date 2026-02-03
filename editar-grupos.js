@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', function () {
         gruposContainer.innerHTML = html;
     }
 
-    // Mostrar partidos (con información de horarios reales)
+    // Mostrar partidos (con información de horarios reales y opción de edición)
     function mostrarPartidos() {
         if (partidosData.length === 0) {
             partidosContainer.innerHTML = '<p>No hay partidos guardados para este torneo.</p>';
@@ -128,9 +128,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const hora = partido.horario || 'Hora no especificada';
             const categoria = partido.categoria || 'Sin categoría';
             const grupo = partido.grupo || '-';
+            const partidoId = partido.id;
             
             html += `
-                <div class="partido-item">
+                <div class="partido-item" data-partido-id="${partidoId}">
                     <div class="partido-info">
                         <span class="partido-local">${local}</span>
                         <span class="partido-vs">VS</span>
@@ -138,7 +139,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                     <div class="partido-detalles">
                         <span class="partido-categoria">${categoria} - Grupo ${grupo}</span>
-                        <span class="partido-horario">${dia} - ${hora}</span>
+                        <span class="partido-horario" id="horario-${partidoId}">${dia} - ${hora}</span>
+                    </div>
+                    <div class="partido-acciones">
+                        <button class="btn-editar-horario" data-partido-id="${partidoId}">✏️ Editar Horario</button>
                     </div>
                 </div>
             `;
@@ -146,6 +150,84 @@ document.addEventListener('DOMContentLoaded', function () {
         
         html += '</div>';
         partidosContainer.innerHTML = html;
+        
+        // Agregar event listeners a los botones de editar
+        document.querySelectorAll('.btn-editar-horario').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const partidoId = e.target.dataset.partidoId;
+                mostrarSelectorHorario(partidoId);
+            });
+        });
+    }
+
+    // Mostrar selector de horario para editar
+    function mostrarSelectorHorario(partidoId) {
+        const partido = partidosData.find(p => p.id == partidoId);
+        if (!partido) return;
+
+        // Crear modal o dropdown para seleccionar horario
+        let opcionesHorarios = horariosData.map(h => 
+            `<option value="${h.id}" ${h.id == partido.id_horario ? 'selected' : ''}>${h.dia_semana} ${h.fecha || ''} - ${h.hora_inicio}</option>`
+        ).join('');
+
+        const selectorHtml = `
+            <div class="selector-horario-modal" id="modal-${partidoId}">
+                <select id="select-horario-${partidoId}" class="select-horario">
+                    <option value="">Seleccionar horario...</option>
+                    ${opcionesHorarios}
+                </select>
+                <button class="btn-guardar-horario" data-partido-id="${partidoId}">💾 Guardar</button>
+                <button class="btn-cancelar-horario" data-partido-id="${partidoId}">❌ Cancelar</button>
+            </div>
+        `;
+
+        const horarioSpan = document.getElementById(`horario-${partidoId}`);
+        horarioSpan.innerHTML = selectorHtml;
+
+        // Agregar event listeners
+        document.querySelector(`#modal-${partidoId} .btn-guardar-horario`).addEventListener('click', async (e) => {
+            const nuevoHorarioId = document.querySelector(`#select-horario-${partidoId}`).value;
+            if (nuevoHorarioId) {
+                await actualizarHorarioPartido(partidoId, nuevoHorarioId);
+            }
+        });
+
+        document.querySelector(`#modal-${partidoId} .btn-cancelar-horario`).addEventListener('click', () => {
+            mostrarPartidos(); // Recargar para cancelar
+        });
+    }
+
+    // Actualizar horario de un partido
+    async function actualizarHorarioPartido(partidoId, nuevoHorarioId) {
+        try {
+            loadingOverlay.classList.remove('hidden');
+            
+            const response = await fetch(`${API_BASE_URL}/partidos/${partidoId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    id_horario: nuevoHorarioId
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Error al actualizar horario');
+            }
+
+            mostrarNotificacion('Horario actualizado exitosamente', 'success');
+            
+            // Recargar datos
+            await cargarGruposYPartidos();
+            mostrarPartidos();
+            
+        } catch (error) {
+            console.error('Error:', error);
+            mostrarNotificacion('Error al actualizar horario: ' + error.message, 'error');
+        } finally {
+            loadingOverlay.classList.add('hidden');
+        }
     }
 
     // Función de notificación
@@ -167,7 +249,10 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     btnActualizar.addEventListener('click', async () => {
-        mostrarNotificacion('Función de actualización en desarrollo', 'info');
+        mostrarNotificacion('Recargando datos...', 'info');
+        await cargarGruposYPartidos();
+        mostrarPartidos();
+        mostrarNotificacion('Datos actualizados', 'success');
     });
 
     // Iniciar la aplicación

@@ -876,6 +876,79 @@ footer {
 }
 
 /* ========================================= */
+/* --- ESTILOS EDICIÓN DE PARTIDOS --- */
+/* ========================================= */
+
+.partido-acciones {
+    margin-top: 1rem;
+    text-align: center;
+}
+
+.btn-editar-horario {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.3s;
+}
+
+.btn-editar-horario:hover {
+    background: #2980b9;
+}
+
+.selector-horario-modal {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    background: #fff;
+    border: 2px solid #3498db;
+    border-radius: 8px;
+    margin-top: 10px;
+}
+
+.select-horario {
+    padding: 8px 12px;
+    border: 1px solid #bdc3c7;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    min-width: 250px;
+}
+
+.btn-guardar-horario {
+    background: #27ae60;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.btn-guardar-horario:hover {
+    background: #229954;
+}
+
+.btn-cancelar-horario {
+    background: #e74c3c;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.btn-cancelar-horario:hover {
+    background: #c0392b;
+}
+
+/* ========================================= */
 /* --- ESTILOS PARA DISPOSITIVOS MÓVILES --- */
 /* ========================================= */
 @media (max-width: 600px) {
