@@ -336,7 +336,7 @@ app.get('/api/grupos/:idTorneo', async (req, res) => {
 app.get('/api/partidos/:idTorneo', async (req, res) => {
     const { idTorneo } = req.params;
     
-    // Query simplificado para obtener partidos con info de horarios e inscriptos
+    // Query para obtener TODOS los partidos (con y sin horario)
     const sql = `
         SELECT 
             p.id,
@@ -350,15 +350,19 @@ app.get('/api/partidos/:idTorneo', async (req, res) => {
             p.id_inscriptoV as visitante_id,
             iv.integrantes as visitante_nombre
         FROM partido p
-        INNER JOIN horarios h ON p.id_horario = h.id AND h.id_torneo_fk = ?
+        LEFT JOIN horarios h ON p.id_horario = h.id
         LEFT JOIN inscriptos il ON p.id_inscriptoL = il.id
         LEFT JOIN inscriptos iv ON p.id_inscriptoV = iv.id
-        ORDER BY h.fecha, h.hora_inicio
+        WHERE il.id_torneo_fk = ? OR iv.id_torneo_fk = ?
+        ORDER BY 
+            CASE WHEN h.fecha IS NOT NULL THEN 0 ELSE 1 END,
+            h.fecha, 
+            h.hora_inicio
     `;
     
     try {
         const connection = await mysql.createConnection(connectionConfig);
-        const [rows] = await connection.execute(sql, [idTorneo]);
+        const [rows] = await connection.execute(sql, [idTorneo, idTorneo]);
         await connection.end();
         res.status(200).json(rows);
     } catch (error) {
