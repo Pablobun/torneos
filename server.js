@@ -87,7 +87,7 @@ app.post('/api/inscribir', async (req, res) => {
         // 1. Insertamos en 'inscriptos'. La consulta ahora es más corta.
         const sqlInscriptos = `
             INSERT INTO inscriptos (id_torneo_fk, integrantes, correo, telefono, categoria, acepto)
-            VALUES (?, ?, ?, ?, ?);
+            VALUES (?, ?, ?, ?, ?, ?);
         `;
         // El array de valores ahora coincide perfectamente con la consulta
         const valuesInscriptos = [
@@ -129,7 +129,7 @@ app.get('/api/inscriptos', async (req, res) => {
     if (!id_torneo_fk) {
         return res.status(400).json({ error: 'Se requiere el ID del torneo.' });
     }
-    let sql = 'SELECT integrantes, categoria FROM inscriptos WHERE id_torneo_fk = ?';
+    let sql = 'SELECT id, integrantes, categoria FROM inscriptos WHERE id_torneo_fk = ?';
     const params = [id_torneo_fk];
     if (categoria) {
         sql += ' AND categoria = ?';
@@ -174,7 +174,7 @@ app.get('/api/horarios-compatibles/:idTorneo', async (req, res) => {
 });
 
 // ==========================================================
-// ENDPOINT PARA ARMAR GRUPOS (SISTEMA EXPERTO)
+// ENDPOINT PARA ARMAR GRUPOS (SISTEMA EXPERTO) - SIMPLIFICADO
 // ==========================================================
 app.post('/api/armar-grupos', async (req, res) => {
     const { configuracionGrupos, idTorneo } = req.body;
@@ -184,8 +184,8 @@ app.post('/api/armar-grupos', async (req, res) => {
         res.status(200).json({ 
             grupos: resultado.grupos, 
             partidos: resultado.partidos,
-            advertencias: resultado.advertencias,
-            mensaje: 'Grupos y horarios generados exitosamente con IA' 
+            sin_grupo: resultado.sin_grupo,
+            mensaje: 'Grupos generados exitosamente' 
         });
     } catch (error) {
         console.error('Error al armar grupos:', error);
@@ -194,24 +194,24 @@ app.post('/api/armar-grupos', async (req, res) => {
 });
 
 // ==========================================================
-// ENDPOINT PARA GUARDAR GRUPOS EN LA BD
+// ENDPOINT PARA GUARDAR GRUPOS Y PARTIDOS EN LA BD
 // ==========================================================
 app.post('/api/guardar-grupos', async (req, res) => {
-    const { grupos, idTorneo } = req.body;
+    const { grupos, partidos, idTorneo } = req.body;
     let connection;
 
     try {
         connection = await mysql.createConnection(connectionConfig);
         await connection.beginTransaction();
 
-        // Insertar grupos
+        // 1. Insertar grupos
         for (const grupo of grupos) {
             const sqlGrupo = `
                 INSERT INTO grupos (numero_grupo, id_torneo_fk, categoria, cantidad_integrantes, estado)
                 VALUES (?, ?, ?, ?, 'armado')
             `;
             const [resultGrupo] = await connection.execute(sqlGrupo, [
-                grupo.numero_grupo || grupo.numero,
+                grupo.numero,
                 idTorneo,
                 grupo.categoria,
                 grupo.cantidad
@@ -220,21 +220,37 @@ app.post('/api/guardar-grupos', async (req, res) => {
             const idGrupo = resultGrupo.insertId;
             
             // Insertar integrantes del grupo
-            for (const integrante of grupo.integrantes) {
+            for (const integranteId of grupo.integrantes) {
                 const sqlIntegrante = `
                     INSERT INTO grupo_integrantes (id_grupo, id_inscripto)
                     VALUES (?, ?)
                 `;
-                await connection.execute(sqlIntegrante, [idGrupo, integrante.id || integrante.id_inscripto]);
+                await connection.execute(sqlIntegrante, [idGrupo, integranteId]);
+            }
+        }
+
+        // 2. Insertar partidos
+        if (partidos && partidos.length > 0) {
+            for (const partido of partidos) {
+                const sqlPartido = `
+                    INSERT INTO partido (id_horario, id_inscriptoL, id_inscriptoV)
+                    VALUES (?, ?, ?)
+                `;
+                await connection.execute(sqlPartido, [
+                    partido.horario,
+                    partido.local,
+                    partido.visitante
+                ]);
             }
         }
 
         await connection.commit();
-        res.status(200).json({ mensaje: 'Grupos guardados exitosamente' });
+        res.status(200).json({ mensaje: 'Grupos y partidos guardados exitosamente' });
+        
     } catch (error) {
         if (connection) await connection.rollback();
         console.error('Error al guardar grupos:', error);
-        res.status(500).json({ error: 'Error al guardar los grupos.' });
+        res.status(500).json({ error: 'Error al guardar los grupos y partidos.' });
     } finally {
         if (connection) await connection.end();
     }
@@ -267,138 +283,73 @@ app.get('/api/grupos/:idTorneo', async (req, res) => {
 });
 
 // ==========================================================
-// FUNCIÓN PARA ARMAR GRUPOS (CON IA)
+// FUNCIÓN PARA ARMAR GRUPOS (CON IA) - VERSIÓN SIMPLIFICADA
 // ==========================================================
 async function armarGruposBasico(configuracionGrupos, idTorneo) {
     const connection = await mysql.createConnection(connectionConfig);
 
     try {
-        // 1. Obtener datos crudos con logging
+        // 1. Obtener datos crudos
         console.log('=== DATOS CRUDOS ===');
         const [horariosResult] = await connection.execute(
-            'SELECT id, dia_semana, fecha, hora_inicio, Canchas FROM horarios WHERE id_torneo_fk = ?',
+            'SELECT id, Canchas FROM horarios WHERE id_torneo_fk = ?',
             [idTorneo]
         );
-        console.log('Horarios crudos:', horariosResult);
 
         const [inscriptosResult] = await connection.execute(
-            `SELECT i.id, i.integrantes, i.categoria, 
-                    GROUP_CONCAT(ih.id_horario_fk) as horarios
+            `SELECT i.id, i.categoria, GROUP_CONCAT(ih.id_horario_fk) as horarios
              FROM inscriptos i 
              LEFT JOIN inscriptos_horarios ih ON i.id = ih.id_inscripto_fk 
              WHERE i.id_torneo_fk = ? 
              GROUP BY i.id`,
             [idTorneo]
         );
-        console.log('Inscriptos crudos:', inscriptosResult);
 
-        // 2. Preparar datos para la IA con validación
-        const horariosConCupo = horariosResult
-            .filter(h => h && h.id && h.fecha && h.hora_inicio) // Filtrar nulos
-            .map(h => ({
-                id: h.id,
-                fecha_formateada: h.fecha instanceof Date ? 
-                    `${h.fecha.getUTCDate()}/${h.fecha.getUTCMonth() + 1}/${h.fecha.getUTCFullYear().toString().slice(2)}` :
-                    `${h.fecha.substring(8,10)}/${h.fecha.substring(5,7)}/${h.fecha.substring(2,4)}`,
-                hora: h.hora_inicio instanceof Date ? 
-                    `${h.hora_inicio.getUTCHours()}:${h.hora_inicio.getUTCMinutes().toString().padStart(2, '0')}` :
-                    h.hora_inicio.substring(0,5),
-                cupo: h.Canchas
-            }));
+        // 2. Preparar datos simplificados para la IA
+        const horariosSimples = horariosResult.map(h => ({
+            id: h.id,
+            cupo: h.Canchas
+        }));
 
-        const inscriptosConHorarios = inscriptosResult
-            .filter(i => i && i.id && i.integrantes && i.categoria) // Filtrar nulos
-            .map(i => ({
-                id: i.id,
-                integrantes: i.integrantes,
-                categoria: i.categoria,
-                horarios_disponibles: (typeof i.horarios === 'string') ? 
-                    i.horarios.split(',').map(h => parseInt(h)).filter(h => !isNaN(h)) : []
-            }));
+        const inscriptosSimples = inscriptosResult.map(i => ({
+            id: i.id,
+            categoria: i.categoria,
+            horarios: (typeof i.horarios === 'string') ? 
+                i.horarios.split(',').map(h => parseInt(h)).filter(h => !isNaN(h)) : []
+        }));
 
-        console.log('=== DATOS PROCESADOS PARA IA ===');
-        console.log('Horarios procesados:', horariosConCupo.length);
-        console.log('Inscriptos procesados:', inscriptosConHorarios.length);
-
-        // 3. Generar resumen de configuración dinámico
-        const generarResumenConfiguracion = () => {
-            return Object.entries(configuracionGrupos).map(([cat, config]) => {
-                const totalPorCategoria = (config.grupos3 || 0) * 3 + (config.grupos4 || 0) * 4 + (config.grupos5 || 0) * 5;
-                let detalle = `- ${cat}: Se necesitan ${totalPorCategoria} jugadores (`;
-                const partes = [];
-                if (config.grupos3 > 0) partes.push(`${config.grupos3} grupos de 3`);
-                if (config.grupos4 > 0) partes.push(`${config.grupos4} grupos de 4`);
-                if (config.grupos5 > 0) partes.push(`${config.grupos5} grupos de 5`);
-                return detalle + partes.join(', ') + ')';
-            }).join('\n');
-        };
-
-        // 4. Construir prompt con variables que se reemplazarán
+        // 3. Construir prompt simplificado
         const prompt = `
-Actúa como un organizador experto de torneos de tenis round robin.
+Organizador de torneos. Genera JSON con grupos round robin.
 
-DATOS DISPONIBLES:
-- Horarios (id, fecha_formateada, hora, cupo): ${JSON.stringify(horariosConCupo)}
-- Jugadores (id, integrantes, categoria, horarios_disponibles): ${JSON.stringify(inscriptosConHorarios)}
-- Configuración: ${JSON.stringify(configuracionGrupos)}
+HORARIOS: ${JSON.stringify(horariosSimples)}
+JUGADORES: ${JSON.stringify(inscriptosSimples)}
+CONFIG: ${JSON.stringify(configuracionGrupos)}
 
-REGLAS IMPORTANTES:
-1. Round robin completo: cada jugador debe jugar contra todos los demás de su grupo
-2. Horarios de partido: DEBEN estar en los horarios disponibles de AMBOS jugadores
-3. Límite de cupos: cada partido ocupa 1 cupo del horario. NO EXCEDER cupos disponibles
-4. Excluir jugadores sin horarios (arrays vacíos)
-5. RESPETAR EXACTAMENTE las cantidades solicitadas en configuración
-6. Separar por categorías: NO MEZCLAR jugadores entre categorías
+REGLAS:
+1. Round robin: todos vs todos en cada grupo
+2. Usar SOLO horarios de la lista (ids válidos: ${horariosSimples.map(h => h.id).join(', ')})
+3. Respetar cupos de canchas (no exceder)
+4. Si hay grupos incompletos, armarlos igual y reportar cuántos faltan
+5. Si un jugador no entra en ningún grupo, incluirlo en sin_grupo
 
-CONFIGURACIÓN REQUERIDA:
-${generarResumenConfiguracion()}
-
-ESTRUCTURA JSON OBLIGATORIA (solo JSON, sin texto adicional):
+DEVOLVER SOLO IDs NUMÉRICOS, sin nombres:
 {
   "grupos": [
-    {
-      "numero_grupo": 1,
-      "categoria": "Categoria-B",
-      "integrantes": [
-        {"id_inscripto": 99, "integrantes": "NOMBRE1 / NOMBRE2"},
-        {"id_inscripto": 100, "integrantes": "NOMBRE3 / NOMBRE4"}
-      ]
-    }
+    {"numero": 1, "categoria": "B", "integrantes": [99, 101, 102, 103], "incompleto": false}
   ],
   "partidos": [
-    {
-      "numero_grupo": 1,
-      "categoria": "Categoria-B",
-      "local": {"id_inscripto": 99, "integrantes": "NOMBRE1 / NOMBRE2"},
-      "visitante": {"id_inscripto": 100, "integrantes": "NOMBRE3 / NOMBRE4"},
-      "id_horario_fk": 15,
-      "categoria": "Categoria-B"
-    }
+    {"local": 99, "visitante": 101, "horario": 9}
   ],
-  "advertencias": [
-    {
-      "tipo": "JUGADOR_NO_ASIGNADO",
-      "mensaje": "El jugador no pudo ser asignado a ningún grupo por falta de espacio en la configuración.",
-      "id_inscripto": 115
-    }
-  ]
+  "sin_grupo": [115]
 }
-
-Genera el JSON solicitado respetando exactamente todas las reglas:
 `;
 
-        // 5. Llamada a la IA con formato forzado
+        // 4. Llamada a la IA
         console.log('Enviando datos a Gemini...');
         
         try {
-            const result = await model.generateContent({
-                contents: [{ role: "user", parts: [{ text: prompt }] }],
-                generationConfig: {
-                    temperature: 0.1,
-                    responseMimeType: "application/json"
-                }
-            });
-            
+            const result = await model.generateContent(prompt);
             const response = await result.response;
             let text = response.text();
             
@@ -413,7 +364,7 @@ Genera el JSON solicitado respetando exactamente todas las reglas:
             return {
                 grupos: resultado.grupos || [],
                 partidos: resultado.partidos || [],
-                advertencias: resultado.advertencias || []
+                sin_grupo: resultado.sin_grupo || []
             };
             
         } catch (geminiError) {
@@ -423,26 +374,22 @@ Genera el JSON solicitado respetando exactamente todas las reglas:
             return {
                 grupos: [],
                 partidos: [],
-                advertencias: [{
-                    tipo: 'ERROR_GEMINI',
-                    mensaje: 'Error al comunicar con la IA. ' + geminiError.message
-                }]
+                sin_grupo: [],
+                error: 'Error al generar con IA: ' + geminiError.message
             };
         }
 
     } catch (error) {
         if (connection) await connection.end();
-        console.error('Error general en armarGruposBasico:', error);
+        console.error('Error general:', error);
         
         return {
             grupos: [],
             partidos: [],
-            advertencias: [{
-                tipo: 'ERROR_GENERAL',
-                mensaje: 'Error al generar horarios: ' + error.message
-            }]
+            sin_grupo: [],
+            error: error.message
         };
-    } // ← ESTA ES LA LLAVE DE CIERRE DE LA FUNCIÓN
+    }
 }
 
 // 5. Puerto de escucha
