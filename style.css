@@ -650,6 +650,140 @@ footer {
     }
 }
 /* ========================================= */
+/* --- ESTILOS ESPECÍFICOS GRUPOS INCOMPLETOS --- */
+/* ========================================= */
+
+.grupo-incompleto {
+    border: 3px solid #e74c3c !important;
+    background: rgba(231, 76, 60, 0.15) !important;
+    position: relative;
+}
+
+.grupo-incompleto::before {
+    content: '⚠ INCOMPLETO';
+    position: absolute;
+    top: -12px;
+    right: 10px;
+    background: #e74c3c;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+/* ========================================= */
+/* --- ESTILOS PARTIDOS PROGRAMADOS --- */
+/* ========================================= */
+
+.partidos-titulo {
+    margin-top: 3rem;
+    margin-bottom: 1rem;
+    color: #2980b9;
+    border-bottom: 3px solid #2980b9;
+    padding-bottom: 0.5rem;
+    font-size: 1.4rem;
+}
+
+.partidos-list {
+    margin: 1rem 0;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #3498db;
+}
+
+.partido-item {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto;
+    gap: 1rem;
+    align-items: center;
+    padding: 1rem;
+    background: #fff;
+    margin: 0.8rem 0;
+    border-radius: 8px;
+    border-left: 4px solid #3498db;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.partido-local {
+    text-align: right;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.partido-vs {
+    font-weight: bold;
+    color: #e74c3c;
+    font-size: 1.1rem;
+    text-align: center;
+}
+
+.partido-visitante {
+    text-align: left;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.partido-horario {
+    color: #7f8c8d;
+    font-size: 0.9rem;
+    text-align: center;
+    background: #ecf0f1;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+/* ========================================= */
+/* --- ESTILOS INSCRIPTOS SIN GRUPO --- */
+/* ========================================= */
+
+.sin-grupo-section {
+    margin-top: 3rem;
+    padding: 2rem;
+    background: rgba(231, 76, 60, 0.1);
+    border: 3px solid #e74c3c;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.2);
+}
+
+.sin-grupo-titulo {
+    color: #e74c3c;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    font-size: 1.3rem;
+    border-bottom: 2px solid #e74c3c;
+    padding-bottom: 0.5rem;
+}
+
+.sin-grupo-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sin-grupo-list li {
+    padding: 0.8rem 1rem;
+    margin: 0.5rem 0;
+    background: #fff;
+    border-radius: 6px;
+    border-left: 4px solid #e74c3c;
+    font-weight: 500;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.sin-grupo-ayuda {
+    font-size: 0.95rem;
+    color: #7f8c8d;
+    font-style: italic;
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 6px;
+    border-left: 3px solid #f39c12;
+}
+
+/* ========================================= */
 /* --- ESTILOS PARA DISPOSITIVOS MÓVILES --- */
 /* ========================================= */
 @media (max-width: 600px) {
