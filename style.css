@@ -707,7 +707,7 @@ footer {
 }
 
 .partido-local {
-    text-align: right;
+    text-align: left;
     font-weight: 600;
     color: #2c3e50;
 }
@@ -1121,7 +1121,7 @@ footer {
 .fecha-grupo .partido-visitante {
     font-weight: 600;
     color: #2c3e50;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
 }
 
 .fecha-grupo .partido-vs {
