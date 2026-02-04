@@ -28,16 +28,24 @@ let sinGrupo = [];
 let advertencias = [];
 let torneoTieneGrupos = false;
 
-// Inicialización
+    // Inicialización
 async function inicializar() {
     try {
         await cargarTorneoActivo();
         await verificarGruposExistentes();
         await cargarInscriptosPorCategoria();
-        mostrarConfiguracionGrupos();
+        
+        // Solo mostrar configuración si hay inscriptos
+        if (Object.keys(inscriptosPorCategoria).length > 0) {
+            mostrarConfiguracionGrupos();
+        } else {
+            categoriasConfig.innerHTML = '<p>No hay inscriptos para este torneo.</p>';
+        }
+        
         actualizarEstadoBotones();
     } catch (error) {
         mostrarNotificacion('Error al cargar los datos iniciales: ' + error.message, 'error');
+        console.error('Error detallado:', error);
     }
 }
 
@@ -125,6 +133,18 @@ async function inicializar() {
 
     // Mostrar configuración de grupos
     function mostrarConfiguracionGrupos() {
+        // Validar que el elemento exista
+        if (!categoriasConfig) {
+            console.error('Error: El elemento categorias-config no existe en el DOM');
+            return;
+        }
+        
+        // Validar que haya inscriptos
+        if (!inscriptosPorCategoria || Object.keys(inscriptosPorCategoria).length === 0) {
+            categoriasConfig.innerHTML = '<p>No hay inscriptos para configurar.</p>';
+            return;
+        }
+        
         let html = '';
         
         for (const [categoria, inscriptos] of Object.entries(inscriptosPorCategoria)) {
