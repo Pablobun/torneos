@@ -328,6 +328,71 @@ app.post('/api/guardar-grupos', async (req, res) => {
 });
 
 // ==========================================================
+// ENDPOINT PARA VERIFICAR SI HAY GRUPOS EN UN TORNEO
+// ==========================================================
+app.get('/api/verificar-grupos/:idTorneo', async (req, res) => {
+    const { idTorneo } = req.params;
+    const sql = 'SELECT COUNT(*) as count FROM grupos WHERE id_torneo_fk = ?';
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        const [rows] = await connection.execute(sql, [idTorneo]);
+        await connection.end();
+        const tieneGrupos = rows[0].count > 0;
+        res.status(200).json({ tieneGrupos, cantidad: rows[0].count });
+    } catch (error) {
+        console.error('Error al verificar grupos:', error);
+        res.status(500).json({ error: 'Error al verificar grupos.' });
+    }
+});
+
+// ==========================================================
+// ENDPOINT PARA ELIMINAR GRUPOS Y PARTIDOS DE UN TORNEO
+// ==========================================================
+app.delete('/api/limpiar-torneo/:idTorneo', async (req, res) => {
+    const { idTorneo } = req.params;
+    let connection;
+    
+    try {
+        connection = await mysql.createConnection(connectionConfig);
+        await connection.beginTransaction();
+
+        // 1. Eliminar partidos del torneo
+        const deletePartidos = `
+            DELETE p FROM partido p
+            LEFT JOIN inscriptos il ON p.id_inscriptoL = il.id
+            LEFT JOIN inscriptos iv ON p.id_inscriptoV = iv.id
+            WHERE il.id_torneo_fk = ? OR iv.id_torneo_fk = ?
+        `;
+        await connection.execute(deletePartidos, [idTorneo, idTorneo]);
+
+        // 2. Eliminar integrantes de grupos
+        const deleteIntegrantes = `
+            DELETE gi FROM grupo_integrantes gi
+            INNER JOIN grupos g ON gi.id_grupo = g.id
+            WHERE g.id_torneo_fk = ?
+        `;
+        await connection.execute(deleteIntegrantes, [idTorneo]);
+
+        // 3. Eliminar grupos
+        await connection.execute('DELETE FROM grupos WHERE id_torneo_fk = ?', [idTorneo]);
+
+        await connection.commit();
+        res.status(200).json({ 
+            mensaje: 'Torneo limpiado exitosamente. Se eliminaron todos los grupos y partidos.',
+            gruposEliminados: true,
+            partidosEliminados: true
+        });
+
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Error al limpiar torneo:', error);
+        res.status(500).json({ error: 'Error al limpiar el torneo.' });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// ==========================================================
 // ENDPOINT PARA OBTENER GRUPOS FORMADOS
 // ==========================================================
 app.get('/api/grupos/:idTorneo', async (req, res) => {
