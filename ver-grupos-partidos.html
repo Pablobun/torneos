@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grupos y Calendario - Torneo de Tenis "Copa Aero Club"</title>
+    <meta name="description" content="Visualización de grupos formados y calendario de partidos del Torneo de Tenis Copa Aero Club. Filtros por categoría y jugador.">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="logo.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <img src="logo.png" alt="Logo Academia de Tenis" class="header-logo">
+            <div class="header-text">
+                <h1>📊 Grupos y Calendario de Partidos</h1>
+                <p class="subtitle">Visualización de Grupos Formados y Calendario de Partidos</p>
+            </div>
+        </header>
+
+        <main>
+            <!-- Información del Torneo -->
+            <section id="titulo-vista">
+                <h2>Información del Torneo</h2>
+                <div id="info-torneo">
+                    <p>Cargando información del torneo...</p>
+                </div>
+            </section>
+
+            <!-- Filtros Avanzados -->
+            <section id="filtros-avanzados">
+                <h2>Filtros de Búsqueda</h2>
+                <div class="filtros-grid">
+                    <div class="filtro-item">
+                        <label for="filtro-categoria">Categoría:</label>
+                        <select id="filtro-categoria">
+                            <option value="">Todas las categorías</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filtro-item">
+                        <label for="filtro-jugador">Buscar jugador:</label>
+                        <input type="text" id="filtro-jugador" 
+                               placeholder="Escriba el nombre del jugador..." 
+                               list="jugadores-list" autocomplete="off">
+                        <datalist id="jugadores-list">
+                            <!-- se poblará dinámicamente -->
+                        </datalist>
+                    </div>
+                    
+                    <div class="filtro-item">
+                        <button id="btn-limpiar-filtros" class="btn-secondary">
+                            🔄 Limpiar Filtros
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Toggle de Vista -->
+            <section id="toggle-vista">
+                <h2>Opciones de Visualización</h2>
+                <div class="toggle-buttons">
+                    <button class="toggle-btn active" data-vista="ambos">
+                        📊 Todos
+                    </button>
+                    <button class="toggle-btn" data-vista="grupos">
+                        👥 Grupos
+                    </button>
+                    <button class="toggle-btn" data-vista="partidos">
+                        📅 Calendario
+                    </button>
+                </div>
+            </section>
+
+            <!-- Estado de carga -->
+            <div id="loading-estado" class="loading-estado">
+                <div class="loading-spinner">
+                    <p>Cargando información del torneo...</p>
+                    <div class="spinner"></div>
+                </div>
+            </div>
+
+            <!-- Contenido Principal -->
+            <div id="contenido-principal" class="contenido-principal hidden">
+                
+                <!-- Sección de Grupos -->
+                <section id="seccion-grupos" class="vista-seccion">
+                    <h2>👥 Grupos Formados</h2>
+                    <div id="grupos-container">
+                        <!-- grupos se renderizarán aquí -->
+                    </div>
+                </section>
+
+                <!-- Sección de Partidos -->
+                <section id="seccion-partidos" class="vista-seccion">
+                    <h2>📅 Calendario de Partidos</h2>
+                    <div id="partidos-container">
+                        <!-- partidos se renderizarán aquí -->
+                    </div>
+                </section>
+            </div>
+
+            <!-- Mensajes de estado -->
+            <div id="mensaje-estado" class="mensaje-estado hidden"></div>
+        </main>
+
+        <footer>
+            <div class="footer-texto">
+                <p>&copy; 2025 Escuela de Tenis "Guido Ferrer".</p>
+                <p>Todos los derechos reservados.</p>
+            </div>
+            <div class="footer-logos">
+                <span>Desarrollado por:</span>
+                <a href="https://www.itecriocuarto.org.ar/itec-labs" target="_blank">
+                    <img src="logos/logoiteclabs.png" alt="ITECLABS SOFTWARE">
+                </a>
+            </div>
+        </footer>
+    </div>
+    
+    <script src="ver-grupos-partidos.js"></script>
+</body>
+</html>

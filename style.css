@@ -151,7 +151,7 @@ footer {
 
 .filtro-container {
     display: flex;
-    align-items: center;
+    align-items: end;
     gap: 15px;
     flex-wrap: wrap;
 }
@@ -166,6 +166,12 @@ footer {
     border-radius: 5px;
     border: 1px solid #ccc;
     min-width: 250px;
+}
+
+.filtro-container .btn-primary {
+    white-space: nowrap;
+    align-self: flex-end;
+    height: fit-content;
 }
 
 /* Estilos para la tabla */
@@ -1213,6 +1219,415 @@ footer {
 /* ========================================= */
 /* --- ESTILOS PARA DISPOSITIVOS MÓVILES --- */
 /* ========================================= */
+/* ========================================= */
+/* --- ESTILOS PÁGINA VISUALIZACIÓN GRUPOS/PARTIDOS --- */
+/* ========================================= */
+
+/* Filtros Avanzados */
+.filtros-avanzados {
+    background: rgba(255, 255, 255, 0.9);
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin: 2rem 0;
+    border: 2px solid #4CAF50;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.2);
+}
+
+.filtros-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr auto;
+    gap: 1rem;
+    align-items: end;
+}
+
+.filtro-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.filtro-item input, .filtro-item select {
+    padding: 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 1rem;
+}
+
+.filtro-item label {
+    font-weight: 700;
+    color: #555;
+}
+
+/* Toggle de Vista */
+.toggle-vista {
+    text-align: center;
+    margin: 2rem 0;
+}
+
+.toggle-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    background: #f8f9fa;
+    padding: 0.5rem;
+    border-radius: 12px;
+    border: 2px solid #e9ecef;
+}
+
+.toggle-btn {
+    padding: 0.75rem 1.5rem;
+    border: 2px solid transparent;
+    background: white;
+    color: #4CAF50;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.toggle-btn.active {
+    background: #4CAF50;
+    color: white;
+    border-color: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.toggle-btn:hover:not(.active) {
+    background: #e8f5e9;
+    border-color: #4CAF50;
+    transform: translateY(-1px);
+}
+
+/* Estados y Mensajes */
+.loading-estado {
+    text-align: center;
+    padding: 3rem;
+}
+
+.loading-estado .loading-spinner {
+    color: #4CAF50;
+    font-weight: bold;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.mensaje-estado {
+    text-align: center;
+    padding: 1.5rem;
+    margin: 2rem 0;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.mensaje-estado.warning {
+    background: #fff3cd;
+    border: 2px solid #f39c12;
+    color: #856404;
+}
+
+.mensaje-estado.error {
+    background: #f8d7da;
+    border: 2px solid #e74c3c;
+    color: #721c24;
+}
+
+.sin-resultados {
+    text-align: center;
+    padding: 2rem;
+    color: #666;
+    font-style: italic;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
+    border: 2px dashed #ccc;
+}
+
+/* Grupos Grid */
+.grupos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin: 2rem 0;
+}
+
+.grupo-tarjeta {
+    background: white;
+    border: 2px solid #4CAF50;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.2);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.grupo-tarjeta:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(76, 175, 80, 0.3);
+}
+
+.grupo-header {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    color: white;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.grupo-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.categoria-badge {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.grupo-integrantes {
+    padding: 1.5rem;
+}
+
+.integrante-item {
+    background: #f8f9fa;
+    padding: 0.75rem;
+    margin: 0.5rem 0;
+    border-radius: 6px;
+    border-left: 4px solid #4CAF50;
+    font-size: 0.95rem;
+    transition: background-color 0.2s ease;
+}
+
+.integrante-item:hover {
+    background: #e9ecef;
+}
+
+.grupo-footer {
+    background: #f8f9fa;
+    padding: 0.75rem 1.5rem;
+    border-top: 1px solid #e9ecef;
+    text-align: center;
+}
+
+.integrantes-count {
+    color: #4CAF50;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+/* Partidos por Categoría */
+.partidos-por-categoria {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    margin: 2rem 0;
+}
+
+.categoria-seccion {
+    background: white;
+    border: 2px solid #4CAF50;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.2);
+}
+
+.categoria-header {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    color: white;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.categoria-header h3 {
+    margin: 0;
+    font-size: 1.3rem;
+}
+
+.partidos-count {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.fecha-seccion {
+    border-bottom: 1px solid #eee;
+}
+
+.fecha-seccion:last-child {
+    border-bottom: none;
+}
+
+.fecha-header {
+    background: #f8f9fa;
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-bottom: 2px solid #4CAF50;
+}
+
+.fecha-dia {
+    font-weight: bold;
+    color: #4CAF50;
+    font-size: 1.1rem;
+}
+
+.fecha-fecha {
+    color: #666;
+    font-weight: 600;
+}
+
+.partidos-list {
+    padding: 1rem;
+}
+
+.partido-item {
+    display: grid;
+    grid-template-columns: 80px 1fr auto;
+    gap: 1rem;
+    align-items: center;
+    padding: 0.75rem;
+    margin: 0.5rem 0;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #4CAF50;
+    transition: all 0.2s ease;
+}
+
+.partido-item:hover {
+    background: #e9ecef;
+    transform: translateX(5px);
+}
+
+.partido-hora {
+    background: #4CAF50;
+    color: white;
+    padding: 0.5rem;
+    border-radius: 4px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.partido-match {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+.partido-local, .partido-visitante {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.9rem;
+}
+
+.partido-vs {
+    color: #e74c3c;
+    font-weight: bold;
+    font-size: 0.85rem;
+}
+
+.partido-categoria {
+    background: #e8f4f8;
+    color: #2980b9;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    text-align: center;
+    min-width: 80px;
+}
+
+/* Partidos sin Horario */
+.partidos-sin-horario {
+    border-top: 2px dashed #f39c12;
+    margin-top: 1rem;
+}
+
+.sin-horario-header {
+    background: #fff3cd;
+    color: #856404;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    border-bottom: 1px solid #ffeaa7;
+}
+
+.partido-item.sin-horario-item {
+    background: #fff8e1;
+    border-left-color: #f39c12;
+}
+
+.partido-item.sin-horario-item .partido-hora {
+    background: #f39c12;
+    color: white;
+}
+
+/* Responsive para Visualización Grupos/Partidos */
+@media (max-width: 768px) {
+    .filtros-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .toggle-buttons {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .toggle-btn {
+        width: 100%;
+    }
+    
+    .partido-item {
+        grid-template-columns: 60px 1fr;
+        gap: 0.5rem;
+    }
+    
+    .partido-categoria {
+        grid-column: 1 / -1;
+        text-align: center;
+        margin-top: 0.5rem;
+    }
+    
+    .categoria-header {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+    }
+    
+    .fecha-header {
+        flex-direction: column;
+        gap: 0.25rem;
+        text-align: center;
+    }
+    
+    .grupos-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .grupo-header {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+    }
+    
+    .categoria-badge {
+        align-self: center;
+    }
+}
+
 @media (max-width: 600px) {
     body { padding: 10px; }
     .container { padding: 15px; }
