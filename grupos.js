@@ -128,7 +128,7 @@ async function inicializar() {
             `;
         }
         html += '</div>';
-        categoriasContainer.innerHTML = html;
+        categoriasConfig.innerHTML = html;
     }
 
     // Mostrar configuración de grupos
