@@ -274,37 +274,43 @@ async function inicializar() {
                 // Mostrar fecha y hora real en lugar de ID
                 let horarioAsignado;
                 if (partido.horario && partido.horario.dia) {
-                    horarioAsignado = `${partido.horario.dia} ${partido.horario.fecha || ''} - ${partido.horario.hora}`;
+                    horarioAsignado = `<span class="horario-asignado">${partido.horario.dia} - ${partido.horario.hora}</span>`;
                 } else {
                     // Partido pendiente - mostrar horarios disponibles de cada jugador
-                    horarioAsignado = '<span class="horario-pendiente">⏳ Horario pendiente</span>';
+                    horarioAsignado = '<span class="horario-pendiente-badge"><span class="icono-reloj">⏳</span> Horario pendiente</span>';
                 }
                 const clasePartido = partido.horario ? '' : 'partido-sin-horario';
                 
                 html += `
                     <div class="partido-item ${clasePartido}">
-                        <span class="partido-local">${localNombre}</span>
-                        <span class="partido-vs">VS</span>
-                        <span class="partido-visitante">${visitanteNombre}</span>
-                        <span class="partido-horario">${horarioAsignado}</span>
+                        <div class="partido-info">
+                            <div class="partido-equipos">
+                                <span class="partido-local">${localNombre}</span>
+                                <span class="partido-vs">VS</span>
+                                <span class="partido-visitante">${visitanteNombre}</span>
+                            </div>
+                        </div>
+                        <div class="partido-horario-container">
+                            ${horarioAsignado}
+                        </div>
                     </div>
                 `;
                 
                 // Si es partido pendiente, mostrar horarios disponibles
                 if (!partido.horario && (partido.horariosDisponiblesLocal || partido.horariosDisponiblesVisitante)) {
-                    html += '<div class="horarios-disponibles">';
-                    html += '<div class="horarios-jugador">';
-                    html += `<strong>${localNombre}:</strong> `;
+                    html += '<div class="horarios-disponibles-container">';
+                    html += '<div class="horarios-jugador-item">';
+                    html += `<span class="jugador-nombre">${localNombre}:</span> `;
                     if (partido.horariosDisponiblesLocal && partido.horariosDisponiblesLocal.length > 0) {
-                        html += partido.horariosDisponiblesLocal.map(h => `${h.dia} ${h.fecha || ''} ${h.hora}`).join(', ');
+                        html += partido.horariosDisponiblesLocal.map(h => `${h.dia} ${h.hora}`).join(', ');
                     } else {
                         html += 'Sin horarios disponibles';
                     }
                     html += '</div>';
-                    html += '<div class="horarios-jugador">';
-                    html += `<strong>${visitanteNombre}:</strong> `;
+                    html += '<div class="horarios-jugador-item">';
+                    html += `<span class="jugador-nombre">${visitanteNombre}:</span> `;
                     if (partido.horariosDisponiblesVisitante && partido.horariosDisponiblesVisitante.length > 0) {
-                        html += partido.horariosDisponiblesVisitante.map(h => `${h.dia} ${h.fecha || ''} ${h.hora}`).join(', ');
+                        html += partido.horariosDisponiblesVisitante.map(h => `${h.dia} ${h.hora}`).join(', ');
                     } else {
                         html += 'Sin horarios disponibles';
                     }
