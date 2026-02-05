@@ -470,8 +470,9 @@ app.put('/api/partidos/:idPartido', async (req, res) => {
     const { idPartido } = req.params;
     const { id_horario } = req.body;
     
-    if (!id_horario) {
-        return res.status(400).json({ error: 'Se requiere id_horario' });
+    // Permitir null para quitar el horario del partido
+    if (id_horario === undefined) {
+        return res.status(400).json({ error: 'Se requiere id_horario (o null para quitar)' });
     }
     
     const sql = 'UPDATE partido SET id_horario = ? WHERE id = ?';
@@ -485,7 +486,11 @@ app.put('/api/partidos/:idPartido', async (req, res) => {
             return res.status(404).json({ error: 'Partido no encontrado' });
         }
         
-        res.status(200).json({ mensaje: 'Horario actualizado exitosamente' });
+        const mensaje = id_horario === null ? 
+            'Horario eliminado exitosamente' : 
+            'Horario actualizado exitosamente';
+        
+        res.status(200).json({ mensaje });
     } catch (error) {
         console.error('Error al actualizar partido:', error);
         res.status(500).json({ error: 'Error al actualizar el horario del partido.' });

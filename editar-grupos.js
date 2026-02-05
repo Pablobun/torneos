@@ -310,10 +310,15 @@ document.addEventListener('DOMContentLoaded', function () {
             `<option value="${h.id}" ${h.id == partido.id_horario ? 'selected' : ''}>${h.dia_semana} ${formatearFecha(h.fecha) || ''} - ${h.hora_inicio}</option>`
         ).join('');
 
+        // Agregar opción "Sin horario" al principio si el partido ya tiene horario
+        const opcionSinHorario = partido.id_horario ? 
+            `<option value="SIN_HORARIO">⏳ Sin horario asignado</option>` : '';
+
         const selectorHtml = `
             <div class="selector-horario-modal" id="modal-${partidoId}">
                 <select id="select-horario-${partidoId}" class="select-horario">
                     <option value="">Seleccionar horario...</option>
+                    ${opcionSinHorario}
                     ${opcionesHorarios}
                 </select>
                 <button class="btn-guardar-horario" data-partido-id="${partidoId}">💾 Guardar</button>
@@ -331,7 +336,14 @@ document.addEventListener('DOMContentLoaded', function () {
         // Agregar event listeners
         document.querySelector(`#modal-${partidoId} .btn-guardar-horario`).addEventListener('click', async (e) => {
             const nuevoHorarioId = document.querySelector(`#select-horario-${partidoId}`).value;
-            if (nuevoHorarioId) {
+            
+            if (nuevoHorarioId === 'SIN_HORARIO') {
+                // Quitar el horario del partido
+                if (confirm('¿Estás seguro de que querés quitar el horario de este partido?')) {
+                    await actualizarHorarioPartido(partidoId, null);
+                }
+            } else if (nuevoHorarioId) {
+                // Cambiar a un horario específico
                 await actualizarHorarioPartido(partidoId, nuevoHorarioId);
             }
         });
