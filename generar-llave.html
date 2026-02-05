@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generar Llave - Administración</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        
+        .preview-container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .preview-container h2 {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        
+        .clasificados-section {
+            margin-bottom: 30px;
+        }
+        
+        .clasificados-section h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        
+        .clasificados-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .clasificado-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            position: relative;
+        }
+        
+        .clasificado-card.primero {
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            color: #333;
+        }
+        
+        .clasificado-card.segundo {
+            background: linear-gradient(135deg, #c0c0c0, #e0e0e0);
+            color: #333;
+        }
+        
+        .clasificado-card.bye {
+            border: 3px solid #4CAF50;
+        }
+        
+        .clasificado-card.bye::after {
+            content: 'BYE';
+            position: absolute;
+            top: -10px;
+            right: 10px;
+            background: #4CAF50;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        
+        .clasificado-posicion {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+        
+        .clasificado-nombre {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .clasificado-grupo {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+        
+        .bracket-preview {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .bracket-round {
+            margin-bottom: 20px;
+        }
+        
+        .bracket-round h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+        
+        .bracket-match {
+            background: white;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-left: 3px solid #4CAF50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .bracket-match.bye-match {
+            border-left-color: #ff9800;
+            background: #fff8e1;
+        }
+        
+        .bracket-match.por-definir {
+            border-left-color: #9e9e9e;
+            background: #f5f5f5;
+        }
+        
+        .match-teams {
+            flex: 1;
+        }
+        
+        .match-team {
+            font-size: 13px;
+            padding: 3px 0;
+        }
+        
+        .match-team.winner {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .match-vs {
+            color: #999;
+            font-size: 11px;
+            margin: 0 10px;
+        }
+        
+        .match-number {
+            background: #e0e0e0;
+            color: #666;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+        
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .info-box h4 {
+            margin: 0 0 10px 0;
+            color: #1976D2;
+        }
+        
+        .info-box ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .info-box li {
+            margin-bottom: 5px;
+            color: #555;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        
+        .btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .stats-summary {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-item {
+            background: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: #666;
+        }
+        
+        .error-box {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+            padding: 20px;
+            border-radius: 5px;
+            color: #c62828;
+        }
+
+        @media (max-width: 768px) {
+            .clasificados-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏆 Generar Llave de Eliminación</h1>
+            <a href="posiciones-grupos.html" class="back-btn">← Volver</a>
+        </div>
+        
+        <div id="content-container">
+            <div class="loading">Cargando información del torneo...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://academia-torneos.onrender.com/api';
+        let torneoId = null;
+        let previewData = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await cargarTorneoActivo();
+            if (torneoId) {
+                await calcularPreview();
+            }
+        });
+
+        async function cargarTorneoActivo() {
+            try {
+                const response = await fetch(`${API_URL}/torneo-activo`);
+                if (response.ok) {
+                    const torneo = await response.json();
+                    torneoId = torneo.id;
+                }
+            } catch (error) {
+                console.error('Error al cargar torneo:', error);
+            }
+        }
+
+        async function calcularPreview() {
+            try {
+                // Obtener grupos y estadísticas
+                const [gruposResponse, llaveExistenteResponse] = await Promise.all([
+                    fetch(`${API_URL}/grupos/${torneoId}`),
+                    fetch(`${API_URL}/torneo/${torneoId}/llave`)
+                ]);
+                
+                // Verificar si ya existe llave
+                if (llaveExistenteResponse.ok) {
+                    const llaveData = await llaveExistenteResponse.json();
+                    if (llaveData.totalEnfrentamientos > 0) {
+                        mostrarLlaveExistente();
+                        return;
+                    }
+                }
+                
+                if (!gruposResponse.ok) throw new Error('Error al cargar grupos');
+                
+                const grupos = await gruposResponse.json();
+                
+                // Obtener clasificados de cada grupo
+                const clasificados = [];
+                for (const grupo of grupos) {
+                    const statsResponse = await fetch(`${API_URL}/grupos/${grupo.id}/estadisticas`);
+                    if (statsResponse.ok) {
+                        const data = await statsResponse.json();
+                        // Tomar 1° y 2° de cada grupo
+                        const primero = data.estadisticas.find(e => e.posicion === 1);
+                        const segundo = data.estadisticas.find(e => e.posicion === 2);
+                        
+                        if (primero) {
+                            clasificados.push({
+                                ...primero,
+                                numero_grupo: grupo.numero_grupo,
+                                categoria: grupo.categoria,
+                                esPrimero: true
+                            });
+                        }
+                        if (segundo) {
+                            clasificados.push({
+                                ...segundo,
+                                numero_grupo: grupo.numero_grupo,
+                                categoria: grupo.categoria,
+                                esPrimero: false
+                            });
+                        }
+                    }
+                }
+                
+                if (clasificados.length === 0) {
+                    mostrarError('No hay clasificados disponibles. Asegurate de que los grupos tengan partidos jugados.');
+                    return;
+                }
+                
+                // Calcular BYES
+                const totalClasificados = clasificados.length;
+                const potenciaDe2 = Math.pow(2, Math.ceil(Math.log2(totalClasificados)));
+                const byes = potenciaDe2 - totalClasificados;
+                
+                // Calcular ranking global
+                const rankingGlobal = [...clasificados].sort((a, b) => {
+                    if (b.puntos !== a.puntos) return b.puntos - a.puntos;
+                    if (b.dif_sets !== a.dif_sets) return b.dif_sets - a.dif_sets;
+                    return b.dif_games - a.dif_games;
+                });
+                
+                // Marcar BYES
+                rankingGlobal.forEach((c, index) => {
+                    c.tieneBye = index < byes;
+                });
+                
+                // Determinar rondas
+                let rondas = [];
+                if (potenciaDe2 >= 32) rondas = ['dieciseisavos', 'octavos', 'cuartos', 'semifinal', 'final'];
+                else if (potenciaDe2 >= 16) rondas = ['octavos', 'cuartos', 'semifinal', 'final'];
+                else if (potenciaDe2 >= 8) rondas = ['cuartos', 'semifinal', 'final'];
+                else if (potenciaDe2 >= 4) rondas = ['semifinal', 'final'];
+                else rondas = ['final'];
+                
+                previewData = {
+                    clasificados: rankingGlobal,
+                    totalClasificados,
+                    byes,
+                    potenciaDe2,
+                    rondas
+                };
+                
+                renderizarPreview(previewData);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarError('Error al calcular la preview de la llave');
+            }
+        }
+
+        function renderizarPreview(data) {
+            const container = document.getElementById('content-container');
+            
+            const clasificadosHtml = data.clasificados.map((c, index) => `
+                <div class="clasificado-card ${c.esPrimero ? 'primero' : 'segundo'} ${c.tieneBye ? 'bye' : ''}">
+                    <div class="clasificado-posicion">#${index + 1} Ranking Global</div>
+                    <div class="clasificado-nombre">${c.nombre_jugador}</div>
+                    <div class="clasificado-grupo">
+                        ${c.esPrimero ? '1°' : '2°'} del Grupo ${c.numero_grupo} | 
+                        ${c.puntos} pts | Dif Sets: ${c.dif_sets > 0 ? '+' : ''}${c.dif_sets}
+                    </div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = `
+                <div class="stats-summary">
+                    <div class="stat-item">
+                        <div class="stat-value">${data.totalClasificados}</div>
+                        <div class="stat-label">Clasificados</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${data.byes}</div>
+                        <div class="stat-label">BYES</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${data.potenciaDe2}</div>
+                        <div class="stat-label">Llave de ${data.potenciaDe2}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${data.rondas.length}</div>
+                        <div class="stat-label">Rondas</div>
+                    </div>
+                </div>
+                
+                <div class="info-box">
+                    <h4>📋 Información sobre el sistema</h4>
+                    <ul>
+                        <li><strong>BYES:</strong> Los ${data.byes} mejores del ranking global avanzan directamente</li>
+                        <li><strong>Emparejamiento:</strong> 1° de grupo vs 2° de OTRO grupo (evitando cruces del mismo grupo)</li>
+                        <li><strong>Desempate:</strong> Puntos → Diferencia de sets → Diferencia de games</li>
+                        <li><strong>Playoffs:</strong> Sistema de eliminación directa hasta la final</li>
+                    </ul>
+                </div>
+                
+                <div class="preview-container">
+                    <h2>👥 Clasificados (ordenados por ranking global)</h2>
+                    <div class="clasificados-grid">
+                        ${clasificadosHtml}
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="confirmarGeneracion()">
+                        ✅ Generar Llave de Eliminación
+                    </button>
+                    <a href="posiciones-grupos.html" class="btn btn-secondary">
+                        ← Volver a Posiciones
+                    </a>
+                </div>
+            `;
+        }
+
+        function mostrarLlaveExistente() {
+            const container = document.getElementById('content-container');
+            container.innerHTML = `
+                <div class="preview-container">
+                    <div class="info-box" style="background: #fff3e0; border-left-color: #ff9800;">
+                        <h4 style="color: #e65100;">⚠️ Llave ya generada</h4>
+                        <p>Ya existe una llave de eliminación para este torneo.</p>
+                    </div>
+                    
+                    <div class="action-buttons" style="margin-top: 30px;">
+                        <a href="llave-eliminacion.html" class="btn btn-primary">
+                            Ver Llave de Eliminación
+                        </a>
+                        <a href="posiciones-grupos.html" class="btn btn-secondary">
+                            Volver
+                        </a>
+                    </div>
+                </div>
+            `;
+        }
+
+        function mostrarError(mensaje) {
+            document.getElementById('content-container').innerHTML = `
+                <div class="error-box">
+                    <h4>❌ Error</h4>
+                    <p>${mensaje}</p>
+                </div>
+            `;
+        }
+
+        async function confirmarGeneracion() {
+            if (!confirm('¿Estás seguro de generar la llave de eliminación?\n\nEsta acción no se puede deshacer.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/torneo/${torneoId}/generar-llave`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    alert(`✅ ¡Llave generada exitosamente!\n\n• Total clasificados: ${data.totalClasificados}\n• BYES otorgados: ${data.byes}\n• Rondas: ${data.rondas.join(' → ')}\n\nAhora podés gestionar los horarios y resultados de los playoffs.`);
+                    window.location.href = 'llave-eliminacion.html';
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + (error.error || 'No se pudo generar la llave'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al generar la llave');
+            }
+        }
+    </script>
+</body>
+</html>

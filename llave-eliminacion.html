@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Llave de Eliminación - Administración</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            background: white;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        
+        .tab {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 3px;
+            font-weight: bold;
+            color: #666;
+        }
+        
+        .tab.active {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .content-section {
+            display: none;
+        }
+        
+        .content-section.active {
+            display: block;
+        }
+        
+        .bracket-container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+        
+        .bracket {
+            display: flex;
+            gap: 40px;
+            min-width: 1000px;
+            padding: 20px 0;
+        }
+        
+        .round {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            min-width: 220px;
+        }
+        
+        .round-title {
+            text-align: center;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+        
+        .match {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-left: 4px solid #4CAF50;
+            position: relative;
+        }
+        
+        .match.bye {
+            border-left-color: #ff9800;
+            background: #fff8e1;
+        }
+        
+        .match.por-definir {
+            border-left-color: #9e9e9e;
+            background: #f5f5f5;
+        }
+        
+        .match.jugado {
+            border-left-color: #2196F3;
+            background: #e3f2fd;
+        }
+        
+        .match-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .match-number {
+            font-size: 10px;
+            color: #999;
+            background: #e0e0e0;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        
+        .match-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .match-actions button {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        .btn-horario {
+            background: #2196F3;
+            color: white;
+        }
+        
+        .btn-resultado {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .team {
+            padding: 6px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .team-name {
+            font-size: 13px;
+            color: #2c3e50;
+        }
+        
+        .team-name.winner {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .team-name.por-definir {
+            color: #999;
+            font-style: italic;
+        }
+        
+        .score {
+            font-weight: bold;
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .match-date {
+            font-size: 10px;
+            color: #666;
+            margin-top: 5px;
+            text-align: center;
+            background: rgba(0,0,0,0.05);
+            padding: 3px;
+            border-radius: 3px;
+        }
+        
+        .horarios-section {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .horarios-form {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .form-group {
+            flex: 1;
+            min-width: 150px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+            font-size: 13px;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+        
+        .horarios-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .horario-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .horario-card.ocupado {
+            background: #ffebee;
+            border: 1px solid #f44336;
+        }
+        
+        .horario-info h4 {
+            margin: 0 0 5px 0;
+            color: #2c3e50;
+        }
+        
+        .horario-info p {
+            margin: 0;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            color: #2c3e50;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+        
+        .sets-form {
+            margin-bottom: 20px;
+        }
+        
+        .set-input-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .set-input-row input {
+            width: 60px;
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: #666;
+        }
+
+        @media (max-width: 768px) {
+            .bracket {
+                flex-direction: column;
+                min-width: auto;
+            }
+            
+            .round {
+                min-width: auto;
+            }
+            
+            .tabs {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏆 Llave de Eliminación</h1>
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('bracket')">Bracket</button>
+                <button class="tab" onclick="showTab('horarios')">Horarios</button>
+            </div>
+            <a href="editar-grupos.html" class="back-btn">← Volver</a>
+        </div>
+        
+        <div id="tab-bracket" class="content-section active">
+            <div class="bracket-container">
+                <div id="bracket-content" class="bracket">
+                    <div class="loading">Cargando bracket...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="tab-horarios" class="content-section">
+            <div class="horarios-section">
+                <h2>📅 Gestión de Horarios de Playoffs</h2>
+                <p style="color: #666; margin-bottom: 20px;">
+                    Creá los horarios disponibles para los partidos de eliminación. Luego podés asignarlos desde el bracket.
+                </p>
+                
+                <div class="horarios-form">
+                    <h3>Agregar Nuevo Horario</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Día de la semana</label>
+                            <select id="horario-dia">
+                                <option value="Lunes">Lunes</option>
+                                <option value="Martes">Martes</option>
+                                <option value="Miércoles">Miércoles</option>
+                                <option value="Jueves">Jueves</option>
+                                <option value="Viernes">Viernes</option>
+                                <option value="Sábado">Sábado</option>
+                                <option value="Domingo">Domingo</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha</label>
+                            <input type="date" id="horario-fecha">
+                        </div>
+                        <div class="form-group">
+                            <label>Hora inicio</label>
+                            <input type="time" id="horario-hora">
+                        </div>
+                        <div class="form-group">
+                            <label>Cancha</label>
+                            <input type="number" id="horario-cancha" min="1" value="1">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="crearHorario()">➕ Agregar Horario</button>
+                </div>
+                
+                <h3>Horarios Creados</h3>
+                <div id="horarios-list" class="horarios-list">
+                    <div class="loading">Cargando horarios...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para horario -->
+    <div id="modal-horario" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📅 Asignar Horario</h2>
+                <button class="close-btn" onclick="closeModal('modal-horario')">×</button>
+            </div>
+            <div id="modal-horario-content">
+                <!-- Contenido dinámico -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para resultado -->
+    <div id="modal-resultado" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🎾 Cargar Resultado</h2>
+                <button class="close-btn" onclick="closeModal('modal-resultado')">×</button>
+            </div>
+            <div id="modal-resultado-content">
+                <!-- Contenido dinámico -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://academia-torneos.onrender.com/api';
+        let torneoId = null;
+        let llaveData = null;
+        let horariosData = [];
+        let currentMatchId = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await cargarTorneoActivo();
+            if (torneoId) {
+                await cargarBracket();
+                await cargarHorarios();
+            }
+        });
+
+        async function cargarTorneoActivo() {
+            try {
+                const response = await fetch(`${API_URL}/torneo-activo`);
+                if (response.ok) {
+                    const torneo = await response.json();
+                    torneoId = torneo.id;
+                }
+            } catch (error) {
+                console.error('Error al cargar torneo:', error);
+            }
+        }
+
+        async function cargarBracket() {
+            try {
+                const response = await fetch(`${API_URL}/torneo/${torneoId}/llave`);
+                if (response.ok) {
+                    llaveData = await response.json();
+                    renderizarBracket(llaveData.bracket);
+                } else {
+                    document.getElementById('bracket-content').innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: #666;">
+                            <h3>No hay llave generada</h3>
+                            <p>Primero debés generar la llave desde "Posiciones de Grupos"</p>
+                            <a href="posiciones-grupos.html" class="btn btn-primary" style="margin-top: 20px; display: inline-block; text-decoration: none;">
+                                Ir a Posiciones
+                            </a>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function renderizarBracket(bracket) {
+            const container = document.getElementById('bracket-content');
+            
+            if (!bracket || Object.keys(bracket).length === 0) {
+                container.innerHTML = '<div class="loading">No hay datos del bracket</div>';
+                return;
+            }
+            
+            const ordenRondas = ['dieciseisavos', 'octavos', 'cuartos', 'semifinal', 'final'];
+            const rondasDisponibles = ordenRondas.filter(r => bracket[r]);
+            
+            container.innerHTML = rondasDisponibles.map(ronda => {
+                const matches = bracket[ronda];
+                return `
+                    <div class="round">
+                        <div class="round-title">${formatearRonda(ronda)}</div>
+                        ${matches.map(match => crearMatchCard(match)).join('')}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function crearMatchCard(match) {
+            const esBye = match.es_bye;
+            const tieneResultado = match.ganador_id !== null;
+            const porDefinir = !match.id_inscripto_1 || !match.id_inscripto_2;
+            
+            let matchClass = '';
+            if (esBye) matchClass = 'bye';
+            else if (tieneResultado) matchClass = 'jugado';
+            else if (porDefinir) matchClass = 'por-definir';
+            
+            const team1Class = match.ganador_id === match.id_inscripto_1 ? 'winner' : '';
+            const team2Class = match.ganador_id === match.id_inscripto_2 ? 'winner' : '';
+            
+            const team1Name = match.nombre_1 || (match.id_inscripto_1 ? 'Por definir' : '---');
+            const team2Name = match.nombre_2 || (match.id_inscripto_2 ? 'Por definir' : '---');
+            
+            const fechaHora = match.fecha ? 
+                `${new Date(match.fecha).toLocaleDateString()} ${match.hora_inicio || ''}` : 
+                null;
+            
+            return `
+                <div class="match ${matchClass}" data-id="${match.id}">
+                    <div class="match-header">
+                        <span class="match-number">#${match.posicion}</span>
+                        <div class="match-actions">
+                            ${!esBye && !porDefinir ? `
+                                ${!fechaHora ? `<button class="btn-horario" onclick="abrirModalHorario(${match.id})">📅 Horario</button>` : ''}
+                                ${!tieneResultado && match.id_partido_asignado ? `<button class="btn-resultado" onclick="abrirModalResultado(${match.id})">🎾 Resultado</button>` : ''}
+                            ` : ''}
+                        </div>
+                    </div>
+                    <div class="team">
+                        <span class="team-name ${team1Class} ${match.id_inscripto_1 ? '' : 'por-definir'}">${team1Name}</span>
+                        ${tieneResultado && match.ganador_id === match.id_inscripto_1 ? '<span class="score">🏆</span>' : ''}
+                    </div>
+                    <div class="team">
+                        <span class="team-name ${team2Class} ${match.id_inscripto_2 ? '' : 'por-definir'}">${team2Name}</span>
+                        ${tieneResultado && match.ganador_id === match.id_inscripto_2 ? '<span class="score">🏆</span>' : ''}
+                    </div>
+                    ${fechaHora ? `<div class="match-date">📅 ${fechaHora}</div>` : ''}
+                    ${esBye ? '<div class="match-date" style="background: #ff9800; color: white;">BYE - Avanza directo</div>' : ''}
+                </div>
+            `;
+        }
+
+        function formatearRonda(ronda) {
+            const map = {
+                'dieciseisavos': 'Dieciseisavos de Final',
+                'octavos': 'Octavos de Final',
+                'cuartos': 'Cuartos de Final',
+                'semifinal': 'Semifinal',
+                'final': 'Final'
+            };
+            return map[ronda] || ronda;
+        }
+
+        async function cargarHorarios() {
+            try {
+                const response = await fetch(`${API_URL}/horarios-playoffs/${torneoId}`);
+                if (response.ok) {
+                    horariosData = await response.json();
+                    renderizarHorarios();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function renderizarHorarios() {
+            const container = document.getElementById('horarios-list');
+            
+            if (horariosData.length === 0) {
+                container.innerHTML = '<p style="color: #666;">No hay horarios creados aún</p>';
+                return;
+            }
+            
+            container.innerHTML = horariosData.map(h => `
+                <div class="horario-card ${h.disponible ? '' : 'ocupado'}">
+                    <div class="horario-info">
+                        <h4>${h.dia_semana} ${new Date(h.fecha).toLocaleDateString()}</h4>
+                        <p>${h.hora_inicio} - Cancha ${h.cancha}</p>
+                        <p style="font-size: 10px; color: ${h.disponible ? '#4CAF50' : '#f44336'};">
+                            ${h.disponible ? '✓ Disponible' : '✗ Ocupado'}
+                        </p>
+                    </div>
+                    <button class="btn btn-danger" onclick="eliminarHorario(${h.id})" style="font-size: 12px; padding: 5px 10px;">
+                        🗑️
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        async function crearHorario() {
+            const dia = document.getElementById('horario-dia').value;
+            const fecha = document.getElementById('horario-fecha').value;
+            const hora = document.getElementById('horario-hora').value;
+            const cancha = document.getElementById('horario-cancha').value;
+            
+            if (!fecha || !hora) {
+                alert('Por favor completá la fecha y hora');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/horarios-playoffs/${torneoId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dia_semana: dia, fecha, hora_inicio: hora, cancha })
+                });
+                
+                if (response.ok) {
+                    alert('Horario creado exitosamente');
+                    await cargarHorarios();
+                    // Limpiar form
+                    document.getElementById('horario-fecha').value = '';
+                    document.getElementById('horario-hora').value = '';
+                } else {
+                    alert('Error al crear el horario');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al crear el horario');
+            }
+        }
+
+        async function eliminarHorario(id) {
+            if (!confirm('¿Eliminar este horario?')) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/horarios-playoffs/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    await cargarHorarios();
+                } else {
+                    alert('Error al eliminar el horario');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function abrirModalHorario(matchId) {
+            currentMatchId = matchId;
+            const modal = document.getElementById('modal-horario');
+            const content = document.getElementById('modal-horario-content');
+            
+            const disponibles = horariosData.filter(h => h.disponible);
+            
+            if (disponibles.length === 0) {
+                content.innerHTML = `
+                    <p style="color: #666;">No hay horarios disponibles.</p>
+                    <p>Agregá horarios en la pestaña "Horarios".</p>
+                `;
+            } else {
+                content.innerHTML = `
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 10px; font-weight: bold;">Seleccionar horario:</label>
+                        <select id="select-horario" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 5px;">
+                            ${disponibles.map(h => `
+                                <option value="${h.id}">${h.dia_semana} ${new Date(h.fecha).toLocaleDateString()} - ${h.hora_inicio} (Cancha ${h.cancha})</option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="asignarHorario()" style="width: 100%;">
+                        ✅ Confirmar Asignación
+                    </button>
+                `;
+            }
+            
+            modal.classList.add('active');
+        }
+
+        async function asignarHorario() {
+            const horarioId = document.getElementById('select-horario').value;
+            
+            try {
+                const response = await fetch(`${API_URL}/llave/${currentMatchId}/horario`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id_horario_playoffs: horarioId })
+                });
+                
+                if (response.ok) {
+                    closeModal('modal-horario');
+                    await cargarBracket();
+                    await cargarHorarios();
+                } else {
+                    alert('Error al asignar horario');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function abrirModalResultado(matchId) {
+            currentMatchId = matchId;
+            const modal = document.getElementById('modal-resultado');
+            const content = document.getElementById('modal-resultado-content');
+            
+            // Encontrar el match
+            let match = null;
+            for (const ronda in llaveData.bracket) {
+                match = llaveData.bracket[ronda].find(m => m.id === matchId);
+                if (match) break;
+            }
+            
+            content.innerHTML = `
+                <div class="sets-form">
+                    <div class="set-input-row">
+                        <span style="min-width: 100px; font-weight: bold;">${match.nombre_1 || 'Equipo 1'}:</span>
+                        <span>Set 1:</span>
+                        <input type="number" id="set1-local" min="0" max="7" placeholder="0">
+                        <span>Set 2:</span>
+                        <input type="number" id="set2-local" min="0" max="7" placeholder="0">
+                    </div>
+                    <div class="set-input-row">
+                        <span style="min-width: 100px; font-weight: bold;">${match.nombre_2 || 'Equipo 2'}:</span>
+                        <span>Set 1:</span>
+                        <input type="number" id="set1-visit" min="0" max="7" placeholder="0">
+                        <span>Set 2:</span>
+                        <input type="number" id="set2-visit" min="0" max="7" placeholder="0">
+                    </div>
+                    
+                    <div id="super-tiebreak-section" style="display: none; background: #fff3cd; padding: 15px; border-radius: 5px; margin-top: 15px;">
+                        <h4 style="margin-top: 0;">🏆 Super Tie-Break</h4>
+                        <div class="set-input-row">
+                            <span>${match.nombre_1 || 'Equipo 1'}:</span>
+                            <input type="number" id="tb-local" min="0" placeholder="0">
+                            <span>${match.nombre_2 || 'Equipo 2'}:</span>
+                            <input type="number" id="tb-visit" min="0" placeholder="0">
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 15px; padding: 15px; background: #ffebee; border-radius: 5px;">
+                        <label>
+                            <input type="checkbox" id="wo-check" onchange="toggleWO()"> 
+                            Walkover (WO)
+                        </label>
+                        <select id="wo-ganador" style="display: none; width: 100%; margin-top: 10px; padding: 8px; border: 2px solid #f44336; border-radius: 5px;">
+                            <option value="">Seleccionar ganador...</option>
+                            <option value="local">${match.nombre_1 || 'Equipo 1'}</option>
+                            <option value="visitante">${match.nombre_2 || 'Equipo 2'}</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button class="btn btn-primary" onclick="guardarResultadoPlayoff()" style="width: 100%;">
+                    ✅ Guardar Resultado
+                </button>
+            `;
+            
+            // Verificar super TB
+            const inputs = content.querySelectorAll('input[type="number"]');
+            inputs.forEach(input => {
+                input.addEventListener('input', verificarSuperTB);
+            });
+            
+            modal.classList.add('active');
+        }
+
+        function verificarSuperTB() {
+            const set1Local = parseInt(document.getElementById('set1-local').value) || 0;
+            const set1Visit = parseInt(document.getElementById('set1-visit').value) || 0;
+            const set2Local = parseInt(document.getElementById('set2-local').value) || 0;
+            const set2Visit = parseInt(document.getElementById('set2-visit').value) || 0;
+            
+            const superTB = document.getElementById('super-tiebreak-section');
+            
+            // 1-1 en sets
+            if ((set1Local > set1Visit && set2Visit > set2Local) || 
+                (set1Visit > set1Local && set2Local > set2Visit)) {
+                superTB.style.display = 'block';
+            } else {
+                superTB.style.display = 'none';
+            }
+        }
+
+        function toggleWO() {
+            const check = document.getElementById('wo-check');
+            const select = document.getElementById('wo-ganador');
+            select.style.display = check.checked ? 'block' : 'none';
+        }
+
+        async function guardarResultadoPlayoff() {
+            const esWO = document.getElementById('wo-check').checked;
+            
+            let data = {};
+            
+            if (esWO) {
+                const ganador = document.getElementById('wo-ganador').value;
+                if (!ganador) {
+                    alert('Seleccioná el ganador del WO');
+                    return;
+                }
+                data = { esWO: true, ganadorWO: ganador };
+            } else {
+                const sets = [
+                    { gamesLocal: parseInt(document.getElementById('set1-local').value) || 0, 
+                      gamesVisitante: parseInt(document.getElementById('set1-visit').value) || 0 },
+                    { gamesLocal: parseInt(document.getElementById('set2-local').value) || 0, 
+                      gamesVisitante: parseInt(document.getElementById('set2-visit').value) || 0 }
+                ];
+                
+                data.sets = sets;
+                
+                const superTB = document.getElementById('super-tiebreak-section');
+                if (superTB.style.display === 'block') {
+                    data.superTiebreak = {
+                        local: parseInt(document.getElementById('tb-local').value) || 0,
+                        visitante: parseInt(document.getElementById('tb-visit').value) || 0
+                    };
+                }
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/llave/${currentMatchId}/resultado`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    closeModal('modal-resultado');
+                    await cargarBracket();
+                } else {
+                    alert('Error al guardar el resultado');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        function showTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+        }
+
+        // Cerrar modal al hacer click fuera
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.classList.remove('active');
+            }
+        }
+    </script>
+</body>
+</html>

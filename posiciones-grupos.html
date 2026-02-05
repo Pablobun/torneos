@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Posiciones de Grupos - Administración</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        
+        .back-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .action-bar {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+        
+        .btn-warning {
+            background: #ff9800;
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            background: #f57c00;
+        }
+        
+        .grupos-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+            gap: 20px;
+        }
+        
+        .grupo-card {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .grupo-header {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 15px 20px;
+        }
+        
+        .grupo-header h2 {
+            margin: 0;
+            font-size: 18px;
+        }
+        
+        .grupo-header .categoria {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+        
+        .tabla-posiciones {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .tabla-posiciones th {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: center;
+            font-weight: bold;
+            color: #2c3e50;
+            border-bottom: 2px solid #dee2e6;
+            font-size: 12px;
+        }
+        
+        .tabla-posiciones td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 13px;
+        }
+        
+        .tabla-posiciones tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .tabla-posiciones .equipo {
+            text-align: left;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .posicion-1 {
+            background: linear-gradient(135deg, #ffd700, #ffed4e) !important;
+            font-weight: bold;
+        }
+        
+        .posicion-2 {
+            background: linear-gradient(135deg, #c0c0c0, #e0e0e0) !important;
+            font-weight: bold;
+        }
+        
+        .clasificado {
+            position: relative;
+        }
+        
+        .clasificado::after {
+            content: '✓';
+            position: absolute;
+            right: 10px;
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        
+        .resumen-torneo {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .resumen-torneo h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-card h4 {
+            margin: 0 0 5px 0;
+            font-size: 24px;
+        }
+        
+        .stat-card p {
+            margin: 0;
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px;
+            color: #666;
+        }
+        
+        .empty-state h3 {
+            color: #999;
+            margin-bottom: 10px;
+        }
+        
+        .leyenda {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            font-size: 12px;
+        }
+        
+        .leyenda-item {
+            display: inline-flex;
+            align-items: center;
+            margin-right: 20px;
+            margin-bottom: 5px;
+        }
+        
+        .leyenda-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            margin-right: 5px;
+        }
+        
+        .color-1 { background: linear-gradient(135deg, #ffd700, #ffed4e); }
+        .color-2 { background: linear-gradient(135deg, #c0c0c0, #e0e0e0); }
+
+        @media (max-width: 768px) {
+            .grupos-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-bar {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .tabla-posiciones {
+                font-size: 11px;
+            }
+            
+            .tabla-posiciones th,
+            .tabla-posiciones td {
+                padding: 8px 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Posiciones de Grupos</h1>
+            <a href="editar-grupos.html" class="back-btn">← Volver</a>
+        </div>
+        
+        <div class="action-bar">
+            <div>
+                <h3 style="margin: 0;">Tabla de posiciones en tiempo real</h3>
+                <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">
+                    Se actualiza automáticamente al cargar resultados
+                </p>
+            </div>
+            <button class="btn btn-primary" onclick="generarLlave()">
+                🏆 Generar Llave de Playoffs
+            </button>
+        </div>
+        
+        <div id="resumen-container"></div>
+        
+        <div id="grupos-container" class="grupos-container">
+            <div class="loading">Cargando estadísticas...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://academia-torneos.onrender.com/api';
+        let torneoId = null;
+        let grupos = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await cargarTorneoActivo();
+            if (torneoId) {
+                await cargarGruposYEstadisticas();
+            }
+        });
+
+        async function cargarTorneoActivo() {
+            try {
+                const response = await fetch(`${API_URL}/torneo-activo`);
+                if (response.ok) {
+                    const torneo = await response.json();
+                    torneoId = torneo.id;
+                }
+            } catch (error) {
+                console.error('Error al cargar torneo:', error);
+            }
+        }
+
+        async function cargarGruposYEstadisticas() {
+            try {
+                // Cargar grupos
+                const responseGrupos = await fetch(`${API_URL}/grupos/${torneoId}`);
+                if (!responseGrupos.ok) throw new Error('Error al cargar grupos');
+                
+                grupos = await responseGrupos.json();
+                
+                // Cargar estadísticas de cada grupo
+                const gruposConEstadisticas = [];
+                for (const grupo of grupos) {
+                    try {
+                        const responseStats = await fetch(`${API_URL}/grupos/${grupo.id}/estadisticas`);
+                        if (responseStats.ok) {
+                            const data = await responseStats.json();
+                            gruposConEstadisticas.push({
+                                ...grupo,
+                                estadisticas: data.estadisticas
+                            });
+                        }
+                    } catch (e) {
+                        console.error(`Error al cargar estadísticas del grupo ${grupo.id}:`, e);
+                    }
+                }
+                
+                renderizarGrupos(gruposConEstadisticas);
+                renderizarResumen(gruposConEstadisticas);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('grupos-container').innerHTML = 
+                    '<div class="loading">Error al cargar estadísticas</div>';
+            }
+        }
+
+        function renderizarGrupos(gruposData) {
+            const container = document.getElementById('grupos-container');
+            
+            if (gruposData.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No hay grupos formados</h3>
+                        <p>Primero debés armar los grupos en "Editar Grupos"</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = gruposData.map(grupo => crearTablaGrupo(grupo)).join('');
+        }
+
+        function crearTablaGrupo(grupo) {
+            if (!grupo.estadisticas || grupo.estadisticas.length === 0) {
+                return `
+                    <div class="grupo-card">
+                        <div class="grupo-header">
+                            <h2>Grupo ${grupo.numero_grupo}</h2>
+                            <div class="categoria">${grupo.categoria}</div>
+                        </div>
+                        <div style="padding: 20px; text-align: center; color: #666;">
+                            No hay estadísticas disponibles.<br>
+                            Cargá resultados para ver las posiciones.
+                        </div>
+                    </div>
+                `;
+            }
+            
+            const filas = grupo.estadisticas.map((est, index) => {
+                const posClass = index === 0 ? 'posicion-1' : (index === 1 ? 'posicion-2' : '');
+                const clasificadoClass = index < 2 ? 'clasificado' : '';
+                
+                return `
+                    <tr class="${posClass} ${clasificadoClass}">
+                        <td><strong>${est.posicion}°</strong></td>
+                        <td class="equipo">${est.nombre_jugador}</td>
+                        <td>${est.pj}</td>
+                        <td>${est.pg}</td>
+                        <td>${est.pp}</td>
+                        <td><strong>${est.puntos}</strong></td>
+                        <td>${est.sets_ganados}-${est.sets_perdidos}</td>
+                        <td>${est.dif_sets > 0 ? '+' : ''}${est.dif_sets}</td>
+                        <td>${est.games_ganados}-${est.games_perdidos}</td>
+                        <td>${est.dif_games > 0 ? '+' : ''}${est.dif_games}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            return `
+                <div class="grupo-card">
+                    <div class="grupo-header">
+                        <h2>Grupo ${grupo.numero_grupo}</h2>
+                        <div class="categoria">${grupo.categoria}</div>
+                    </div>
+                    <table class="tabla-posiciones">
+                        <thead>
+                            <tr>
+                                <th>Pos</th>
+                                <th style="text-align: left;">Equipo</th>
+                                <th>PJ</th>
+                                <th>PG</th>
+                                <th>PP</th>
+                                <th>Pts</th>
+                                <th>Sets</th>
+                                <th>Dif</th>
+                                <th>Games</th>
+                                <th>Dif</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${filas}
+                        </tbody>
+                    </table>
+                    <div class="leyenda">
+                        <div class="leyenda-item">
+                            <div class="leyenda-color color-1"></div>
+                            <span>1° Clasificado</span>
+                        </div>
+                        <div class="leyenda-item">
+                            <div class="leyenda-color color-2"></div>
+                            <span>2° Clasificado</span>
+                        </div>
+                        <div class="leyenda-item" style="margin-left: auto; font-size: 11px; color: #666;">
+                            PJ=Partidos Jugados | PG=Ganados | PP=Perdidos | Dif=Diferencia
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderizarResumen(gruposData) {
+            const container = document.getElementById('resumen-container');
+            
+            const totalGrupos = gruposData.length;
+            const totalEquipos = gruposData.reduce((sum, g) => sum + (g.estadisticas?.length || 0), 0);
+            const totalPartidosJugados = gruposData.reduce((sum, g) => 
+                sum + (g.estadisticas?.reduce((s, e) => s + (e.pj || 0), 0) / 2 || 0), 0);
+            
+            container.innerHTML = `
+                <div class="resumen-torneo">
+                    <h3>📈 Resumen del Torneo</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h4>${totalGrupos}</h4>
+                            <p>Grupos</p>
+                        </div>
+                        <div class="stat-card">
+                            <h4>${totalEquipos}</h4>
+                            <p>Equipos</p>
+                        </div>
+                        <div class="stat-card">
+                            <h4>${Math.floor(totalPartidosJugados)}</h4>
+                            <p>Partidos Jugados</p>
+                        </div>
+                        <div class="stat-card">
+                            <h4>${totalEquipos * 2}</h4>
+                            <p>Clasificados a Playoffs</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function generarLlave() {
+            // Verificar que todos los grupos tengan partidos jugados
+            const gruposCompletos = grupos.every(g => g.estado === 'finalizado');
+            
+            if (!gruposCompletos) {
+                if (!confirm('Algunos grupos no tienen todos los partidos jugados. ¿Querés generar la llave igual?')) {
+                    return;
+                }
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/torneo/${torneoId}/generar-llave`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    alert(`✅ Llave generada exitosamente!\n\nTotal clasificados: ${data.totalClasificados}\nBYES otorgados: ${data.byes}\nRondas: ${data.rondas.join(' → ')}`);
+                    window.location.href = 'llave-eliminacion.html';
+                } else {
+                    const error = await response.json();
+                    if (error.error.includes('Ya existe una llave')) {
+                        if (confirm('Ya existe una llave generada. ¿Querés verla?')) {
+                            window.location.href = 'llave-eliminacion.html';
+                        }
+                    } else {
+                        alert('Error: ' + error.error);
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al generar la llave');
+            }
+        }
+    </script>
+</body>
+</html>

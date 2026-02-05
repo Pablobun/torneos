@@ -10,6 +10,87 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Menú de Gestión del Torneo */
+        #menu-gestion {
+            margin-bottom: 30px;
+        }
+        
+        #menu-gestion h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #4CAF50;
+        }
+        
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+        }
+        
+        .menu-card {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s ease;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .menu-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            background: #f8fff8;
+        }
+        
+        .menu-card.menu-public {
+            border-left-color: #2196F3;
+            background: linear-gradient(135deg, #f5f9ff, white);
+        }
+        
+        .menu-card.menu-public:hover {
+            background: linear-gradient(135deg, #e3f2fd, white);
+        }
+        
+        .menu-icon {
+            font-size: 36px;
+            margin-right: 15px;
+            min-width: 50px;
+            text-align: center;
+        }
+        
+        .menu-content h3 {
+            margin: 0 0 5px 0;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+        
+        .menu-content p {
+            margin: 0;
+            font-size: 12px;
+            color: #666;
+            line-height: 1.4;
+        }
+        
+        @media (max-width: 768px) {
+            .menu-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .menu-card {
+                padding: 15px;
+            }
+            
+            .menu-icon {
+                font-size: 28px;
+            }
+        }
+    </style>
 </head>
 <body class="editar-grupos">
     <div class="container">
@@ -27,6 +108,52 @@
                 <h2>Información del Torneo</h2>
                 <div id="info-torneo">
                     <p>Cargando información del torneo...</p>
+                </div>
+            </section>
+
+            <!-- Menú de Gestión del Torneo -->
+            <section id="menu-gestion">
+                <h2>📊 Gestión del Torneo</h2>
+                <div class="menu-grid">
+                    <a href="cargar-resultados.html" class="menu-card">
+                        <div class="menu-icon">📝</div>
+                        <div class="menu-content">
+                            <h3>Cargar Resultados</h3>
+                            <p>Registrá los sets, games y super tie-breaks de cada partido</p>
+                        </div>
+                    </a>
+                    
+                    <a href="posiciones-grupos.html" class="menu-card">
+                        <div class="menu-icon">📈</div>
+                        <div class="menu-content">
+                            <h3>Posiciones de Grupos</h3>
+                            <p>Tablas en tiempo real con estadísticas y clasificados</p>
+                        </div>
+                    </a>
+                    
+                    <a href="generar-llave.html" class="menu-card">
+                        <div class="menu-icon">🏆</div>
+                        <div class="menu-content">
+                            <h3>Generar Llave</h3>
+                            <p>Crear el bracket de eliminación con BYES automáticos</p>
+                        </div>
+                    </a>
+                    
+                    <a href="llave-eliminacion.html" class="menu-card">
+                        <div class="menu-icon">🏁</div>
+                        <div class="menu-content">
+                            <h3>Playoffs</h3>
+                            <p>Gestionar horarios y resultados de la fase final</p>
+                        </div>
+                    </a>
+                    
+                    <a href="ver-playoffs.html" class="menu-card menu-public" target="_blank">
+                        <div class="menu-icon">👁️</div>
+                        <div class="menu-content">
+                            <h3>Ver Playoffs (Público)</h3>
+                            <p>Vista pública del bracket para consulta</p>
+                        </div>
+                    </a>
                 </div>
             </section>
 

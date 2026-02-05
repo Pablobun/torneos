@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cargar Resultados - Administración</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        
+        .back-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .filters {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .filters select {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        
+        .partidos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        
+        .partido-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        
+        .partido-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+        
+        .partido-card.jugado {
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .partido-card.pendiente {
+            border-left: 4px solid #FFC107;
+        }
+        
+        .partido-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .partido-info {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .estado-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .estado-jugado {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .estado-pendiente {
+            background: #FFC107;
+            color: #333;
+        }
+        
+        .equipo {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .equipo-nombre {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .equipo-input {
+            width: 60px;
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 16px;
+        }
+        
+        .sets-container {
+            margin: 15px 0;
+        }
+        
+        .set-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .set-label {
+            font-weight: bold;
+            color: #666;
+            min-width: 50px;
+        }
+        
+        .set-input {
+            width: 60px;
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .super-tiebreak {
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        .super-tiebreak.visible {
+            display: block;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #45a049;
+        }
+        
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #da190b;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .wo-section {
+            background: #f8d7da;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        
+        .wo-section label {
+            display: block;
+            margin-bottom: 8px;
+            color: #721c24;
+        }
+        
+        .wo-section select {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #dc3545;
+            border-radius: 5px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .resultado-actual {
+            background: #d4edda;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        
+        .resultado-actual h4 {
+            margin: 0 0 5px 0;
+            color: #155724;
+        }
+        
+        .sets-display {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        
+        .set-badge {
+            background: #28a745;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .partidos-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎾 Cargar Resultados</h1>
+            <a href="editar-grupos.html" class="back-btn">← Volver</a>
+        </div>
+        
+        <div class="filters">
+            <label>Filtrar por Grupo:</label>
+            <select id="filtro-grupo">
+                <option value="">Todos los grupos</option>
+            </select>
+            
+            <label style="margin-left: 20px;">Estado:</label>
+            <select id="filtro-estado">
+                <option value="">Todos</option>
+                <option value="pendiente">Pendientes</option>
+                <option value="jugado">Jugados</option>
+            </select>
+        </div>
+        
+        <div id="partidos-container" class="partidos-grid">
+            <div class="loading">Cargando partidos...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://academia-torneos.onrender.com/api';
+        let torneoId = null;
+        let partidos = [];
+        let grupos = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await cargarTorneoActivo();
+            if (torneoId) {
+                await cargarGrupos();
+                await cargarPartidos();
+            }
+        });
+
+        async function cargarTorneoActivo() {
+            try {
+                const response = await fetch(`${API_URL}/torneo-activo`);
+                if (response.ok) {
+                    const torneo = await response.json();
+                    torneoId = torneo.id;
+                }
+            } catch (error) {
+                console.error('Error al cargar torneo:', error);
+            }
+        }
+
+        async function cargarGrupos() {
+            try {
+                const response = await fetch(`${API_URL}/grupos/${torneoId}`);
+                if (response.ok) {
+                    grupos = await response.json();
+                    llenarFiltroGrupos();
+                }
+            } catch (error) {
+                console.error('Error al cargar grupos:', error);
+            }
+        }
+
+        function llenarFiltroGrupos() {
+            const select = document.getElementById('filtro-grupo');
+            grupos.forEach(grupo => {
+                const option = document.createElement('option');
+                option.value = grupo.id;
+                option.textContent = `Grupo ${grupo.numero_grupo} - ${grupo.categoria}`;
+                select.appendChild(option);
+            });
+            
+            select.addEventListener('change', filtrarPartidos);
+        }
+
+        async function cargarPartidos() {
+            try {
+                const response = await fetch(`${API_URL}/partidos/${torneoId}`);
+                if (response.ok) {
+                    partidos = await response.json();
+                    renderizarPartidos();
+                }
+            } catch (error) {
+                console.error('Error al cargar partidos:', error);
+                document.getElementById('partidos-container').innerHTML = 
+                    '<div class="loading">Error al cargar partidos</div>';
+            }
+        }
+
+        function renderizarPartidos() {
+            const container = document.getElementById('partidos-container');
+            const filtroGrupo = document.getElementById('filtro-grupo').value;
+            const filtroEstado = document.getElementById('filtro-estado').value;
+            
+            let partidosFiltrados = partidos;
+            
+            if (filtroGrupo) {
+                partidosFiltrados = partidosFiltrados.filter(p => {
+                    const grupo = grupos.find(g => g.numero_grupo == p.grupo);
+                    return grupo && grupo.id == filtroGrupo;
+                });
+            }
+            
+            if (filtroEstado) {
+                partidosFiltrados = partidosFiltrados.filter(p => 
+                    filtroEstado === 'jugado' ? p.estado !== 'pendiente' : p.estado === 'pendiente'
+                );
+            }
+            
+            if (partidosFiltrados.length === 0) {
+                container.innerHTML = '<div class="loading">No hay partidos para mostrar</div>';
+                return;
+            }
+            
+            container.innerHTML = partidosFiltrados.map(partido => crearCardPartido(partido)).join('');
+            
+            // Agregar event listeners a los inputs de sets
+            document.querySelectorAll('.set-input').forEach(input => {
+                input.addEventListener('input', verificarSuperTiebreak);
+            });
+        }
+
+        function crearCardPartido(partido) {
+            const estaJugado = partido.estado !== 'pendiente' && partido.estado !== null;
+            const estadoClass = estaJugado ? 'jugado' : 'pendiente';
+            const estadoText = estaJugado ? 'Jugado' : 'Pendiente';
+            const estadoBadgeClass = estaJugado ? 'estado-jugado' : 'estado-pendiente';
+            
+            let resultadoHtml = '';
+            if (estaJugado) {
+                const esWO = partido.estado.includes('wo');
+                resultadoHtml = `
+                    <div class="resultado-actual">
+                        <h4>✓ Resultado cargado ${esWO ? '(WO)' : ''}</h4>
+                        ${!esWO ? `
+                            <div class="sets-display">
+                                <span class="set-badge">${partido.sets_local}-${partido.sets_visitante} Sets</span>
+                                <span class="set-badge">${partido.games_local}-${partido.games_visitante} Games</span>
+                            </div>
+                        ` : '<span class="set-badge">Walkover</span>'}
+                    </div>
+                `;
+            }
+            
+            return `
+                <div class="partido-card ${estadoClass}" data-id="${partido.id}">
+                    <div class="partido-header">
+                        <div class="partido-info">
+                            Grupo ${partido.grupo || 'N/A'} - ${partido.categoria || 'N/A'}<br>
+                            ${partido.fecha ? new Date(partido.fecha).toLocaleDateString() : 'Sin fecha'} ${partido.horario || ''}
+                        </div>
+                        <span class="estado-badge ${estadoBadgeClass}">${estadoText}</span>
+                    </div>
+                    
+                    <div class="equipo">
+                        <span class="equipo-nombre">${partido.local_nombre}</span>
+                        <span>Local</span>
+                    </div>
+                    
+                    <div class="equipo">
+                        <span class="equipo-nombre">${partido.visitante_nombre}</span>
+                        <span>Visitante</span>
+                    </div>
+                    
+                    <div class="sets-container">
+                        <div class="set-row">
+                            <span class="set-label">Set 1:</span>
+                            <input type="number" class="set-input" data-set="1" data-equipo="local" min="0" max="7" placeholder="L">
+                            <span>-</span>
+                            <input type="number" class="set-input" data-set="1" data-equipo="visitante" min="0" max="7" placeholder="V">
+                        </div>
+                        <div class="set-row">
+                            <span class="set-label">Set 2:</span>
+                            <input type="number" class="set-input" data-set="2" data-equipo="local" min="0" max="7" placeholder="L">
+                            <span>-</span>
+                            <input type="number" class="set-input" data-set="2" data-equipo="visitante" min="0" max="7" placeholder="V">
+                        </div>
+                    </div>
+                    
+                    <div class="super-tiebreak" id="super-tb-${partido.id}">
+                        <strong>🏆 Super Tie-Break:</strong>
+                        <div class="set-row" style="margin-top: 10px;">
+                            <span class="set-label">TB:</span>
+                            <input type="number" class="set-input super-tb-input" data-equipo="local" min="0" placeholder="L">
+                            <span>-</span>
+                            <input type="number" class="set-input super-tb-input" data-equipo="visitante" min="0" placeholder="V">
+                        </div>
+                    </div>
+                    
+                    <div class="wo-section">
+                        <label>
+                            <input type="checkbox" class="wo-check" data-id="${partido.id}"> 
+                            Walkover (WO)
+                        </label>
+                        <select class="wo-select" data-id="${partido.id}" style="display: none; margin-top: 5px;">
+                            <option value="">Seleccionar ganador WO...</option>
+                            <option value="local">${partido.local_nombre}</option>
+                            <option value="visitante">${partido.visitante_nombre}</option>
+                        </select>
+                    </div>
+                    
+                    ${resultadoHtml}
+                    
+                    <div class="actions">
+                        <button class="btn btn-primary" onclick="guardarResultado(${partido.id})">
+                            ${estaJugado ? 'Actualizar' : 'Guardar'}
+                        </button>
+                        ${estaJugado ? `<button class="btn btn-danger" onclick="eliminarResultado(${partido.id})">Eliminar</button>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function verificarSuperTiebreak(e) {
+            const card = e.target.closest('.partido-card');
+            const partidoId = card.dataset.id;
+            
+            const set1Local = parseInt(card.querySelector('[data-set="1"][data-equipo="local"]').value) || 0;
+            const set1Vis = parseInt(card.querySelector('[data-set="1"][data-equipo="visitante"]').value) || 0;
+            const set2Local = parseInt(card.querySelector('[data-set="2"][data-equipo="local"]').value) || 0;
+            const set2Vis = parseInt(card.querySelector('[data-set="2"][data-equipo="visitante"]').value) || 0;
+            
+            const superTb = document.getElementById(`super-tb-${partidoId}`);
+            
+            // Mostrar super TB si hay 1-1 en sets
+            if ((set1Local > set1Vis && set2Vis > set2Local) || (set1Vis > set1Local && set2Local > set2Vis)) {
+                superTb.classList.add('visible');
+            } else {
+                superTb.classList.remove('visible');
+            }
+        }
+
+        // Manejar checkbox de WO
+        document.addEventListener('change', (e) => {
+            if (e.target.classList.contains('wo-check')) {
+                const select = e.target.closest('.wo-section').querySelector('.wo-select');
+                select.style.display = e.target.checked ? 'block' : 'none';
+            }
+        });
+
+        async function guardarResultado(partidoId) {
+            const card = document.querySelector(`.partido-card[data-id="${partidoId}"]`);
+            const woCheck = card.querySelector('.wo-check');
+            
+            let data = {};
+            
+            if (woCheck.checked) {
+                const woSelect = card.querySelector('.wo-select');
+                if (!woSelect.value) {
+                    alert('Por favor seleccioná el ganador del WO');
+                    return;
+                }
+                data = {
+                    esWO: true,
+                    ganadorWO: woSelect.value
+                };
+            } else {
+                // Obtener sets
+                const sets = [];
+                for (let i = 1; i <= 2; i++) {
+                    const local = parseInt(card.querySelector(`[data-set="${i}"][data-equipo="local"]`).value);
+                    const visitante = parseInt(card.querySelector(`[data-set="${i}"][data-equipo="visitante"]`).value);
+                    
+                    if (isNaN(local) || isNaN(visitante)) {
+                        alert(`Por favor completá el set ${i}`);
+                        return;
+                    }
+                    
+                    sets.push({ gamesLocal: local, gamesVisitante: visitante });
+                }
+                
+                data.sets = sets;
+                
+                // Verificar super TB
+                const superTbDiv = document.getElementById(`super-tb-${partidoId}`);
+                if (superTbDiv.classList.contains('visible')) {
+                    const tbLocal = parseInt(card.querySelector('.super-tb-input[data-equipo="local"]').value);
+                    const tbVisitante = parseInt(card.querySelector('.super-tb-input[data-equipo="visitante"]').value);
+                    
+                    if (isNaN(tbLocal) || isNaN(tbVisitante)) {
+                        alert('Por favor completá el super tie-break');
+                        return;
+                    }
+                    
+                    data.superTiebreak = { local: tbLocal, visitante: tbVisitante };
+                }
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/partidos/${partidoId}/resultado`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    alert('Resultado guardado exitosamente');
+                    await cargarPartidos();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + (error.error || 'No se pudo guardar'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al guardar el resultado');
+            }
+        }
+
+        async function eliminarResultado(partidoId) {
+            if (!confirm('¿Estás seguro de eliminar este resultado?')) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/partidos/${partidoId}/resultado`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    alert('Resultado eliminado');
+                    await cargarPartidos();
+                } else {
+                    alert('Error al eliminar el resultado');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al eliminar');
+            }
+        }
+
+        function filtrarPartidos() {
+            renderizarPartidos();
+        }
+    </script>
+</body>
+</html>

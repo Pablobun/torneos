@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ver Playoffs - Portal de Torneos</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        
+        .back-link {
+            position: absolute;
+            left: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+        }
+        
+        .back-link:hover {
+            opacity: 1;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .champion-section {
+            text-align: center;
+            margin-bottom: 50px;
+            padding: 40px;
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3);
+            display: none;
+        }
+        
+        .champion-section.visible {
+            display: block;
+        }
+        
+        .champion-title {
+            font-size: 24px;
+            color: #856404;
+            margin-bottom: 15px;
+        }
+        
+        .champion-name {
+            font-size: 36px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .trophy {
+            font-size: 80px;
+            margin-bottom: 15px;
+        }
+        
+        .bracket-container {
+            overflow-x: auto;
+            padding: 20px 0;
+        }
+        
+        .bracket {
+            display: flex;
+            gap: 50px;
+            min-width: 1000px;
+            justify-content: center;
+        }
+        
+        .round {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            min-width: 240px;
+        }
+        
+        .round-title {
+            text-align: center;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 25px;
+            text-transform: uppercase;
+            font-size: 14px;
+            letter-spacing: 2px;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        
+        .match {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-left: 5px solid #4CAF50;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .match:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+        
+        .match.final {
+            border-left-color: #ffd700;
+            background: linear-gradient(135deg, #fff9e6, white);
+        }
+        
+        .match.semifinal {
+            border-left-color: #c0c0c0;
+        }
+        
+        .match.por-definir {
+            border-left-color: #e0e0e0;
+            background: #fafafa;
+        }
+        
+        .match-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .match-label {
+            font-size: 11px;
+            color: #999;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .match-status {
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .status-jugado {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .status-pendiente {
+            background: #FFC107;
+            color: #333;
+        }
+        
+        .status-bye {
+            background: #ff9800;
+            color: white;
+        }
+        
+        .team {
+            padding: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .team:last-child {
+            border-bottom: none;
+        }
+        
+        .team-name {
+            font-size: 14px;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+        
+        .team-name.winner {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .team-name.por-definir {
+            color: #bbb;
+            font-style: italic;
+        }
+        
+        .team-result {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .score {
+            font-weight: bold;
+            color: #666;
+            font-size: 13px;
+        }
+        
+        .winner-icon {
+            color: #4CAF50;
+            font-size: 16px;
+        }
+        
+        .match-info {
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px dashed #ddd;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+        
+        .match-info.fecha {
+            background: #e3f2fd;
+            padding: 6px;
+            border-radius: 4px;
+            color: #1976D2;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #666;
+        }
+        
+        .empty-state h2 {
+            color: #999;
+            margin-bottom: 15px;
+            font-size: 24px;
+        }
+        
+        .empty-state p {
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 80px;
+            color: #666;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .stats-bar {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 24px;
+            }
+            
+            .back-link {
+                position: static;
+                transform: none;
+                margin-top: 15px;
+                justify-content: center;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .bracket {
+                flex-direction: column;
+                min-width: auto;
+                gap: 30px;
+            }
+            
+            .round {
+                min-width: auto;
+            }
+            
+            .champion-name {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="ver-grupos-partidos.html" class="back-link">← Volver a grupos</a>
+            <h1>🏆 Playoffs - Fase Final</h1>
+            <p>Bracket de eliminación directa</p>
+        </div>
+        
+        <div class="content">
+            <div id="champion-section" class="champion-section">
+                <div class="trophy">🏆</div>
+                <div class="champion-title">¡CAMPEÓN DEL TORNEO!</div>
+                <div id="champion-name" class="champion-name">-</div>
+                <p style="color: #856404; font-size: 14px;">Felicitaciones al equipo campeón</p>
+            </div>
+            
+            <div id="stats-bar" class="stats-bar" style="display: none;">
+                <div class="stat-item">
+                    <div id="stat-clasificados" class="stat-value">-</div>
+                    <div class="stat-label">Clasificados</div>
+                </div>
+                <div class="stat-item">
+                    <div id="stat-rondas" class="stat-value">-</div>
+                    <div class="stat-label">Rondas</div>
+                </div>
+                <div class="stat-item">
+                    <div id="stat-partidos" class="stat-value">-</div>
+                    <div class="stat-label">Partidos</div>
+                </div>
+            </div>
+            
+            <div id="bracket-container" class="bracket-container">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Cargando bracket de playoffs...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://academia-torneos.onrender.com/api';
+        let torneoId = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await cargarTorneoActivo();
+            if (torneoId) {
+                await cargarPlayoffs();
+            }
+        });
+
+        async function cargarTorneoActivo() {
+            try {
+                const response = await fetch(`${API_URL}/torneo-activo`);
+                if (response.ok) {
+                    const torneo = await response.json();
+                    torneoId = torneo.id;
+                }
+            } catch (error) {
+                console.error('Error al cargar torneo:', error);
+            }
+        }
+
+        async function cargarPlayoffs() {
+            try {
+                const response = await fetch(`${API_URL}/torneo/${torneoId}/llave`);
+                
+                if (!response.ok) {
+                    mostrarEmptyState();
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                if (!data.bracket || Object.keys(data.bracket).length === 0) {
+                    mostrarEmptyState();
+                    return;
+                }
+                
+                renderizarBracket(data.bracket);
+                mostrarStats(data);
+                verificarCampeon(data.bracket);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('bracket-container').innerHTML = `
+                    <div class="empty-state">
+                        <h2>Error al cargar</h2>
+                        <p>No se pudieron cargar los datos de los playoffs</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderizarBracket(bracket) {
+            const container = document.getElementById('bracket-container');
+            
+            const ordenRondas = ['dieciseisavos', 'octavos', 'cuartos', 'semifinal', 'final'];
+            const rondasDisponibles = ordenRondas.filter(r => bracket[r]);
+            
+            container.innerHTML = `<div class="bracket">${rondasDisponibles.map(ronda => {
+                const matches = bracket[ronda];
+                return `
+                    <div class="round">
+                        <div class="round-title">${formatearRonda(ronda)}</div>
+                        ${matches.map(match => crearMatchCard(match, ronda)).join('')}
+                    </div>
+                `;
+            }).join('')}</div>`;
+        }
+
+        function crearMatchCard(match, ronda) {
+            const esBye = match.es_bye;
+            const tieneResultado = match.ganador_id !== null;
+            const porDefinir = !match.id_inscripto_1 || !match.id_inscripto_2;
+            
+            let matchClass = '';
+            if (ronda === 'final') matchClass = 'final';
+            else if (ronda === 'semifinal') matchClass = 'semifinal';
+            else if (porDefinir) matchClass = 'por-definir';
+            
+            const team1Class = match.ganador_id === match.id_inscripto_1 ? 'winner' : '';
+            const team2Class = match.ganador_id === match.id_inscripto_2 ? 'winner' : '';
+            
+            const team1Name = match.nombre_1 || (match.id_inscripto_1 ? 'Por definir' : '---');
+            const team2Name = match.nombre_2 || (match.id_inscripto_2 ? 'Por definir' : '---');
+            
+            let statusClass = 'status-pendiente';
+            let statusText = 'Pendiente';
+            if (esBye) {
+                statusClass = 'status-bye';
+                statusText = 'BYE';
+            } else if (tieneResultado) {
+                statusClass = 'status-jugado';
+                statusText = 'Finalizado';
+            }
+            
+            const fechaHora = match.fecha ? 
+                `${new Date(match.fecha).toLocaleDateString()} ${match.hora_inicio || ''}` : 
+                null;
+            
+            return `
+                <div class="match ${matchClass}">
+                    <div class="match-header">
+                        <span class="match-label">Partido #${match.posicion}</span>
+                        <span class="match-status ${statusClass}">${statusText}</span>
+                    </div>
+                    <div class="team">
+                        <span class="team-name ${team1Class} ${match.id_inscripto_1 ? '' : 'por-definir'}">${team1Name}</span>
+                        <div class="team-result">
+                            ${tieneResultado && match.ganador_id === match.id_inscripto_1 ? '<span class="winner-icon">🏆</span>' : ''}
+                        </div>
+                    </div>
+                    <div class="team">
+                        <span class="team-name ${team2Class} ${match.id_inscripto_2 ? '' : 'por-definir'}">${team2Name}</span>
+                        <div class="team-result">
+                            ${tieneResultado && match.ganador_id === match.id_inscripto_2 ? '<span class="winner-icon">🏆</span>' : ''}
+                        </div>
+                    </div>
+                    ${fechaHora ? `<div class="match-info fecha">📅 ${fechaHora}</div>` : ''}
+                    ${esBye ? '<div class="match-info" style="color: #ff9800;">⭐ Avanza directamente</div>' : ''}
+                </div>
+            `;
+        }
+
+        function formatearRonda(ronda) {
+            const map = {
+                'dieciseisavos': 'Dieciseisavos de Final',
+                'octavos': 'Octavos de Final',
+                'cuartos': 'Cuartos de Final',
+                'semifinal': 'Semifinal',
+                'final': 'Final'
+            };
+            return map[ronda] || ronda;
+        }
+
+        function mostrarStats(data) {
+            const statsBar = document.getElementById('stats-bar');
+            
+            let totalPartidos = 0;
+            let totalClasificados = 0;
+            let totalRondas = 0;
+            
+            for (const ronda in data.bracket) {
+                totalRondas++;
+                const matches = data.bracket[ronda];
+                totalPartidos += matches.length;
+                
+                if (ronda === 'dieciseisavos' || ronda === 'octavos' || 
+                    ronda === 'cuartos' || ronda === 'semifinal') {
+                    matches.forEach(m => {
+                        if (m.id_inscripto_1) totalClasificados++;
+                        if (m.id_inscripto_2) totalClasificados++;
+                    });
+                }
+            }
+            
+            document.getElementById('stat-clasificados').textContent = totalClasificados;
+            document.getElementById('stat-rondas').textContent = totalRondas;
+            document.getElementById('stat-partidos').textContent = totalPartidos;
+            
+            statsBar.style.display = 'flex';
+        }
+
+        function verificarCampeon(bracket) {
+            if (bracket.final && bracket.final.length > 0) {
+                const final = bracket.final[0];
+                if (final.ganador_id && final.nombre_ganador) {
+                    document.getElementById('champion-name').textContent = final.nombre_ganador;
+                    document.getElementById('champion-section').classList.add('visible');
+                }
+            }
+        }
+
+        function mostrarEmptyState() {
+            document.getElementById('bracket-container').innerHTML = `
+                <div class="empty-state">
+                    <h2>🎾 Playoffs no disponibles</h2>
+                    <p>Los playoffs aún no han comenzado o no hay información disponible.</p>
+                    <p style="font-size: 14px; color: #999; margin-top: 10px;">
+                        Consultá la fase de grupos para ver el estado del torneo.
+                    </p>
+                    <a href="ver-grupos-partidos.html" class="btn" style="margin-top: 20px;">
+                        Ver Grupos
+                    </a>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

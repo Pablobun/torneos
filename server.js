@@ -969,6 +969,1116 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
     }
 }
 
+// ==========================================================
+// ENDPOINT: CARGAR RESULTADO DE UN PARTIDO
+// ==========================================================
+app.post('/api/partidos/:idPartido/resultado', async (req, res) => {
+    const { idPartido } = req.params;
+    const { sets, esWO, ganadorWO, superTiebreak } = req.body;
+    
+    let connection;
+    
+    try {
+        connection = await mysql.createConnection(connectionConfig);
+        await connection.beginTransaction();
+        
+        // 1. Obtener info del partido
+        const [partidoInfo] = await connection.execute(
+            `SELECT p.id, p.id_inscriptoL, p.id_inscriptoV, g.id as id_grupo 
+             FROM partido p 
+             LEFT JOIN grupo_integrantes gil ON p.id_inscriptoL = gil.id_inscripto
+             LEFT JOIN grupos g ON gil.id_grupo = g.id
+             WHERE p.id = ?`,
+            [idPartido]
+        );
+        
+        if (partidoInfo.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ error: 'Partido no encontrado' });
+        }
+        
+        const partido = partidoInfo[0];
+        
+        // 2. Procesar WO si aplica
+        if (esWO) {
+            const ganadorId = ganadorWO === 'local' ? partido.id_inscriptoL : partido.id_inscriptoV;
+            await connection.execute(
+                `UPDATE partido SET 
+                    estado = ?,
+                    ganador_id = ?,
+                    sets_local = ?,
+                    sets_visitante = ?
+                 WHERE id = ?`,
+                [ganadorWO === 'local' ? 'wo_local' : 'wo_visitante', ganadorId, 
+                 ganadorWO === 'local' ? 2 : 0, ganadorWO === 'local' ? 0 : 2, idPartido]
+            );
+        } else {
+            // 3. Calcular sets y games
+            let setsLocal = 0, setsVisitante = 0;
+            let gamesLocalTotal = 0, gamesVisitanteTotal = 0;
+            
+            // Limpiar sets anteriores
+            await connection.execute('DELETE FROM detalle_sets WHERE id_partido = ?', [idPartido]);
+            
+            // Insertar sets normales
+            for (let i = 0; i < sets.length; i++) {
+                const set = sets[i];
+                gamesLocalTotal += parseInt(set.gamesLocal);
+                gamesVisitanteTotal += parseInt(set.gamesVisitante);
+                
+                if (set.gamesLocal > set.gamesVisitante) {
+                    setsLocal++;
+                } else {
+                    setsVisitante++;
+                }
+                
+                await connection.execute(
+                    `INSERT INTO detalle_sets (id_partido, numero_set, games_local, games_visitante, es_super_tiebreak) 
+                     VALUES (?, ?, ?, ?, FALSE)`,
+                    [idPartido, i + 1, set.gamesLocal, set.gamesVisitante]
+                );
+            }
+            
+            // 4. Procesar super tie-break si aplica
+            let tiebreakLocal = null, tiebreakVisitante = null;
+            if (superTiebreak && setsLocal === 1 && setsVisitante === 1) {
+                tiebreakLocal = superTiebreak.local;
+                tiebreakVisitante = superTiebreak.visitante;
+                gamesLocalTotal += tiebreakLocal;
+                gamesVisitanteTotal += tiebreakVisitante;
+                
+                // El super TB cuenta como 1 set para el ganador
+                if (tiebreakLocal > tiebreakVisitante) {
+                    setsLocal++;
+                } else {
+                    setsVisitante++;
+                }
+                
+                await connection.execute(
+                    `INSERT INTO detalle_sets (id_partido, numero_set, games_local, games_visitante, es_super_tiebreak) 
+                     VALUES (?, 3, ?, ?, TRUE)`,
+                    [idPartido, tiebreakLocal, tiebreakVisitante]
+                );
+            }
+            
+            // Determinar ganador
+            const ganadorId = setsLocal > setsVisitante ? partido.id_inscriptoL : partido.id_inscriptoV;
+            
+            // 5. Actualizar partido
+            await connection.execute(
+                `UPDATE partido SET 
+                    estado = 'jugado',
+                    ganador_id = ?,
+                    sets_local = ?,
+                    sets_visitante = ?,
+                    games_local = ?,
+                    games_visitante = ?,
+                    tiebreak_local = ?,
+                    tiebreak_visitante = ?
+                 WHERE id = ?`,
+                [ganadorId, setsLocal, setsVisitante, gamesLocalTotal, gamesVisitanteTotal, 
+                 tiebreakLocal, tiebreakVisitante, idPartido]
+            );
+        }
+        
+        // 6. Recalcular estadísticas del grupo
+        await calcularEstadisticasGrupo(connection, partido.id_grupo);
+        
+        await connection.commit();
+        
+        res.status(200).json({ 
+            mensaje: 'Resultado guardado exitosamente',
+            partidoId: idPartido
+        });
+        
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Error al guardar resultado:', error);
+        res.status(500).json({ error: 'Error al guardar el resultado del partido' });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// ==========================================================
+// ENDPOINT: ACTUALIZAR RESULTADO DE UN PARTIDO
+// ==========================================================
+app.put('/api/partidos/:idPartido/resultado', async (req, res) => {
+    const { idPartido } = req.params;
+    const { sets, esWO, ganadorWO, superTiebreak } = req.body;
+    
+    let connection;
+    
+    try {
+        connection = await mysql.createConnection(connectionConfig);
+        await connection.beginTransaction();
+        
+        // Obtener info del partido
+        const [partidoInfo] = await connection.execute(
+            `SELECT p.id, p.id_inscriptoL, p.id_inscriptoV, g.id as id_grupo 
+             FROM partido p 
+             LEFT JOIN grupo_integrantes gil ON p.id_inscriptoL = gil.id_inscripto
+             LEFT JOIN grupos g ON gil.id_grupo = g.id
+             WHERE p.id = ?`,
+            [idPartido]
+        );
+        
+        if (partidoInfo.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ error: 'Partido no encontrado' });
+        }
+        
+        const partido = partidoInfo[0];
+        
+        // Resetear estado antes de recalcular
+        if (esWO) {
+            const ganadorId = ganadorWO === 'local' ? partido.id_inscriptoL : partido.id_inscriptoV;
+            await connection.execute(
+                `UPDATE partido SET 
+                    estado = ?,
+                    ganador_id = ?,
+                    sets_local = ?,
+                    sets_visitante = ?,
+                    games_local = 0,
+                    games_visitante = 0,
+                    tiebreak_local = NULL,
+                    tiebreak_visitante = NULL
+                 WHERE id = ?`,
+                [ganadorWO === 'local' ? 'wo_local' : 'wo_visitante', ganadorId, 
+                 ganadorWO === 'local' ? 2 : 0, ganadorWO === 'local' ? 0 : 2, idPartido]
+            );
+        } else {
+            let setsLocal = 0, setsVisitante = 0;
+            let gamesLocalTotal = 0, gamesVisitanteTotal = 0;
+            
+            await connection.execute('DELETE FROM detalle_sets WHERE id_partido = ?', [idPartido]);
+            
+            for (let i = 0; i < sets.length; i++) {
+                const set = sets[i];
+                gamesLocalTotal += parseInt(set.gamesLocal);
+                gamesVisitanteTotal += parseInt(set.gamesVisitante);
+                
+                if (set.gamesLocal > set.gamesVisitante) {
+                    setsLocal++;
+                } else {
+                    setsVisitante++;
+                }
+                
+                await connection.execute(
+                    `INSERT INTO detalle_sets (id_partido, numero_set, games_local, games_visitante, es_super_tiebreak) 
+                     VALUES (?, ?, ?, ?, FALSE)`,
+                    [idPartido, i + 1, set.gamesLocal, set.gamesVisitante]
+                );
+            }
+            
+            let tiebreakLocal = null, tiebreakVisitante = null;
+            if (superTiebreak && setsLocal === 1 && setsVisitante === 1) {
+                tiebreakLocal = superTiebreak.local;
+                tiebreakVisitante = superTiebreak.visitante;
+                gamesLocalTotal += tiebreakLocal;
+                gamesVisitanteTotal += tiebreakVisitante;
+                
+                if (tiebreakLocal > tiebreakVisitante) {
+                    setsLocal++;
+                } else {
+                    setsVisitante++;
+                }
+                
+                await connection.execute(
+                    `INSERT INTO detalle_sets (id_partido, numero_set, games_local, games_visitante, es_super_tiebreak) 
+                     VALUES (?, 3, ?, ?, TRUE)`,
+                    [idPartido, tiebreakLocal, tiebreakVisitante]
+                );
+            }
+            
+            const ganadorId = setsLocal > setsVisitante ? partido.id_inscriptoL : partido.id_inscriptoV;
+            
+            await connection.execute(
+                `UPDATE partido SET 
+                    estado = 'jugado',
+                    ganador_id = ?,
+                    sets_local = ?,
+                    sets_visitante = ?,
+                    games_local = ?,
+                    games_visitante = ?,
+                    tiebreak_local = ?,
+                    tiebreak_visitante = ?
+                 WHERE id = ?`,
+                [ganadorId, setsLocal, setsVisitante, gamesLocalTotal, gamesVisitanteTotal, 
+                 tiebreakLocal, tiebreakVisitante, idPartido]
+            );
+        }
+        
+        await calcularEstadisticasGrupo(connection, partido.id_grupo);
+        await connection.commit();
+        
+        res.status(200).json({ 
+            mensaje: 'Resultado actualizado exitosamente',
+            partidoId: idPartido
+        });
+        
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Error al actualizar resultado:', error);
+        res.status(500).json({ error: 'Error al actualizar el resultado' });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// ==========================================================
+// ENDPOINT: ELIMINAR RESULTADO DE UN PARTIDO
+// ==========================================================
+app.delete('/api/partidos/:idPartido/resultado', async (req, res) => {
+    const { idPartido } = req.params;
+    
+    let connection;
+    
+    try {
+        connection = await mysql.createConnection(connectionConfig);
+        await connection.beginTransaction();
+        
+        // Obtener info del partido
+        const [partidoInfo] = await connection.execute(
+            `SELECT p.id, g.id as id_grupo 
+             FROM partido p 
+             LEFT JOIN grupo_integrantes gil ON p.id_inscriptoL = gil.id_inscripto
+             LEFT JOIN grupos g ON gil.id_grupo = g.id
+             WHERE p.id = ?`,
+            [idPartido]
+        );
+        
+        if (partidoInfo.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ error: 'Partido no encontrado' });
+        }
+        
+        const idGrupo = partidoInfo[0].id_grupo;
+        
+        // Limpiar resultado
+        await connection.execute('DELETE FROM detalle_sets WHERE id_partido = ?', [idPartido]);
+        
+        await connection.execute(
+            `UPDATE partido SET 
+                estado = 'pendiente',
+                ganador_id = NULL,
+                sets_local = 0,
+                sets_visitante = 0,
+                games_local = 0,
+                games_visitante = 0,
+                tiebreak_local = NULL,
+                tiebreak_visitante = NULL
+             WHERE id = ?`,
+            [idPartido]
+        );
+        
+        // Recalcular estadísticas
+        await calcularEstadisticasGrupo(connection, idGrupo);
+        await connection.commit();
+        
+        res.status(200).json({ mensaje: 'Resultado eliminado exitosamente' });
+        
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Error al eliminar resultado:', error);
+        res.status(500).json({ error: 'Error al eliminar el resultado' });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// ==========================================================
+// FUNCIÓN: CALCULAR ESTADÍSTICAS DE UN GRUPO (REAL-TIME)
+// ==========================================================
+async function calcularEstadisticasGrupo(connection, idGrupo) {
+    // 1. Obtener todos los integrantes del grupo
+    const [integrantes] = await connection.execute(
+        `SELECT gi.id_inscripto 
+         FROM grupo_integrantes gi 
+         WHERE gi.id_grupo = ?`,
+        [idGrupo]
+    );
+    
+    if (integrantes.length === 0) return;
+    
+    // 2. Limpiar estadísticas actuales
+    await connection.execute('DELETE FROM estadisticas_grupo WHERE id_grupo = ?', [idGrupo]);
+    
+    // 3. Inicializar estadísticas para cada jugador
+    const stats = {};
+    for (const integrante of integrantes) {
+        stats[integrante.id_inscripto] = {
+            id_inscripto: integrante.id_inscripto,
+            pj: 0, pg: 0, pp: 0, puntos: 0,
+            setsGanados: 0, setsPerdidos: 0,
+            gamesGanados: 0, gamesPerdidos: 0
+        };
+    }
+    
+    // 4. Obtener todos los partidos jugados del grupo
+    const [partidos] = await connection.execute(
+        `SELECT 
+            p.id_inscriptoL, p.id_inscriptoV,
+            p.sets_local, p.sets_visitante,
+            p.games_local, p.games_visitante,
+            p.ganador_id, p.estado
+         FROM partido p
+         WHERE (p.id_inscriptoL IN (?) OR p.id_inscriptoV IN (?))
+         AND p.estado IN ('jugado', 'wo_local', 'wo_visitante')`,
+        [integrantes.map(i => i.id_inscripto), integrantes.map(i => i.id_inscripto)]
+    );
+    
+    // 5. Calcular estadísticas
+    for (const partido of partidos) {
+        const localId = partido.id_inscriptoL;
+        const visitanteId = partido.id_inscriptoV;
+        
+        if (!stats[localId] || !stats[visitanteId]) continue;
+        
+        // Partidos jugados
+        stats[localId].pj++;
+        stats[visitanteId].pj++;
+        
+        // Sets
+        stats[localId].setsGanados += partido.sets_local;
+        stats[localId].setsPerdidos += partido.sets_visitante;
+        stats[visitanteId].setsGanados += partido.sets_visitante;
+        stats[visitanteId].setsPerdidos += partido.sets_local;
+        
+        // Games
+        stats[localId].gamesGanados += partido.games_local;
+        stats[localId].gamesPerdidos += partido.games_visitante;
+        stats[visitanteId].gamesGanados += partido.games_visitante;
+        stats[visitanteId].gamesPerdidos += partido.games_local;
+        
+        // Puntos (1 por victoria)
+        if (partido.ganador_id === localId) {
+            stats[localId].pg++;
+            stats[localId].puntos += 1;
+            stats[visitanteId].pp++;
+        } else {
+            stats[visitanteId].pg++;
+            stats[visitanteId].puntos += 1;
+            stats[localId].pp++;
+        }
+    }
+    
+    // 6. Preparar array para ordenar
+    let tablaPosiciones = Object.values(stats).map(s => ({
+        ...s,
+        difSets: s.setsGanados - s.setsPerdidos,
+        difGames: s.gamesGanados - s.gamesPerdidos
+    }));
+    
+    // 7. Ordenar según reglas de desempate
+    // Puntos -> Dif sets -> Dif games
+    tablaPosiciones.sort((a, b) => {
+        if (b.puntos !== a.puntos) return b.puntos - a.puntos;
+        if (b.difSets !== a.difSets) return b.difSets - a.difSets;
+        return b.difGames - a.difGames;
+    });
+    
+    // 8. Manejar empates (enfrentamiento directo)
+    for (let i = 0; i < tablaPosiciones.length - 1; i++) {
+        const jugadorA = tablaPosiciones[i];
+        const jugadorB = tablaPosiciones[i + 1];
+        
+        if (jugadorA.puntos === jugadorB.puntos && 
+            jugadorA.difSets === jugadorB.difSets && 
+            jugadorA.difGames === jugadorB.difGames) {
+            
+            // Buscar enfrentamiento directo
+            const [enfrentamiento] = await connection.execute(
+                `SELECT ganador_id FROM partido 
+                 WHERE ((id_inscriptoL = ? AND id_inscriptoV = ?) OR (id_inscriptoL = ? AND id_inscriptoV = ?))
+                 AND estado IN ('jugado', 'wo_local', 'wo_visitante')`,
+                [jugadorA.id_inscripto, jugadorB.id_inscripto, jugadorB.id_inscripto, jugadorA.id_inscripto]
+            );
+            
+            if (enfrentamiento.length > 0) {
+                const ganadorDirecto = enfrentamiento[0].ganador_id;
+                if (ganadorDirecto === jugadorB.id_inscripto) {
+                    // Swap posiciones
+                    [tablaPosiciones[i], tablaPosiciones[i + 1]] = [tablaPosiciones[i + 1], tablaPosiciones[i]];
+                }
+            }
+        }
+    }
+    
+    // 9. Insertar estadísticas con posiciones
+    for (let i = 0; i < tablaPosiciones.length; i++) {
+        const s = tablaPosiciones[i];
+        const posicion = i + 1;
+        
+        await connection.execute(
+            `INSERT INTO estadisticas_grupo 
+             (id_grupo, id_inscripto, pj, pg, pp, puntos, sets_ganados, sets_perdidos, dif_sets, 
+              games_ganados, games_perdidos, dif_games, posicion, es_primero, es_segundo, clasificado)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [idGrupo, s.id_inscripto, s.pj, s.pg, s.pp, s.puntos, s.setsGanados, s.setsPerdidos, s.difSets,
+             s.gamesGanados, s.gamesPerdidos, s.difGames, posicion, 
+             posicion === 1, posicion === 2, posicion <= 2]
+        );
+    }
+}
+
+// ==========================================================
+// ENDPOINT: OBTENER ESTADÍSTICAS DE UN GRUPO
+// ==========================================================
+app.get('/api/grupos/:idGrupo/estadisticas', async (req, res) => {
+    const { idGrupo } = req.params;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        // Obtener estadísticas con nombres de jugadores
+        const [estadisticas] = await connection.execute(
+            `SELECT 
+                eg.*,
+                i.integrantes as nombre_jugador
+             FROM estadisticas_grupo eg
+             INNER JOIN inscriptos i ON eg.id_inscripto = i.id
+             WHERE eg.id_grupo = ?
+             ORDER BY eg.posicion`,
+            [idGrupo]
+        );
+        
+        // Obtener info del grupo
+        const [grupoInfo] = await connection.execute(
+            `SELECT g.*, t.nombre as nombre_torneo 
+             FROM grupos g 
+             INNER JOIN torneos t ON g.id_torneo_fk = t.id
+             WHERE g.id = ?`,
+            [idGrupo]
+        );
+        
+        await connection.end();
+        
+        res.status(200).json({
+            grupo: grupoInfo[0] || null,
+            estadisticas: estadisticas
+        });
+        
+    } catch (error) {
+        console.error('Error al obtener estadísticas:', error);
+        res.status(500).json({ error: 'Error al obtener las estadísticas del grupo' });
+    }
+});
+
+// ==========================================================
+// ENDPOINT: OBTENER RESULTADOS DE UN PARTIDO
+// ==========================================================
+app.get('/api/partidos/:idPartido/resultado', async (req, res) => {
+    const { idPartido } = req.params;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        // Obtener info del partido
+        const [partido] = await connection.execute(
+            `SELECT 
+                p.*,
+                il.integrantes as local_nombre,
+                iv.integrantes as visitante_nombre
+             FROM partido p
+             LEFT JOIN inscriptos il ON p.id_inscriptoL = il.id
+             LEFT JOIN inscriptos iv ON p.id_inscriptoV = iv.id
+             WHERE p.id = ?`,
+            [idPartido]
+        );
+        
+        if (partido.length === 0) {
+            await connection.end();
+            return res.status(404).json({ error: 'Partido no encontrado' });
+        }
+        
+        // Obtener detalle de sets
+        const [sets] = await connection.execute(
+            `SELECT * FROM detalle_sets WHERE id_partido = ? ORDER BY numero_set`,
+            [idPartido]
+        );
+        
+        await connection.end();
+        
+        res.status(200).json({
+            partido: partido[0],
+            sets: sets
+        });
+        
+    } catch (error) {
+        console.error('Error al obtener resultado:', error);
+        res.status(500).json({ error: 'Error al obtener el resultado del partido' });
+    }
+});
+
+// ==========================================================
+// ENDPOINT: GENERAR LLAVE DE ELIMINACIÓN
+// ==========================================================
+app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
+    const { idTorneo } = req.params;
+    
+    let connection;
+    
+    try {
+        connection = await mysql.createConnection(connectionConfig);
+        await connection.beginTransaction();
+        
+        // 1. Verificar si ya existe llave
+        const [llaveExistente] = await connection.execute(
+            'SELECT COUNT(*) as count FROM llave_eliminacion WHERE id_torneo = ?',
+            [idTorneo]
+        );
+        
+        if (llaveExistente[0].count > 0) {
+            await connection.rollback();
+            return res.status(400).json({ error: 'Ya existe una llave generada para este torneo' });
+        }
+        
+        // 2. Obtener clasificados de cada grupo (1° y 2°)
+        const [clasificados] = await connection.execute(
+            `SELECT 
+                eg.id_inscripto,
+                eg.id_grupo,
+                eg.posicion,
+                eg.puntos,
+                eg.dif_sets,
+                eg.dif_games,
+                i.integrantes as nombre
+             FROM estadisticas_grupo eg
+             INNER JOIN inscriptos i ON eg.id_inscripto = i.id
+             WHERE eg.id_grupo IN (SELECT id FROM grupos WHERE id_torneo_fk = ?)
+             AND eg.posicion <= 2
+             ORDER BY eg.id_grupo, eg.posicion`,
+            [idTorneo]
+        );
+        
+        if (clasificados.length === 0) {
+            await connection.rollback();
+            return res.status(400).json({ error: 'No hay clasificados disponibles' });
+        }
+        
+        // 3. Calcular BYES
+        const totalClasificados = clasificados.length;
+        const potenciaDe2 = Math.pow(2, Math.ceil(Math.log2(totalClasificados)));
+        const byes = potenciaDe2 - totalClasificados;
+        
+        // 4. Calcular ranking global de clasificados
+        // Ordenar por: puntos -> dif_sets -> dif_games
+        const rankingGlobal = [...clasificados].sort((a, b) => {
+            if (b.puntos !== a.puntos) return b.puntos - a.puntos;
+            if (b.dif_sets !== a.dif_sets) return b.dif_sets - a.dif_sets;
+            return b.dif_games - a.dif_games;
+        });
+        
+        // 5. Asignar BYES a los mejores del ranking global
+        const conBye = new Set();
+        for (let i = 0; i < byes; i++) {
+            if (rankingGlobal[i]) {
+                conBye.add(rankingGlobal[i].id_inscripto);
+            }
+        }
+        
+        // 6. Determinar rondas
+        let rondas = [];
+        if (potenciaDe2 >= 32) rondas = ['dieciseisavos', 'octavos', 'cuartos', 'semifinal', 'final'];
+        else if (potenciaDe2 >= 16) rondas = ['octavos', 'cuartos', 'semifinal', 'final'];
+        else if (potenciaDe2 >= 8) rondas = ['cuartos', 'semifinal', 'final'];
+        else if (potenciaDe2 >= 4) rondas = ['semifinal', 'final'];
+        else rondas = ['final'];
+        
+        // 7. Generar bracket
+        // Separar primeros y segundos de cada grupo
+        const primeros = clasificados.filter(c => c.posicion === 1);
+        const segundos = clasificados.filter(c => c.posicion === 2);
+        
+        // Mezclar arrays para distribución
+        // Estrategia: colocar primeros en posiciones impares, segundos en pares
+        // pero evitando cruces del mismo grupo
+        const bracket = [];
+        let posPrimeros = 0;
+        let posSegundos = 0;
+        
+        for (let i = 0; i < potenciaDe2 / 2; i++) {
+            // Primero de un grupo vs Segundo de OTRO grupo
+            const primero = primeros[posPrimeros % primeros.length];
+            let segundo;
+            
+            // Buscar segundo de grupo diferente
+            let intentos = 0;
+            do {
+                segundo = segundos[posSegundos % segundos.length];
+                posSegundos++;
+                intentos++;
+            } while (segundo && primero && segundo.id_grupo === primero.id_grupo && intentos < segundos.length);
+            
+            // Si no se pudo evitar el cruce del mismo grupo, usar el siguiente disponible
+            if (!segundo || (segundo.id_grupo === primero.id_grupo)) {
+                segundo = segundos.find(s => s.id_grupo !== primero.id_grupo) || segundos[0];
+            }
+            
+            const esByePareja = conBye.has(primero.id_inscripto) || conBye.has(segundo?.id_inscripto);
+            
+            bracket.push({
+                ronda: rondas[0],
+                posicion: i + 1,
+                id_inscripto_1: primero.id_inscripto,
+                id_inscripto_2: segundo ? segundo.id_inscripto : null,
+                id_grupo_1: primero.id_grupo,
+                id_grupo_2: segundo ? segundo.id_grupo : null,
+                es_bye: esByePareja,
+                ganador_id: esByePareja ? (conBye.has(primero.id_inscripto) ? segundo.id_inscripto : primero.id_inscripto) : null
+            });
+            
+            posPrimeros++;
+        }
+        
+        // 8. Insertar en base de datos
+        for (const enfrentamiento of bracket) {
+            await connection.execute(
+                `INSERT INTO llave_eliminacion 
+                 (id_torneo, categoria, ronda, posicion, id_inscripto_1, id_inscripto_2, 
+                  id_grupo_1, id_grupo_2, es_bye, ganador_id)
+                 VALUES (?, 'general', ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [idTorneo, enfrentamiento.ronda, enfrentamiento.posicion, 
+                 enfrentamiento.id_inscripto_1, enfrentamiento.id_inscripto_2,
+                 enfrentamiento.id_grupo_1, enfrentamiento.id_grupo_2,
+                 enfrentamiento.es_bye, enfrentamiento.ganador_id]
+            );
+        }
+        
+        // 9. Generar rondas siguientes (vacías inicialmente)
+        let partidosRondaActual = potenciaDe2 / 2;
+        for (let r = 1; r < rondas.length; r++) {
+            partidosRondaActual = partidosRondaActual / 2;
+            for (let i = 0; i < partidosRondaActual; i++) {
+                await connection.execute(
+                    `INSERT INTO llave_eliminacion 
+                     (id_torneo, categoria, ronda, posicion, id_inscripto_1, id_inscripto_2, es_bye)
+                     VALUES (?, 'general', ?, ?, NULL, NULL, FALSE)`,
+                    [idTorneo, rondas[r], i + 1]
+                );
+            }
+        }
+        
+        // 10. Actualizar estado de grupos
+        await connection.execute(
+            `UPDATE grupos SET estado = 'finalizado' WHERE id_torneo_fk = ?`,
+            [idTorneo]
+        );
+        
+        await connection.commit();
+        
+        res.status(200).json({
+            mensaje: 'Llave de eliminación generada exitosamente',
+            totalClasificados: totalClasificados,
+            byes: byes,
+            rondas: rondas,
+            bracket: bracket
+        });
+        
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Error al generar llave:', error);
+        res.status(500).json({ error: 'Error al generar la llave de eliminación' });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// ==========================================================
+// ENDPOINT: OBTENER LLAVE DE ELIMINACIÓN
+// ==========================================================
+app.get('/api/torneo/:idTorneo/llave', async (req, res) => {
+    const { idTorneo } = req.params;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        const [llave] = await connection.execute(
+            `SELECT 
+                l.*,
+                i1.integrantes as nombre_1,
+                i2.integrantes as nombre_2,
+                g.integrantes as nombre_ganador,
+                p.id as id_partido_asignado,
+                hp.fecha,
+                hp.hora_inicio
+             FROM llave_eliminacion l
+             LEFT JOIN inscriptos i1 ON l.id_inscripto_1 = i1.id
+             LEFT JOIN inscriptos i2 ON l.id_inscripto_2 = i2.id
+             LEFT JOIN inscriptos g ON l.ganador_id = g.id
+             LEFT JOIN partido p ON l.id_partido = p.id
+             LEFT JOIN horarios_playoffs hp ON p.id_horario = hp.id
+             WHERE l.id_torneo = ?
+             ORDER BY 
+                FIELD(l.ronda, 'final', 'semifinal', 'cuartos', 'octavos', 'dieciseisavos'),
+                l.posicion`,
+            [idTorneo]
+        );
+        
+        await connection.end();
+        
+        // Organizar por rondas
+        const bracketPorRonda = {};
+        for (const enfrentamiento of llave) {
+            if (!bracketPorRonda[enfrentamiento.ronda]) {
+                bracketPorRonda[enfrentamiento.ronda] = [];
+            }
+            bracketPorRonda[enfrentamiento.ronda].push(enfrentamiento);
+        }
+        
+        res.status(200).json({
+            bracket: bracketPorRonda,
+            totalEnfrentamientos: llave.length
+        });
+        
+    } catch (error) {
+        console.error('Error al obtener llave:', error);
+        res.status(500).json({ error: 'Error al obtener la llave de eliminación' });
+    }
+});
+
+// ==========================================================
+// ENDPOINT: ASIGNAR HORARIO A PARTIDO DE PLAYOFFS
+// ==========================================================
+app.put('/api/llave/:idLlave/horario', async (req, res) => {
+    const { idLlave } = req.params;
+    const { id_horario_playoffs } = req.body;
+    
+    let connection;
+    
+    try {
+        connection = await mysql.createConnection(connectionConfig);
+        await connection.beginTransaction();
+        
+        // 1. Obtener info de la llave
+        const [llaveInfo] = await connection.execute(
+            `SELECT * FROM llave_eliminacion WHERE id = ?`,
+            [idLlave]
+        );
+        
+        if (llaveInfo.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ error: 'Enfrentamiento no encontrado' });
+        }
+        
+        const llave = llaveInfo[0];
+        
+        // 2. Verificar si ya existe partido
+        let partidoId = llave.id_partido;
+        
+        if (!partidoId) {
+            // Crear nuevo partido
+            const [resultPartido] = await connection.execute(
+                `INSERT INTO partido (id_horario, id_inscriptoL, id_inscriptoV, estado, ronda)
+                 VALUES (?, ?, ?, 'pendiente', ?)`,
+                [id_horario_playoffs, llave.id_inscripto_1, llave.id_inscripto_2, llave.ronda]
+            );
+            partidoId = resultPartido.insertId;
+            
+            // Actualizar llave con referencia al partido
+            await connection.execute(
+                `UPDATE llave_eliminacion SET id_partido = ? WHERE id = ?`,
+                [partidoId, idLlave]
+            );
+        } else {
+            // Actualizar horario del partido existente
+            await connection.execute(
+                `UPDATE partido SET id_horario = ? WHERE id = ?`,
+                [id_horario_playoffs, partidoId]
+            );
+        }
+        
+        // 3. Marcar horario como ocupado
+        await connection.execute(
+            `UPDATE horarios_playoffs SET disponible = FALSE WHERE id = ?`,
+            [id_horario_playoffs]
+        );
+        
+        await connection.commit();
+        
+        res.status(200).json({
+            mensaje: 'Horario asignado exitosamente',
+            partidoId: partidoId
+        });
+        
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Error al asignar horario:', error);
+        res.status(500).json({ error: 'Error al asignar el horario' });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// ==========================================================
+// ENDPOINT: CARGAR RESULTADO EN PLAYOFFS
+// ==========================================================
+app.post('/api/llave/:idLlave/resultado', async (req, res) => {
+    const { idLlave } = req.params;
+    const { sets, esWO, ganadorWO, superTiebreak } = req.body;
+    
+    let connection;
+    
+    try {
+        connection = await mysql.createConnection(connectionConfig);
+        await connection.beginTransaction();
+        
+        // 1. Obtener info de la llave
+        const [llaveInfo] = await connection.execute(
+            `SELECT * FROM llave_eliminacion WHERE id = ?`,
+            [idLlave]
+        );
+        
+        if (llaveInfo.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ error: 'Enfrentamiento no encontrado' });
+        }
+        
+        const llave = llaveInfo[0];
+        
+        // 2. Verificar que tenga partido asignado
+        if (!llave.id_partido) {
+            await connection.rollback();
+            return res.status(400).json({ error: 'No hay partido asignado a este enfrentamiento' });
+        }
+        
+        // 3. Calcular ganador
+        let ganadorId = null;
+        
+        if (esWO) {
+            ganadorId = ganadorWO === 'local' ? llave.id_inscripto_1 : llave.id_inscripto_2;
+        } else {
+            let setsLocal = 0, setsVisitante = 0;
+            
+            for (const set of sets) {
+                if (parseInt(set.gamesLocal) > parseInt(set.gamesVisitante)) {
+                    setsLocal++;
+                } else {
+                    setsVisitante++;
+                }
+            }
+            
+            if (superTiebreak && setsLocal === 1 && setsVisitante === 1) {
+                if (superTiebreak.local > superTiebreak.visitante) {
+                    setsLocal++;
+                } else {
+                    setsVisitante++;
+                }
+            }
+            
+            ganadorId = setsLocal > setsVisitante ? llave.id_inscripto_1 : llave.id_inscripto_2;
+        }
+        
+        // 4. Actualizar llave con ganador
+        await connection.execute(
+            `UPDATE llave_eliminacion SET ganador_id = ? WHERE id = ?`,
+            [ganadorId, idLlave]
+        );
+        
+        // 5. Guardar resultado en partido (usar endpoint existente)
+        // Primero actualizar el partido directamente
+        let setsLocal = 0, setsVisitante = 0;
+        let gamesLocalTotal = 0, gamesVisitanteTotal = 0;
+        let tiebreakLocal = null, tiebreakVisitante = null;
+        
+        if (!esWO) {
+            await connection.execute('DELETE FROM detalle_sets WHERE id_partido = ?', [llave.id_partido]);
+            
+            for (let i = 0; i < sets.length; i++) {
+                const set = sets[i];
+                gamesLocalTotal += parseInt(set.gamesLocal);
+                gamesVisitanteTotal += parseInt(set.gamesVisitante);
+                
+                if (set.gamesLocal > set.gamesVisitante) {
+                    setsLocal++;
+                } else {
+                    setsVisitante++;
+                }
+                
+                await connection.execute(
+                    `INSERT INTO detalle_sets (id_partido, numero_set, games_local, games_visitante, es_super_tiebreak) 
+                     VALUES (?, ?, ?, ?, FALSE)`,
+                    [llave.id_partido, i + 1, set.gamesLocal, set.gamesVisitante]
+                );
+            }
+            
+            if (superTiebreak && setsLocal === 1 && setsVisitante === 1) {
+                tiebreakLocal = superTiebreak.local;
+                tiebreakVisitante = superTiebreak.visitante;
+                gamesLocalTotal += tiebreakLocal;
+                gamesVisitanteTotal += tiebreakVisitante;
+                
+                if (tiebreakLocal > tiebreakVisitante) {
+                    setsLocal++;
+                } else {
+                    setsVisitante++;
+                }
+                
+                await connection.execute(
+                    `INSERT INTO detalle_sets (id_partido, numero_set, games_local, games_visitante, es_super_tiebreak) 
+                     VALUES (?, 3, ?, ?, TRUE)`,
+                    [llave.id_partido, tiebreakLocal, tiebreakVisitante]
+                );
+            }
+        }
+        
+        await connection.execute(
+            `UPDATE partido SET 
+                estado = ?,
+                ganador_id = ?,
+                sets_local = ?,
+                sets_visitante = ?,
+                games_local = ?,
+                games_visitante = ?,
+                tiebreak_local = ?,
+                tiebreak_visitante = ?
+             WHERE id = ?`,
+            [esWO ? (ganadorWO === 'local' ? 'wo_local' : 'wo_visitante') : 'jugado',
+             ganadorId, setsLocal, setsVisitante, gamesLocalTotal, gamesVisitanteTotal,
+             tiebreakLocal, tiebreakVisitante, llave.id_partido]
+        );
+        
+        // 6. Avanzar ganador a siguiente ronda
+        await avanzarGanadorEnLlave(connection, idTorneo = llave.id_torneo, llave.ronda, llave.posicion, ganadorId);
+        
+        await connection.commit();
+        
+        res.status(200).json({
+            mensaje: 'Resultado guardado y ganador avanzado',
+            ganadorId: ganadorId
+        });
+        
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Error al cargar resultado en playoffs:', error);
+        res.status(500).json({ error: 'Error al cargar el resultado' });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// ==========================================================
+// FUNCIÓN: AVANZAR GANADOR EN LA LLAVE
+// ==========================================================
+async function avanzarGanadorEnLlave(connection, idTorneo, rondaActual, posicionActual, ganadorId) {
+    // Mapeo de rondas y cómo se avanza
+    const progresionRondas = {
+        'dieciseisavos': { siguiente: 'octavos', divisor: 2 },
+        'octavos': { siguiente: 'cuartos', divisor: 2 },
+        'cuartos': { siguiente: 'semifinal', divisor: 2 },
+        'semifinal': { siguiente: 'final', divisor: 2 },
+        'final': null
+    };
+    
+    const progresion = progresionRondas[rondaActual];
+    if (!progresion) return; // Es la final, no hay siguiente
+    
+    const siguienteRonda = progresion.siguiente;
+    const posicionSiguiente = Math.ceil(posicionActual / progresion.divisor);
+    const esPar = posicionActual % 2 === 0;
+    
+    // Verificar si ya existe el enfrentamiento en la siguiente ronda
+    const [enfrentamientoSiguiente] = await connection.execute(
+        `SELECT * FROM llave_eliminacion 
+         WHERE id_torneo = ? AND ronda = ? AND posicion = ?`,
+        [idTorneo, siguienteRonda, posicionSiguiente]
+    );
+    
+    if (enfrentamientoSiguiente.length === 0) {
+        // Crear enfrentamiento en siguiente ronda
+        const campo = esPar ? 'id_inscripto_2' : 'id_inscripto_1';
+        await connection.execute(
+            `INSERT INTO llave_eliminacion 
+             (id_torneo, categoria, ronda, posicion, ${campo}, es_bye)
+             VALUES (?, 'general', ?, ?, ?, FALSE)`,
+            [idTorneo, siguienteRonda, posicionSiguiente, ganadorId]
+        );
+    } else {
+        // Actualizar enfrentamiento existente
+        const enfrentamiento = enfrentamientoSiguiente[0];
+        const campo = esPar ? 'id_inscripto_2' : 'id_inscripto_1';
+        const campoGrupo = esPar ? 'id_grupo_2' : 'id_grupo_1';
+        
+        // Obtener grupo del ganador
+        const [ganadorInfo] = await connection.execute(
+            `SELECT id_grupo FROM grupo_integrantes WHERE id_inscripto = ? LIMIT 1`,
+            [ganadorId]
+        );
+        
+        await connection.execute(
+            `UPDATE llave_eliminacion 
+             SET ${campo} = ?, ${campoGrupo} = ?
+             WHERE id = ?`,
+            [ganadorId, ganadorInfo.length > 0 ? ganadorInfo[0].id_grupo : null, enfrentamiento.id]
+        );
+    }
+}
+
+// ==========================================================
+// ENDPOINT: GESTIONAR HORARIOS PLAYOFFS (CRUD)
+// ==========================================================
+app.get('/api/horarios-playoffs/:idTorneo', async (req, res) => {
+    const { idTorneo } = req.params;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        const [horarios] = await connection.execute(
+            `SELECT * FROM horarios_playoffs 
+             WHERE id_torneo = ? 
+             ORDER BY fecha, hora_inicio`,
+            [idTorneo]
+        );
+        await connection.end();
+        
+        res.status(200).json(horarios);
+    } catch (error) {
+        console.error('Error al obtener horarios playoffs:', error);
+        res.status(500).json({ error: 'Error al obtener los horarios' });
+    }
+});
+
+app.post('/api/horarios-playoffs/:idTorneo', async (req, res) => {
+    const { idTorneo } = req.params;
+    const { dia_semana, fecha, hora_inicio, cancha } = req.body;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        const [result] = await connection.execute(
+            `INSERT INTO horarios_playoffs (id_torneo, dia_semana, fecha, hora_inicio, cancha)
+             VALUES (?, ?, ?, ?, ?)`,
+            [idTorneo, dia_semana, fecha, hora_inicio, cancha || 1]
+        );
+        await connection.end();
+        
+        res.status(200).json({
+            mensaje: 'Horario creado exitosamente',
+            id: result.insertId
+        });
+    } catch (error) {
+        console.error('Error al crear horario playoffs:', error);
+        res.status(500).json({ error: 'Error al crear el horario' });
+    }
+});
+
+app.delete('/api/horarios-playoffs/:idHorario', async (req, res) => {
+    const { idHorario } = req.params;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        await connection.execute(
+            `DELETE FROM horarios_playoffs WHERE id = ?`,
+            [idHorario]
+        );
+        await connection.end();
+        
+        res.status(200).json({ mensaje: 'Horario eliminado exitosamente' });
+    } catch (error) {
+        console.error('Error al eliminar horario:', error);
+        res.status(500).json({ error: 'Error al eliminar el horario' });
+    }
+});
+
 // 5. Puerto de escucha
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
