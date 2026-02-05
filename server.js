@@ -764,7 +764,6 @@ function intentarFormarGrupos(jugadores, configuracionGrupos, horarios, horarios
                                 break;
                             }
                         }
-                        }
                         
                         if (!horarioAsignado) {
                             advertencias.push({
@@ -888,8 +887,8 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
             );
             
             console.log(`Intento ${intento + 1}: ${resultado.partidosPendientesCount} partidos pendientes`);
-        console.log(`   - Advertencias: ${resultado.advertencias.length}`);
-        console.log(`   - Jugadores sin grupo: ${resultado.sinGrupo.length}`);
+            console.log(`   - Advertencias: ${resultado.advertencias.length}`);
+            console.log(`   - Jugadores sin grupo: ${resultado.sinGrupo.length}`);
             
             if (resultado.partidosPendientesCount < mejorPuntaje) {
                 mejorPuntaje = resultado.partidosPendientesCount;
