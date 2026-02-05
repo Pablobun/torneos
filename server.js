@@ -643,6 +643,21 @@ function intentarFormarGrupos(jugadores, configuracionGrupos, horarios, horarios
         jugadorHorarios[jugadorId] = new Set();
         jugadorFechas[jugadorId] = new Set();
     });
+    
+    // Función auxiliar para normalizar fechas a YYYY-MM-DD
+    function normalizarFecha(fecha) {
+        if (!fecha) return null;
+        // Si es un objeto Date, convertirlo a string ISO y extraer YYYY-MM-DD
+        if (fecha instanceof Date) {
+            return fecha.toISOString().split('T')[0];
+        }
+        // Si es string, asumir que ya viene en formato correcto o limpiarlo
+        if (typeof fecha === 'string') {
+            // Si viene con hora (formato MySQL datetime), extraer solo la fecha
+            return fecha.split(' ')[0].split('T')[0];
+        }
+        return String(fecha).split(' ')[0].split('T')[0];
+    }
 
         for (const grupo of grupos) {
         const integrantesIds = grupo.integrantes;
@@ -675,12 +690,13 @@ function intentarFormarGrupos(jugadores, configuracionGrupos, horarios, horarios
                         mensaje: `Los jugadores ${localId} y ${visitanteId} no tienen horarios disponibles en común`
                     });
                 } else {
-                    // NUEVO: Filtrar horarios donde ningún jugador ya tenga partido ese día
+                        // NUEVO: Filtrar horarios donde ningún jugador ya tenga partido ese día
                     const horariosDisponibles = horariosComunes.filter(horarioId => {
                         const horarioInfo = horariosMap[horarioId];
                         if (!horarioInfo) return false;
                         
-                        const fechaHorario = horarioInfo.fecha;
+                        // Normalizar fecha para comparación consistente
+                        const fechaHorario = normalizarFecha(horarioInfo.fecha);
                         const horaHorario = horarioInfo.hora;
                         
                         // Verificar que ningún jugador ya tenga partido ese día
@@ -736,28 +752,39 @@ function intentarFormarGrupos(jugadores, configuracionGrupos, horarios, horarios
                             return a.totalPartidosDia - b.totalPartidosDia;
                         });
                         
-                        for (const horarioInfo of horariosComunesInfo) {
+                         for (const horarioInfo of horariosComunesInfo) {
                             if (horarioInfo.uso < horarioInfo.cupo) {
                                 // VERIFICACIÓN FINAL: Asegurar que ningún jugador tenga partido ese día
-                                const localTienePartido = jugadorFechas[localId].has(horarioInfo.fecha);
-                                const visitanteTienePartido = jugadorFechas[visitanteId].has(horarioInfo.fecha);
+                                // Normalizar fecha para verificación
+                                const fechaVerificar = normalizarFecha(horarioInfo.fecha);
+                                console.log(`   🔍 Verificando horario ${fechaVerificar} ${horarioInfo.hora}...`);
+                                console.log(`      Fechas en jugadorFechas[${localId}]:`, Array.from(jugadorFechas[localId]));
+                                console.log(`      Fechas en jugadorFechas[${visitanteId}]:`, Array.from(jugadorFechas[visitanteId]));
+                                console.log(`      ¿${fechaVerificar} está en local?`, jugadorFechas[localId].has(fechaVerificar));
+                                console.log(`      ¿${fechaVerificar} está en visitante?`, jugadorFechas[visitanteId].has(fechaVerificar));
+                                
+                                const localTienePartido = jugadorFechas[localId].has(fechaVerificar);
+                                const visitanteTienePartido = jugadorFechas[visitanteId].has(fechaVerificar);
                                 
                                 if (localTienePartido || visitanteTienePartido) {
-                                    console.log(`   ❌ ERROR CRÍTICO: Intentando asignar horario ${horarioInfo.fecha} pero hay conflicto:`);
-                                    console.log(`      Local ${localId} tiene partido: ${localTienePartido}`);
-                                    console.log(`      Visitante ${visitanteId} tiene partido: ${visitanteTienePartido}`);
-                                    console.log(`      Saltando este horario...`);
+                                    console.log(`   ❌ CONFLICTO DETECTADO: No se puede asignar ${horarioInfo.fecha}`);
+                                    console.log(`      Local ${localId} (${jugadorLocal.nombre}) tiene partido: ${localTienePartido}`);
+                                    console.log(`      Visitante ${visitanteId} (${jugadorVisitante.nombre}) tiene partido: ${visitanteTienePartido}`);
+                                    console.log(`      ⏭️ Saltando al siguiente horario...`);
                                     continue; // Saltar al siguiente horario
                                 }
                                 
+                                console.log(`   ✅ SIN CONFLICTO: Asignando horario ${horarioInfo.fecha} ${horarioInfo.hora}`);
                                 horarioAsignado = horarioInfo.id;
                                 usoHorarios[horarioInfo.id]++;
                                 
                                 // NUEVO: Registrar horario y fecha para ambos jugadores
+                                // Normalizar fecha antes de guardar (formato YYYY-MM-DD)
+                                const fechaNormalizada = normalizarFecha(horarioInfo.fecha);
                                 jugadorHorarios[localId].add(horarioAsignado);
                                 jugadorHorarios[visitanteId].add(horarioAsignado);
-                                jugadorFechas[localId].add(horarioInfo.fecha);
-                                jugadorFechas[visitanteId].add(horarioInfo.fecha);
+                                jugadorFechas[localId].add(fechaNormalizada);
+                                jugadorFechas[visitanteId].add(fechaNormalizada);
                                 
                                 console.log(`✓ Asignado horario ${horarioInfo.fecha} ${horarioInfo.hora} (ID: ${horarioAsignado}) para partido: ${jugadorLocal.nombre} vs ${jugadorVisitante.nombre}`);
                                 console.log(`   Registrado: Jugador ${localId} y ${visitanteId} ahora tienen partido el ${horarioInfo.fecha}`);
