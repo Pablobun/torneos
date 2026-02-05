@@ -638,20 +638,23 @@ function intentarFormarGrupos(jugadores, configuracionGrupos, horarios, horarios
     });
     
     inscriptos.forEach(j => {
-        jugadorHorarios[j.id] = new Set();
-        jugadorFechas[j.id] = new Set();
+        // Usar String para IDs para evitar problemas de tipo
+        const jugadorId = String(j.id);
+        jugadorHorarios[jugadorId] = new Set();
+        jugadorFechas[jugadorId] = new Set();
     });
 
-    for (const grupo of grupos) {
+        for (const grupo of grupos) {
         const integrantesIds = grupo.integrantes;
         
         for (let i = 0; i < integrantesIds.length; i++) {
             for (let j = i + 1; j < integrantesIds.length; j++) {
-                const localId = integrantesIds[i];
-                const visitanteId = integrantesIds[j];
+                // Asegurar que los IDs son strings para consistencia
+                const localId = String(integrantesIds[i]);
+                const visitanteId = String(integrantesIds[j]);
                 
-                const jugadorLocal = inscriptos.find(j => j.id === localId);
-                const jugadorVisitante = inscriptos.find(j => j.id === visitanteId);
+                const jugadorLocal = inscriptos.find(j => String(j.id) === localId);
+                const jugadorVisitante = inscriptos.find(j => String(j.id) === visitanteId);
                 
                 if (!jugadorLocal || !jugadorVisitante) {
                     console.error(`No se encontraron datos de jugadores ${localId} vs ${visitanteId}`);
@@ -678,6 +681,7 @@ function intentarFormarGrupos(jugadores, configuracionGrupos, horarios, horarios
                         if (!horarioInfo) return false;
                         
                         const fechaHorario = horarioInfo.fecha;
+                        const horaHorario = horarioInfo.hora;
                         
                         // Verificar que ningún jugador ya tenga partido ese día
                         const localTienePartidoEseDia = jugadorFechas[localId].has(fechaHorario);
@@ -686,6 +690,12 @@ function intentarFormarGrupos(jugadores, configuracionGrupos, horarios, horarios
                         // Verificar que ningún jugador ya tenga partido en ese horario específico
                         const localTieneEseHorario = jugadorHorarios[localId].has(horarioId);
                         const visitanteTieneEseHorario = jugadorHorarios[visitanteId].has(horarioId);
+                        
+                        // DEBUG: Log si hay conflicto
+                        if (localTienePartidoEseDia || visitanteTienePartidoEseDia) {
+                            console.log(`   ⚠️ Conflicto de fecha encontrado para partido ${jugadorLocal.nombre} vs ${jugadorVisitante.nombre} en ${fechaHorario} ${horaHorario}`);
+                            console.log(`      Local ${localId} tiene partido ese día: ${localTienePartidoEseDia}, Visitante ${visitanteId} tiene partido ese día: ${visitanteTienePartidoEseDia}`);
+                        }
                         
                         return !localTienePartidoEseDia && 
                                !visitanteTienePartidoEseDia && 
@@ -728,6 +738,18 @@ function intentarFormarGrupos(jugadores, configuracionGrupos, horarios, horarios
                         
                         for (const horarioInfo of horariosComunesInfo) {
                             if (horarioInfo.uso < horarioInfo.cupo) {
+                                // VERIFICACIÓN FINAL: Asegurar que ningún jugador tenga partido ese día
+                                const localTienePartido = jugadorFechas[localId].has(horarioInfo.fecha);
+                                const visitanteTienePartido = jugadorFechas[visitanteId].has(horarioInfo.fecha);
+                                
+                                if (localTienePartido || visitanteTienePartido) {
+                                    console.log(`   ❌ ERROR CRÍTICO: Intentando asignar horario ${horarioInfo.fecha} pero hay conflicto:`);
+                                    console.log(`      Local ${localId} tiene partido: ${localTienePartido}`);
+                                    console.log(`      Visitante ${visitanteId} tiene partido: ${visitanteTienePartido}`);
+                                    console.log(`      Saltando este horario...`);
+                                    continue; // Saltar al siguiente horario
+                                }
+                                
                                 horarioAsignado = horarioInfo.id;
                                 usoHorarios[horarioInfo.id]++;
                                 
@@ -738,8 +760,10 @@ function intentarFormarGrupos(jugadores, configuracionGrupos, horarios, horarios
                                 jugadorFechas[visitanteId].add(horarioInfo.fecha);
                                 
                                 console.log(`✓ Asignado horario ${horarioInfo.fecha} ${horarioInfo.hora} (ID: ${horarioAsignado}) para partido: ${jugadorLocal.nombre} vs ${jugadorVisitante.nombre}`);
+                                console.log(`   Registrado: Jugador ${localId} y ${visitanteId} ahora tienen partido el ${horarioInfo.fecha}`);
                                 break;
                             }
+                        }
                         }
                         
                         if (!horarioAsignado) {
