@@ -1753,11 +1753,14 @@ footer {
     }
     
     /* Corrección para alinear títulos de grupos y categorías a la izquierda en mobile */
-    .grupo-header h3,
-    .categoria-header h3,
+    .grupo-header,
+    .categoria-header,
     .grupo-card h3,
     .categoria-card h3 {
         text-align: left !important;
+        display: flex !important;
+        align-items: center !important;
+        white-space: nowrap !important;
     }
     
     /* Evitar scrollbar horizontal en contenedores de grupos */
