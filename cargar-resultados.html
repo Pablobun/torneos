@@ -407,14 +407,14 @@
         }
 
         function crearCardPartido(partido) {
-            const estaJugado = partido.estado !== 'pendiente' && partido.estado !== null;
+            const estaJugado = partido.estado && partido.estado !== 'pendiente' && partido.estado !== null;
             const estadoClass = estaJugado ? 'jugado' : 'pendiente';
             const estadoText = estaJugado ? 'Jugado' : 'Pendiente';
             const estadoBadgeClass = estaJugado ? 'estado-jugado' : 'estado-pendiente';
             
             let resultadoHtml = '';
             if (estaJugado) {
-                const esWO = partido.estado.includes('wo');
+                const esWO = partido.estado && partido.estado.includes('wo');
                 resultadoHtml = `
                     <div class="resultado-actual">
                         <h4>✓ Resultado cargado ${esWO ? '(WO)' : ''}</h4>
