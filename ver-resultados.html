@@ -124,20 +124,26 @@
         }
         
         .grupo-header {
-            background: linear-gradient(135deg, #4CAF50, #45a049);
+            background: linear-gradient(135deg, #2c3e50, #34495e);
             color: white;
-            padding: 15px 20px;
+            padding: 12px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
         .grupo-header h2 {
             margin: 0;
-            font-size: 18px;
+            font-size: 16px;
+            font-weight: bold;
         }
         
         .grupo-header .categoria {
-            font-size: 12px;
-            opacity: 0.9;
-            margin-top: 5px;
+            font-size: 13px;
+            background: rgba(255,255,255,0.2);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 600;
         }
         
         .tabla-posiciones {
@@ -347,6 +353,56 @@
         .color-1 { background: linear-gradient(135deg, #ffd700, #ffed4e); }
         .color-2 { background: linear-gradient(135deg, #c0c0c0, #e0e0e0); }
         
+        /* Filtros */
+        .filtros-container {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .filtros-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            align-items: end;
+        }
+        
+        .filtro-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filtro-item label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        
+        .filtro-item select,
+        .filtro-item input {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .btn-limpiar {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        
+        .btn-limpiar:hover {
+            background: #5a6268;
+        }
+        
         .menu-acceso {
             position: fixed;
             bottom: 30px;
@@ -489,6 +545,23 @@
                 padding: 12px 20px;
                 font-size: 14px;
             }
+            
+            .filtros-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .grupo-header {
+                padding: 10px 12px;
+            }
+            
+            .grupo-header h2 {
+                font-size: 14px;
+            }
+            
+            .grupo-header .categoria {
+                font-size: 11px;
+                padding: 3px 8px;
+            }
         }
     </style>
 </head>
@@ -501,6 +574,28 @@
         </div>
         
         <div class="content">
+            <!-- Filtros -->
+            <div class="filtros-container">
+                <div class="filtros-grid">
+                    <div class="filtro-item">
+                        <label for="filtro-categoria">Categoría:</label>
+                        <select id="filtro-categoria" onchange="aplicarFiltros()">
+                            <option value="">Todas las categorías</option>
+                        </select>
+                    </div>
+                    <div class="filtro-item">
+                        <label for="filtro-jugador">Buscar jugador:</label>
+                        <input type="text" id="filtro-jugador" placeholder="Nombre del jugador..." 
+                               list="jugadores-list" autocomplete="off" oninput="aplicarFiltros()">
+                        <datalist id="jugadores-list"></datalist>
+                    </div>
+                    <div class="filtro-item">
+                        <label>&nbsp;</label>
+                        <button class="btn-limpiar" onclick="limpiarFiltros()">🔄 Limpiar</button>
+                    </div>
+                </div>
+            </div>
+            
             <div class="tabs">
                 <button class="tab active" onclick="showTab('posiciones')">📈 Tabla de Posiciones</button>
                 <button class="tab" onclick="showTab('partidos')">🎾 Partidos y Resultados</button>
@@ -548,6 +643,9 @@
         const API_URL = 'https://academia-torneos.onrender.com/api';
         let torneoId = null;
         let grupos = [];
+        let partidos = [];
+        let gruposData = []; // Para guardar datos originales
+        let partidosData = []; // Para guardar datos originales
 
         document.addEventListener('DOMContentLoaded', async () => {
             await cargarTorneoActivo();
@@ -556,6 +654,60 @@
                 await cargarPartidos();
             }
         });
+        
+        // Funciones de filtro
+        function llenarFiltroCategorias(categorias) {
+            const select = document.getElementById('filtro-categoria');
+            const categoriasUnicas = [...new Set(categorias)];
+            categoriasUnicas.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                option.textContent = cat;
+                select.appendChild(option);
+            });
+        }
+        
+        function llenarFiltroJugadores(jugadores) {
+            const datalist = document.getElementById('jugadores-list');
+            jugadores.forEach(jugador => {
+                const option = document.createElement('option');
+                option.value = jugador;
+                datalist.appendChild(option);
+            });
+        }
+        
+        function aplicarFiltros() {
+            const categoria = document.getElementById('filtro-categoria').value.toLowerCase();
+            const jugador = document.getElementById('filtro-jugador').value.toLowerCase();
+            
+            // Filtrar grupos
+            const gruposFiltrados = gruposData.filter(grupo => {
+                const matchCategoria = !categoria || (grupo.categoria && grupo.categoria.toLowerCase().includes(categoria));
+                const matchJugador = !jugador || (grupo.estadisticas && grupo.estadisticas.some(est => 
+                    est.nombre_jugador && est.nombre_jugador.toLowerCase().includes(jugador)
+                ));
+                return matchCategoria && matchJugador;
+            });
+            
+            // Filtrar partidos
+            const partidosFiltrados = partidosData.filter(partido => {
+                const matchCategoria = !categoria || (partido.categoria && partido.categoria.toLowerCase().includes(categoria));
+                const matchJugador = !jugador || 
+                    (partido.local_nombre && partido.local_nombre.toLowerCase().includes(jugador)) ||
+                    (partido.visitante_nombre && partido.visitante_nombre.toLowerCase().includes(jugador));
+                return matchCategoria && matchJugador;
+            });
+            
+            renderizarGrupos(gruposFiltrados);
+            renderizarPartidos(partidosFiltrados);
+        }
+        
+        function limpiarFiltros() {
+            document.getElementById('filtro-categoria').value = '';
+            document.getElementById('filtro-jugador').value = '';
+            renderizarGrupos(gruposData);
+            renderizarPartidos(partidosData);
+        }
 
         async function cargarTorneoActivo() {
             try {
@@ -577,6 +729,9 @@
                 grupos = await responseGrupos.json();
                 
                 const gruposConEstadisticas = [];
+                const categorias = [];
+                const jugadores = [];
+                
                 for (const grupo of grupos) {
                     try {
                         const responseStats = await fetch(`${API_URL}/grupos/${grupo.id}/estadisticas`);
@@ -586,11 +741,26 @@
                                 ...grupo,
                                 estadisticas: data.estadisticas
                             });
+                            
+                            // Recopilar categorías y jugadores para filtros
+                            if (grupo.categoria) categorias.push(grupo.categoria);
+                            if (data.estadisticas) {
+                                data.estadisticas.forEach(est => {
+                                    if (est.nombre_jugador) jugadores.push(est.nombre_jugador);
+                                });
+                            }
                         }
                     } catch (e) {
                         console.error(`Error grupo ${grupo.id}:`, e);
                     }
                 }
+                
+                // Guardar datos originales
+                gruposData = gruposConEstadisticas;
+                
+                // Llenar filtros
+                llenarFiltroCategorias(categorias);
+                llenarFiltroJugadores(jugadores);
                 
                 renderizarGrupos(gruposConEstadisticas);
                 
@@ -686,8 +856,9 @@
                 // Usar el nuevo endpoint que trae detalle de sets
                 const response = await fetch(`${API_URL}/partidos/${torneoId}/detallados`);
                 if (response.ok) {
-                    const partidos = await response.json();
-                    renderizarPartidos(partidos);
+                    const datos = await response.json();
+                    partidosData = datos; // Guardar datos originales
+                    renderizarPartidos(datos);
                 }
             } catch (error) {
                 console.error('Error al cargar partidos:', error);
