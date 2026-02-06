@@ -424,7 +424,7 @@ app.get('/api/grupos/:idTorneo', async (req, res) => {
 app.get('/api/partidos/:idTorneo', async (req, res) => {
     const { idTorneo } = req.params;
     
-    // Query para obtener TODOS los partidos (con y sin horario) incluyendo categoria
+    // Query para obtener TODOS los partidos (con y sin horario) incluyendo categoria y resultados
     const sql = `
         SELECT 
             p.id,
@@ -438,7 +438,13 @@ app.get('/api/partidos/:idTorneo', async (req, res) => {
             p.id_inscriptoV as visitante_id,
             iv.integrantes as visitante_nombre,
             g.categoria,
-            g.numero_grupo as grupo
+            g.numero_grupo as grupo,
+            p.estado,
+            p.ganador_id,
+            p.sets_local,
+            p.sets_visitante,
+            p.games_local,
+            p.games_visitante
         FROM partido p
         LEFT JOIN horarios h ON p.id_horario = h.id
         LEFT JOIN inscriptos il ON p.id_inscriptoL = il.id
