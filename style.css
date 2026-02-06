@@ -1759,6 +1759,17 @@ footer {
     .categoria-card h3 {
         text-align: left !important;
     }
+    
+    /* Evitar scrollbar horizontal en contenedores de grupos */
+    .grupos-list {
+        grid-template-columns: 1fr;
+        overflow-x: hidden;
+    }
+    
+    .categorias-grid {
+        grid-template-columns: 1fr;
+        overflow-x: hidden;
+    }
 /* hasta aca*/
 footer {
         flex-direction: column;
