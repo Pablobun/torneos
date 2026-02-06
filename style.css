@@ -1763,6 +1763,17 @@ footer {
         white-space: nowrap !important;
     }
     
+    /* Corrección específica para ver-resultados.html */
+    .grupo-header {
+        min-width: 0 !important;
+        justify-content: flex-start !important;
+        padding: 10px !important;
+    }
+    
+    .tabla-container .tabla-posiciones {
+        min-width: 0 !important;
+    }
+    
     /* Evitar scrollbar horizontal en contenedores de grupos */
     .grupos-list {
         grid-template-columns: 1fr;
