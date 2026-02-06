@@ -618,11 +618,15 @@
 
         // Función para formatear fechas sin problema de zona horaria
         function formatearFecha(fechaStr) {
-            // La fecha viene como '2025-03-09' o '2025-03-09 00:00:00'
-            // Extraemos solo la parte de la fecha (YYYY-MM-DD)
-            const fechaPart = fechaStr.split(' ')[0];
-            const [year, month, day] = fechaPart.split('-');
-            // Retornamos en formato argentino: DD/MM/YYYY
+            // Manejar formato ISO (2025-03-09T00:00:00.000Z) o simple (2025-03-09)
+            if (!fechaStr) return '';
+            
+            // Si viene en formato ISO, extraer solo la parte de la fecha
+            const fechaLimpia = fechaStr.split('T')[0];
+            const [year, month, day] = fechaLimpia.split('-');
+            
+            if (!year || !month || !day) return fechaStr;
+            
             return `${day}/${month}/${year}`;
         }
     </script>

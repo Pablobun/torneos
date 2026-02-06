@@ -1316,6 +1316,9 @@ async function calcularEstadisticasGrupo(connection, idGrupo) {
     }
     
     // 4. Obtener todos los partidos jugados del grupo
+    const idsIntegrantes = integrantes.map(i => i.id_inscripto);
+    const placeholders = idsIntegrantes.map(() => '?').join(',');
+    
     const [partidos] = await connection.execute(
         `SELECT 
             p.id_inscriptoL, p.id_inscriptoV,
@@ -1323,9 +1326,9 @@ async function calcularEstadisticasGrupo(connection, idGrupo) {
             p.games_local, p.games_visitante,
             p.ganador_id, p.estado
          FROM partido p
-         WHERE (p.id_inscriptoL IN (?) OR p.id_inscriptoV IN (?))
+         WHERE (p.id_inscriptoL IN (${placeholders}) OR p.id_inscriptoV IN (${placeholders}))
          AND p.estado IN ('jugado', 'wo_local', 'wo_visitante')`,
-        [integrantes.map(i => i.id_inscripto), integrantes.map(i => i.id_inscripto)]
+        [...idsIntegrantes, ...idsIntegrantes]
     );
     
     // 5. Calcular estadísticas

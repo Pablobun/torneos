@@ -637,8 +637,15 @@
         }
 
         function formatearFecha(fechaStr) {
-            const fechaPart = fechaStr.split(' ')[0];
-            const [year, month, day] = fechaPart.split('-');
+            // Manejar formato ISO (2025-03-09T00:00:00.000Z) o simple (2025-03-09)
+            if (!fechaStr) return '';
+            
+            // Si viene en formato ISO, extraer solo la parte de la fecha
+            const fechaLimpia = fechaStr.split('T')[0];
+            const [year, month, day] = fechaLimpia.split('-');
+            
+            if (!year || !month || !day) return fechaStr;
+            
             return `${day}/${month}/${year}`;
         }
 
