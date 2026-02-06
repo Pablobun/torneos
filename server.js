@@ -1481,7 +1481,7 @@ app.get('/api/grupos/:idGrupo/estadisticas', async (req, res) => {
 });
 
 // ==========================================================
-// ENDPOINT: OBTENER RESULTADOS DE UN PARTIDO
+// ENDPOINT: OBTENER RESULTADOS DE UN PARTIDO (CON DETALLE DE SETS)
 // ==========================================================
 app.get('/api/partidos/:idPartido/resultado', async (req, res) => {
     const { idPartido } = req.params;
@@ -1523,6 +1523,62 @@ app.get('/api/partidos/:idPartido/resultado', async (req, res) => {
     } catch (error) {
         console.error('Error al obtener resultado:', error);
         res.status(500).json({ error: 'Error al obtener el resultado del partido' });
+    }
+});
+
+// ==========================================================
+// ENDPOINT: OBTENER TODOS LOS PARTIDOS CON DETALLE DE SETS
+// ==========================================================
+app.get('/api/partidos/:idTorneo/detallados', async (req, res) => {
+    const { idTorneo } = req.params;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        // Obtener todos los partidos
+        const [partidos] = await connection.execute(
+            `SELECT 
+                p.id,
+                p.id_horario,
+                h.dia_semana,
+                h.fecha,
+                h.hora_inicio as horario,
+                p.id_inscriptoL as local_id,
+                il.integrantes as local_nombre,
+                p.id_inscriptoV as visitante_id,
+                iv.integrantes as visitante_nombre,
+                g.categoria,
+                g.numero_grupo as grupo,
+                p.estado,
+                p.ganador_id
+             FROM partido p
+             LEFT JOIN horarios h ON p.id_horario = h.id
+             LEFT JOIN inscriptos il ON p.id_inscriptoL = il.id
+             LEFT JOIN inscriptos iv ON p.id_inscriptoV = iv.id
+             LEFT JOIN grupo_integrantes gil ON p.id_inscriptoL = gil.id_inscripto
+             LEFT JOIN grupos g ON gil.id_grupo = g.id AND g.id_torneo_fk = ?
+             WHERE il.id_torneo_fk = ? OR iv.id_torneo_fk = ?
+             ORDER BY h.fecha, h.hora_inicio`,
+            [idTorneo, idTorneo, idTorneo]
+        );
+        
+        // Obtener detalle de sets para cada partido
+        const partidosConSets = await Promise.all(partidos.map(async (partido) => {
+            const [sets] = await connection.execute(
+                `SELECT numero_set, games_local, games_visitante, es_super_tiebreak 
+                 FROM detalle_sets WHERE id_partido = ? ORDER BY numero_set`,
+                [partido.id]
+            );
+            return { ...partido, sets_detalle: sets };
+        }));
+        
+        await connection.end();
+        
+        res.status(200).json(partidosConSets);
+        
+    } catch (error) {
+        console.error('Error al obtener partidos detallados:', error);
+        res.status(500).json({ error: 'Error al obtener los partidos' });
     }
 });
 

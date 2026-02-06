@@ -361,7 +361,8 @@
 
         async function cargarPartidos() {
             try {
-                const response = await fetch(`${API_URL}/partidos/${torneoId}`);
+                // Usar endpoint con detalle de sets
+                const response = await fetch(`${API_URL}/partidos/${torneoId}/detallados`);
                 if (response.ok) {
                     partidos = await response.json();
                     renderizarPartidos();
@@ -415,17 +416,40 @@
             let resultadoHtml = '';
             if (estaJugado) {
                 const esWO = partido.estado && partido.estado.includes('wo');
-                resultadoHtml = `
-                    <div class="resultado-actual">
-                        <h4>✓ Resultado cargado ${esWO ? '(WO)' : ''}</h4>
-                        ${!esWO ? `
+                if (esWO) {
+                    resultadoHtml = `
+                        <div class="resultado-actual">
+                            <h4>✓ Resultado cargado (WO)</h4>
+                            <span class="set-badge">Walkover</span>
+                        </div>
+                    `;
+                } else if (partido.sets_detalle && partido.sets_detalle.length > 0) {
+                    // Formato tenis: 6/2 2/6 10/8
+                    const setsFormato = partido.sets_detalle.map(set => {
+                        if (set.es_super_tiebreak) {
+                            return `<span style="color: #ff9800; font-weight: bold;">${set.games_local}/${set.games_visitante}</span>`;
+                        }
+                        return `${set.games_local}/${set.games_visitante}`;
+                    }).join(' ');
+                    
+                    resultadoHtml = `
+                        <div class="resultado-actual">
+                            <h4>✓ Resultado cargado</h4>
+                            <div class="resultado-tenis" style="font-size: 18px; font-weight: bold; color: #2c3e50; font-family: 'Courier New', monospace; letter-spacing: 2px; margin-top: 8px;">
+                                ${setsFormato}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    resultadoHtml = `
+                        <div class="resultado-actual">
+                            <h4>✓ Resultado cargado</h4>
                             <div class="sets-display">
                                 <span class="set-badge">${partido.sets_local}-${partido.sets_visitante} Sets</span>
-                                <span class="set-badge">${partido.games_local}-${partido.games_visitante} Games</span>
                             </div>
-                        ` : '<span class="set-badge">Walkover</span>'}
-                    </div>
-                `;
+                        </div>
+                    `;
+                }
             }
             
             return `

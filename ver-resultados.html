@@ -182,28 +182,34 @@
         
         .partidos-list {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
             gap: 15px;
         }
         
         .partido-card {
             background: white;
-            border-radius: 10px;
-            padding: 20px;
+            border-radius: 12px;
+            padding: 15px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             border-left: 4px solid #4CAF50;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .partido-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
         
         .partido-card.jugado {
             border-left-color: #2196F3;
-            background: #f8fbff;
+            background: linear-gradient(135deg, #f8fbff, #fff);
         }
         
         .partido-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
+            align-items: flex-start;
+            margin-bottom: 12px;
             padding-bottom: 10px;
             border-bottom: 1px solid #eee;
         }
@@ -211,14 +217,21 @@
         .partido-info {
             font-size: 12px;
             color: #666;
+            line-height: 1.4;
+        }
+        
+        .partido-info strong {
+            color: #2c3e50;
+            font-size: 13px;
         }
         
         .estado-badge {
             padding: 4px 10px;
             border-radius: 4px;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: bold;
             text-transform: uppercase;
+            white-space: nowrap;
         }
         
         .estado-jugado {
@@ -231,26 +244,53 @@
             color: #333;
         }
         
-        .equipos {
+        .partido-body {
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .equipo-row {
+            display: flex;
             align-items: center;
-            margin-bottom: 10px;
         }
         
         .equipo-nombre {
-            font-weight: bold;
+            font-weight: 600;
             color: #2c3e50;
+            font-size: 14px;
+            word-break: break-word;
+            flex: 1;
         }
         
         .equipo-nombre.ganador {
-            color: #4CAF50;
+            color: #2196F3;
         }
         
-        .resultado {
-            font-size: 18px;
+        .winner-icon {
+            font-size: 14px;
+        }
+        
+        .resultado-row {
+            display: flex;
+            justify-content: center;
+            padding: 8px 0;
+            background: #f8f9fa;
+            border-radius: 6px;
+            margin: 5px 0;
+        }
+        
+        .resultado-tenis {
+            font-size: 20px;
             font-weight: bold;
-            color: #666;
+            color: #2c3e50;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px;
+        }
+        
+        .super-tb {
+            color: #ff9800;
+            font-weight: bold;
         }
         
         .loading {
@@ -329,33 +369,110 @@
         }
 
         @media (max-width: 768px) {
-            .grupos-container {
-                grid-template-columns: 1fr;
+            body {
+                padding: 10px;
             }
             
-            .partidos-list {
-                grid-template-columns: 1fr;
+            .container {
+                border-radius: 10px;
             }
             
-            .tabs {
-                flex-wrap: wrap;
+            .header {
+                padding: 20px 15px;
             }
             
             .header h1 {
-                font-size: 22px;
+                font-size: 20px;
             }
             
             .back-link {
                 position: static;
                 transform: none;
-                margin-bottom: 15px;
+                margin-bottom: 10px;
                 justify-content: center;
+                font-size: 14px;
+            }
+            
+            .content {
+                padding: 15px;
+            }
+            
+            .tabs {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .tab {
+                width: 100%;
+                padding: 12px;
+                font-size: 14px;
+            }
+            
+            .grupos-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .tabla-posiciones {
+                font-size: 11px;
+            }
+            
+            .tabla-posiciones th,
+            .tabla-posiciones td {
+                padding: 8px 4px;
+            }
+            
+            .tabla-posiciones .equipo {
+                font-size: 11px;
+                max-width: 120px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            
+            .partidos-list {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            
+            .partido-card {
+                padding: 12px;
+            }
+            
+            .partido-header {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .estado-badge {
+                align-self: flex-start;
+            }
+            
+            .equipo-nombre {
+                font-size: 13px;
+            }
+            
+            .resultado-tenis {
+                font-size: 18px;
+                letter-spacing: 1px;
+            }
+            
+            .leyenda {
+                font-size: 10px;
+            }
+            
+            .leyenda-item {
+                margin-right: 10px;
             }
             
             .menu-acceso {
                 bottom: 10px;
                 right: 10px;
                 flex-direction: column;
+            }
+            
+            .btn-float {
+                padding: 12px 20px;
+                font-size: 14px;
             }
         }
     </style>
@@ -551,7 +668,8 @@
 
         async function cargarPartidos() {
             try {
-                const response = await fetch(`${API_URL}/partidos/${torneoId}`);
+                // Usar el nuevo endpoint que trae detalle de sets
+                const response = await fetch(`${API_URL}/partidos/${torneoId}/detallados`);
                 if (response.ok) {
                     const partidos = await response.json();
                     renderizarPartidos(partidos);
@@ -594,12 +712,25 @@
             if (estaJugado) {
                 const esWO = partido.estado && partido.estado.includes('wo');
                 if (esWO) {
-                    resultadoHtml = `<div class="resultado">🏆 WO</div>`;
+                    resultadoHtml = `<div class="resultado-tenis">🏆 WO</div>`;
+                } else if (partido.sets_detalle && partido.sets_detalle.length > 0) {
+                    // Formato tenis: 6/2 2/6 10/8
+                    const setsFormato = partido.sets_detalle.map(set => {
+                        if (set.es_super_tiebreak) {
+                            return `<span class="super-tb">${set.games_local}/${set.games_visitante}</span>`;
+                        }
+                        return `${set.games_local}/${set.games_visitante}`;
+                    }).join(' ');
+                    
+                    resultadoHtml = `
+                        <div class="resultado-tenis">
+                            ${setsFormato}
+                        </div>
+                    `;
                 } else {
                     resultadoHtml = `
-                        <div class="resultado">
+                        <div class="resultado-tenis">
                             ${partido.sets_local}-${partido.sets_visitante}
-                            <div style="font-size: 11px; color: #999;">Sets</div>
                         </div>
                     `;
                 }
@@ -609,29 +740,31 @@
                 <div class="partido-card ${estadoClass}">
                     <div class="partido-header">
                         <div class="partido-info">
-                            Grupo ${partido.grupo || 'N/A'} - ${partido.categoria || 'N/A'}<br>
-                            ${partido.fecha ? formatearFecha(partido.fecha) : 'Sin fecha'} ${partido.horario || ''}
+                            <strong>Grupo ${partido.grupo || 'N/A'}</strong> - ${partido.categoria || 'N/A'}<br>
+                            📅 ${partido.fecha ? formatearFecha(partido.fecha) : 'Sin fecha'} ${partido.horario || ''}
                         </div>
                         <span class="estado-badge ${estadoBadgeClass}">${estadoText}</span>
                     </div>
                     
-                    <div class="equipos">
-                        <div class="equipo-nombre ${localGanador ? 'ganador' : ''}">
-                            ${partido.local_nombre}
-                            ${localGanador ? ' 🏆' : ''}
+                    <div class="partido-body">
+                        <div class="equipo-row">
+                            <div class="equipo-nombre ${localGanador ? 'ganador' : ''}">
+                                ${partido.local_nombre}
+                                ${localGanador ? ' <span class="winner-icon">🏆</span>' : ''}
+                            </div>
                         </div>
-                        ${resultadoHtml}
-                        <div class="equipo-nombre ${visitanteGanador ? 'ganador' : ''}" style="text-align: right;">
-                            ${partido.visitante_nombre}
-                            ${visitanteGanador ? ' 🏆' : ''}
+                        
+                        <div class="resultado-row">
+                            ${resultadoHtml}
+                        </div>
+                        
+                        <div class="equipo-row">
+                            <div class="equipo-nombre ${visitanteGanador ? 'ganador' : ''}">
+                                ${partido.visitante_nombre}
+                                ${visitanteGanador ? ' <span class="winner-icon">🏆</span>' : ''}
+                            </div>
                         </div>
                     </div>
-                    
-                    ${estaJugado && !partido.estado.includes('wo') ? `
-                        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; font-size: 11px; color: #666; text-align: center;">
-                            Games: ${partido.games_local}-${partido.games_visitante}
-                        </div>
-                    ` : ''}
                 </div>
             `;
         }
