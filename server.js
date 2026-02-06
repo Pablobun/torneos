@@ -1798,58 +1798,93 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         }
         
         const bracket = [];
+        let posicion = 1;
         
-        for (let i = 0; i < potenciaDe2 / 2; i++) {
-            // Obtener el primer jugador disponible
+        // Continuar hasta que no haya más jugadores disponibles
+        while (jugadoresDisponibles.primeros.length > 0 || jugadoresDisponibles.segundos.length > 0) {
+            console.log(`=== ITERACIÓN ${posicion} ===`);
+            console.log('Primeros restantes:', jugadoresDisponibles.primeros.length);
+            console.log('Segundos restantes:', jugadoresDisponibles.segundos.length);
+            
+            // Intentar obtener primer jugador
             const primero = obtenerSiguienteJugador('primeros');
-            if (!primero) break;
             
-            // Verificar si este jugador tiene BYE
-            if (conBye.has(primero.id_inscripto)) {
-                // Jugador con BYE - avanza automáticamente sin oponente
-                bracket.push({
-                    ronda: rondas[0],
-                    posicion: i + 1,
-                    id_inscripto_1: primero.id_inscripto,
-                    id_inscripto_2: null,  // ← Sin oponente para BYE
-                    id_grupo_1: primero.id_grupo,
-                    id_grupo_2: null,
-                    es_bye: true,
-                    ganador_id: primero.id_inscripto  // ← El propio jugador es ganador
-                });
-                continue;
+            if (primero) {
+                console.log(`Primer jugador obtenido: ${primero.nombre} (ID: ${primero.id_inscripto})`);
+                
+                // Verificar si este jugador tiene BYE
+                if (conBye.has(primero.id_inscripto)) {
+                    console.log(`  → Jugador tiene BYE, avanza solo`);
+                    bracket.push({
+                        ronda: rondas[0],
+                        posicion: posicion,
+                        id_inscripto_1: primero.id_inscripto,
+                        id_inscripto_2: null,
+                        id_grupo_1: primero.id_grupo,
+                        id_grupo_2: null,
+                        es_bye: true,
+                        ganador_id: primero.id_inscripto
+                    });
+                } else {
+                    // Buscar oponente (segundo de otro grupo)
+                    const segundo = obtenerSiguienteJugador('segundos', primero.id_grupo);
+                    
+                    if (segundo) {
+                        console.log(`  → Oponente encontrado: ${segundo.nombre} (ID: ${segundo.id_inscripto})`);
+                        bracket.push({
+                            ronda: rondas[0],
+                            posicion: posicion,
+                            id_inscripto_1: primero.id_inscripto,
+                            id_inscripto_2: segundo.id_inscripto,
+                            id_grupo_1: primero.id_grupo,
+                            id_grupo_2: segundo.id_grupo,
+                            es_bye: false,
+                            ganador_id: null
+                        });
+                    } else {
+                        console.log(`  → No hay oponente, ${primero.nombre} avanza con BYE automático`);
+                        bracket.push({
+                            ronda: rondas[0],
+                            posicion: posicion,
+                            id_inscripto_1: primero.id_inscripto,
+                            id_inscripto_2: null,
+                            id_grupo_1: primero.id_grupo,
+                            id_grupo_2: null,
+                            es_bye: true,
+                            ganador_id: primero.id_inscripto
+                        });
+                    }
+                }
+            } else {
+                // No hay más primeros, pero pueden quedar segundos
+                const segundo = obtenerSiguienteJugador('segundos');
+                
+                if (segundo) {
+                    console.log(`Solo segundo disponible: ${segundo.nombre} (ID: ${segundo.id_inscripto}), avanza con BYE`);
+                    bracket.push({
+                        ronda: rondas[0],
+                        posicion: posicion,
+                        id_inscripto_1: segundo.id_inscripto,
+                        id_inscripto_2: null,
+                        id_grupo_1: segundo.id_grupo,
+                        id_grupo_2: null,
+                        es_bye: true,
+                        ganador_id: segundo.id_inscripto
+                    });
+                } else {
+                    console.log(`No hay más jugadores disponibles`);
+                    break;
+                }
             }
             
-            // Si no tiene BYE, buscar oponente (segundo de otro grupo)
-            const segundo = obtenerSiguienteJugador('segundos', primero.id_grupo);
-            
-            if (!segundo) {
-                // No hay suficientes segundos, crear partido con BYE automático
-                bracket.push({
-                    ronda: rondas[0],
-                    posicion: i + 1,
-                    id_inscripto_1: primero.id_inscripto,
-                    id_inscripto_2: null,
-                    id_grupo_1: primero.id_grupo,
-                    id_grupo_2: null,
-                    es_bye: true,
-                    ganador_id: primero.id_inscripto
-                });
-                continue;
-            }
-            
-            // Partido normal entre dos jugadores
-            bracket.push({
-                ronda: rondas[0],
-                posicion: i + 1,
-                id_inscripto_1: primero.id_inscripto,
-                id_inscripto_2: segundo.id_inscripto,
-                id_grupo_1: primero.id_grupo,
-                id_grupo_2: segundo.id_grupo,
-                es_bye: false,
-                ganador_id: null
-            });
+            posicion++;
         }
+        
+        console.log(`=== BRACKET FINAL CREADO ===`);
+        console.log(`Total partidos: ${bracket.length}`);
+        bracket.forEach((partido, i) => {
+            console.log(`Partido ${i + 1}: ${partido.es_bye ? 'BYE' : 'Normal'} - Jugador 1: ${partido.id_inscripto_1}, Jugador 2: ${partido.id_inscripto_2}`);
+        });
         
         // 8. Validaciones finales para detectar duplicados
         const jugadoresEnBracket = new Set();
