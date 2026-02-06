@@ -1428,8 +1428,13 @@ async function calcularEstadisticasGrupo(connection, idGrupo) {
 app.get('/api/grupos/:idGrupo/estadisticas', async (req, res) => {
     const { idGrupo } = req.params;
     
+    let connection;
+    
     try {
-        const connection = await mysql.createConnection(connectionConfig);
+        connection = await mysql.createConnection(connectionConfig);
+        
+        // PRIMERO: Recalcular estadísticas para asegurar que estén actualizadas
+        await calcularEstadisticasGrupo(connection, idGrupo);
         
         // Obtener estadísticas con nombres de jugadores
         const [estadisticas] = await connection.execute(
@@ -1460,6 +1465,7 @@ app.get('/api/grupos/:idGrupo/estadisticas', async (req, res) => {
         });
         
     } catch (error) {
+        if (connection) await connection.end();
         console.error('Error al obtener estadísticas:', error);
         res.status(500).json({ error: 'Error al obtener las estadísticas del grupo' });
     }
