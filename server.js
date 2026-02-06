@@ -1678,10 +1678,11 @@ app.get('/api/partidos/:idTorneo/detallados', async (req, res) => {
 });
 
 // ==========================================================
-// ENDPOINT: GENERAR LLAVE DE ELIMINACIÓN
+// ENDPOINT: GENERAR LLAVE DE ELIMINACIÓN POR CATEGORÍA
 // ==========================================================
 app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
     const { idTorneo } = req.params;
+    const { categoria } = req.body;
     
     let connection;
     
@@ -1689,22 +1690,23 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         connection = await mysql.createConnection(connectionConfig);
         await connection.beginTransaction();
         
-        // 1. Verificar si ya existe llave
+        // 1. Verificar si ya existe llave para esta categoría
         const [llaveExistente] = await connection.execute(
-            'SELECT COUNT(*) as count FROM llave_eliminacion WHERE id_torneo = ?',
-            [idTorneo]
+            'SELECT COUNT(*) as count FROM llave_eliminacion WHERE id_torneo = ? AND categoria = ?',
+            [idTorneo, categoria]
         );
         
         if (llaveExistente[0].count > 0) {
             await connection.rollback();
-            return res.status(400).json({ error: 'Ya existe una llave generada para este torneo' });
+            return res.status(400).json({ error: `Ya existe una llave generada para la categoría ${categoria}` });
         }
         
-        // 2. Obtener clasificados de cada grupo (1° y 2°)
+        // 2. Obtener clasificados de cada grupo de la categoría (1° y 2°)
         const [clasificados] = await connection.execute(
             `SELECT 
                 eg.id_inscripto,
                 eg.id_grupo,
+                g.numero_grupo,
                 eg.posicion,
                 eg.puntos,
                 eg.dif_sets,
@@ -1712,10 +1714,11 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                 i.integrantes as nombre
              FROM estadisticas_grupo eg
              INNER JOIN inscriptos i ON eg.id_inscripto = i.id
-             WHERE eg.id_grupo IN (SELECT id FROM grupos WHERE id_torneo_fk = ?)
+             INNER JOIN grupos g ON eg.id_grupo = g.id
+             WHERE g.id_torneo_fk = ? AND g.categoria = ?
              AND eg.posicion <= 2
-             ORDER BY eg.id_grupo, eg.posicion`,
-            [idTorneo]
+             ORDER BY g.numero_grupo, eg.posicion`,
+            [idTorneo, categoria]
         );
         
         if (clasificados.length === 0) {
@@ -1804,8 +1807,8 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                 `INSERT INTO llave_eliminacion 
                  (id_torneo, categoria, ronda, posicion, id_inscripto_1, id_inscripto_2, 
                   id_grupo_1, id_grupo_2, es_bye, ganador_id)
-                 VALUES (?, 'general', ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [idTorneo, enfrentamiento.ronda, enfrentamiento.posicion, 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [idTorneo, categoria, enfrentamiento.ronda, enfrentamiento.posicion, 
                  enfrentamiento.id_inscripto_1, enfrentamiento.id_inscripto_2,
                  enfrentamiento.id_grupo_1, enfrentamiento.id_grupo_2,
                  enfrentamiento.es_bye, enfrentamiento.ganador_id]
@@ -1835,7 +1838,8 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         await connection.commit();
         
         res.status(200).json({
-            mensaje: 'Llave de eliminación generada exitosamente',
+            mensaje: `Llave de eliminación generada exitosamente para ${categoria}`,
+            categoria: categoria,
             totalClasificados: totalClasificados,
             byes: byes,
             rondas: rondas,
@@ -1852,16 +1856,17 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
 });
 
 // ==========================================================
-// ENDPOINT: OBTENER LLAVE DE ELIMINACIÓN
+// ENDPOINT: OBTENER LLAVE DE ELIMINACIÓN POR CATEGORÍA
 // ==========================================================
 app.get('/api/torneo/:idTorneo/llave', async (req, res) => {
     const { idTorneo } = req.params;
+    const { categoria } = req.query;
     
     try {
         const connection = await mysql.createConnection(connectionConfig);
         
-        const [llave] = await connection.execute(
-            `SELECT 
+        let query = `
+            SELECT 
                 l.*,
                 i1.integrantes as nombre_1,
                 i2.integrantes as nombre_2,
@@ -1875,12 +1880,21 @@ app.get('/api/torneo/:idTorneo/llave', async (req, res) => {
              LEFT JOIN inscriptos g ON l.ganador_id = g.id
              LEFT JOIN partido p ON l.id_partido = p.id
              LEFT JOIN horarios_playoffs hp ON p.id_horario = hp.id
-             WHERE l.id_torneo = ?
+             WHERE l.id_torneo = ?`;
+        
+        const params = [idTorneo];
+        
+        if (categoria) {
+            query += ` AND l.categoria = ?`;
+            params.push(categoria);
+        }
+        
+        query += `
              ORDER BY 
                 FIELD(l.ronda, 'final', 'semifinal', 'cuartos', 'octavos', 'dieciseisavos'),
-                l.posicion`,
-            [idTorneo]
-        );
+                l.posicion`;
+        
+        const [llave] = await connection.execute(query, params);
         
         await connection.end();
         
@@ -1895,12 +1909,39 @@ app.get('/api/torneo/:idTorneo/llave', async (req, res) => {
         
         res.status(200).json({
             bracket: bracketPorRonda,
-            totalEnfrentamientos: llave.length
+            totalEnfrentamientos: llave.length,
+            categoria: categoria || 'todas'
         });
         
     } catch (error) {
         console.error('Error al obtener llave:', error);
         res.status(500).json({ error: 'Error al obtener la llave de eliminación' });
+    }
+});
+
+// ==========================================================
+// ENDPOINT: OBTENER CATEGORÍAS CON LLAVE GENERADA
+// ==========================================================
+app.get('/api/torneo/:idTorneo/categorias-llave', async (req, res) => {
+    const { idTorneo } = req.params;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        const [categorias] = await connection.execute(
+            `SELECT DISTINCT categoria FROM llave_eliminacion WHERE id_torneo = ? ORDER BY categoria`,
+            [idTorneo]
+        );
+        
+        await connection.end();
+        
+        res.status(200).json({
+            categorias: categorias.map(c => c.categoria)
+        });
+        
+    } catch (error) {
+        console.error('Error al obtener categorías:', error);
+        res.status(500).json({ error: 'Error al obtener las categorías' });
     }
 });
 

@@ -123,13 +123,24 @@
             border: 1px solid #eee;
         }
         
+        .tabla-container {
+            overflow-x: auto;
+            width: 100%;
+        }
+        
+        .tabla-container .tabla-posiciones {
+            min-width: 600px;
+        }
+        
         .grupo-header {
             background: linear-gradient(135deg, #2c3e50, #34495e);
             color: white;
             padding: 12px 15px;
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-start;
             align-items: center;
+            gap: 10px;
+            min-width: 600px;
         }
         
         .grupo-header h2 {
@@ -828,25 +839,27 @@
                         <h2>Grupo ${grupo.numero_grupo}</h2>
                         <div class="categoria">${grupo.categoria}</div>
                     </div>
-                    <table class="tabla-posiciones">
-                        <thead>
-                            <tr>
-                                <th>Pos</th>
-                                <th style="text-align: left;">Equipo</th>
-                                <th>PJ</th>
-                                <th>PG</th>
-                                <th>PP</th>
-                                <th>Pts</th>
-                                <th>Sets</th>
-                                <th>Dif</th>
-                                <th>Games</th>
-                                <th>Dif</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${filas}
-                        </tbody>
-                    </table>
+                    <div class="tabla-container">
+                        <table class="tabla-posiciones">
+                            <thead>
+                                <tr>
+                                    <th>Pos</th>
+                                    <th style="text-align: left;">Equipo</th>
+                                    <th>PJ</th>
+                                    <th>PG</th>
+                                    <th>PP</th>
+                                    <th>Pts</th>
+                                    <th>Sets</th>
+                                    <th>Dif</th>
+                                    <th>Games</th>
+                                    <th>Dif</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${filas}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             `;
         }

@@ -389,6 +389,9 @@
     <div class="container">
         <div class="header">
             <h1>🏆 Llave de Eliminación</h1>
+            <select id="selector-categoria" onchange="cambiarCategoria()" style="padding: 8px 15px; border-radius: 5px; border: none; font-size: 14px; min-width: 150px;">
+                <option value="">Seleccionar categoría...</option>
+            </select>
             <div class="tabs">
                 <button class="tab active" onclick="showTab('bracket')">Bracket</button>
                 <button class="tab" onclick="showTab('horarios')">Horarios</button>
@@ -482,11 +485,22 @@
         let llaveData = null;
         let horariosData = [];
         let currentMatchId = null;
+        let categoriaActual = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
+            // Obtener categoría de URL
+            const urlParams = new URLSearchParams(window.location.search);
+            categoriaActual = urlParams.get('categoria');
+            
             await cargarTorneoActivo();
             if (torneoId) {
-                await cargarBracket();
+                await cargarCategorias();
+                if (categoriaActual) {
+                    document.getElementById('selector-categoria').value = categoriaActual;
+                    await cargarBracket(categoriaActual);
+                } else {
+                    await cargarBracket();
+                }
                 await cargarHorarios();
             }
         });
@@ -503,16 +517,50 @@
             }
         }
 
-        async function cargarBracket() {
+        async function cargarCategorias() {
             try {
-                const response = await fetch(`${API_URL}/torneo/${torneoId}/llave`);
+                const response = await fetch(`${API_URL}/torneo/${torneoId}/categorias-llave`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const select = document.getElementById('selector-categoria');
+                    data.categorias.forEach(cat => {
+                        const option = document.createElement('option');
+                        option.value = cat;
+                        option.textContent = cat;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error al cargar categorías:', error);
+            }
+        }
+
+        async function cambiarCategoria() {
+            const select = document.getElementById('selector-categoria');
+            categoriaActual = select.value;
+            if (categoriaActual) {
+                await cargarBracket(categoriaActual);
+            } else {
+                await cargarBracket();
+            }
+        }
+
+        async function cargarBracket(categoria = null) {
+            try {
+                let url = `${API_URL}/torneo/${torneoId}/llave`;
+                if (categoria) {
+                    url += `?categoria=${encodeURIComponent(categoria)}`;
+                }
+                
+                const response = await fetch(url);
                 if (response.ok) {
                     llaveData = await response.json();
                     renderizarBracket(llaveData.bracket);
                 } else {
+                    const mensajeCategoria = categoria ? `para ${categoria}` : '';
                     document.getElementById('bracket-content').innerHTML = `
                         <div style="text-align: center; padding: 40px; color: #666;">
-                            <h3>No hay llave generada</h3>
+                            <h3>No hay llave generada ${mensajeCategoria}</h3>
                             <p>Primero debés generar la llave desde "Posiciones de Grupos"</p>
                             <a href="posiciones-grupos.html" class="btn btn-primary" style="margin-top: 20px; display: inline-block; text-decoration: none;">
                                 Ir a Posiciones

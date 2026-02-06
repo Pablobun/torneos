@@ -385,8 +385,13 @@
     <div class="container">
         <div class="header">
             <a href="ver-grupos-partidos.html" class="back-link">← Volver a grupos</a>
-            <h1>🏆 Playoffs - Fase Final</h1>
-            <p>Bracket de eliminación directa</p>
+            <div>
+                <h1>🏆 Playoffs - Fase Final</h1>
+                <p>Bracket de eliminación directa</p>
+            </div>
+            <select id="selector-categoria" onchange="cambiarCategoria()" style="padding: 10px 15px; border-radius: 5px; border: none; font-size: 14px; min-width: 150px;">
+                <option value="">Todas las categorías</option>
+            </select>
         </div>
         
         <div class="content">
@@ -424,11 +429,20 @@
     <script>
         const API_URL = 'https://academia-torneos.onrender.com/api';
         let torneoId = null;
+        let categoriaActual = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
+            // Obtener categoría de URL
+            const urlParams = new URLSearchParams(window.location.search);
+            categoriaActual = urlParams.get('categoria');
+            
             await cargarTorneoActivo();
             if (torneoId) {
-                await cargarPlayoffs();
+                await cargarCategorias();
+                if (categoriaActual) {
+                    document.getElementById('selector-categoria').value = categoriaActual;
+                }
+                await cargarPlayoffs(categoriaActual);
             }
         });
 
@@ -444,19 +458,48 @@
             }
         }
 
-        async function cargarPlayoffs() {
+        async function cargarCategorias() {
             try {
-                const response = await fetch(`${API_URL}/torneo/${torneoId}/llave`);
+                const response = await fetch(`${API_URL}/torneo/${torneoId}/categorias-llave`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const select = document.getElementById('selector-categoria');
+                    data.categorias.forEach(cat => {
+                        const option = document.createElement('option');
+                        option.value = cat;
+                        option.textContent = cat;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error al cargar categorías:', error);
+            }
+        }
+
+        async function cambiarCategoria() {
+            const select = document.getElementById('selector-categoria');
+            categoriaActual = select.value || null;
+            await cargarPlayoffs(categoriaActual);
+        }
+
+        async function cargarPlayoffs(categoria = null) {
+            try {
+                let url = `${API_URL}/torneo/${torneoId}/llave`;
+                if (categoria) {
+                    url += `?categoria=${encodeURIComponent(categoria)}`;
+                }
+                
+                const response = await fetch(url);
                 
                 if (!response.ok) {
-                    mostrarEmptyState();
+                    mostrarEmptyState(categoria);
                     return;
                 }
                 
                 const data = await response.json();
                 
                 if (!data.bracket || Object.keys(data.bracket).length === 0) {
-                    mostrarEmptyState();
+                    mostrarEmptyState(categoria);
                     return;
                 }
                 
@@ -473,6 +516,21 @@
                     </div>
                 `;
             }
+        }
+        
+        function mostrarEmptyState(categoria = null) {
+            const mensaje = categoria ? `No hay playoffs disponibles para ${categoria}` : 'Los playoffs aún no han comenzado';
+            document.getElementById('bracket-container').innerHTML = `
+                <div class="empty-state">
+                    <h2>🎾 ${mensaje}</h2>
+                    <p>Consultá la fase de grupos para ver el estado del torneo.</p>
+                    <a href="ver-grupos-partidos.html" class="btn" style="margin-top: 20px;">
+                        Ver Grupos
+                    </a>
+                </div>
+            `;
+            document.getElementById('champion-section').classList.remove('visible');
+            document.getElementById('stats-bar').style.display = 'none';
         }
 
         function renderizarBracket(bracket) {

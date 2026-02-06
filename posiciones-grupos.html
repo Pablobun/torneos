@@ -99,13 +99,24 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         
+        .tabla-container {
+            overflow-x: auto;
+            width: 100%;
+        }
+        
+        .tabla-container .tabla-posiciones {
+            min-width: 600px;
+        }
+        
         .grupo-header {
             background: linear-gradient(135deg, #2c3e50, #34495e);
             color: white;
             padding: 12px 15px;
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-start;
             align-items: center;
+            gap: 10px;
+            min-width: 600px;
         }
         
         .grupo-header h2 {
@@ -326,9 +337,9 @@
                     Se actualiza automáticamente al cargar resultados
                 </p>
             </div>
-            <button class="btn btn-primary" onclick="generarLlave()">
-                🏆 Generar Llave de Playoffs
-            </button>
+            <div id="generar-llaves-container" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end;">
+                <!-- Los botones se generarán dinámicamente por categoría -->
+            </div>
         </div>
         
         <div id="resumen-container"></div>
@@ -389,6 +400,11 @@
                 
                 renderizarGrupos(gruposConEstadisticas);
                 renderizarResumen(gruposConEstadisticas);
+                
+                // Extraer categorías únicas y renderizar botones de llave
+                const categorias = [...new Set(grupos.map(g => g.categoria))];
+                const llavesExistentes = await cargarCategoriasConLlave();
+                renderizarBotonesLlave(categorias, llavesExistentes);
                 
             } catch (error) {
                 console.error('Error:', error);
@@ -455,25 +471,27 @@
                         <h2>Grupo ${grupo.numero_grupo}</h2>
                         <div class="categoria">${grupo.categoria}</div>
                     </div>
-                    <table class="tabla-posiciones">
-                        <thead>
-                            <tr>
-                                <th>Pos</th>
-                                <th style="text-align: left;">Equipo</th>
-                                <th>PJ</th>
-                                <th>PG</th>
-                                <th>PP</th>
-                                <th>Pts</th>
-                                <th>Sets</th>
-                                <th>Dif</th>
-                                <th>Games</th>
-                                <th>Dif</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${filas}
-                        </tbody>
-                    </table>
+                    <div class="tabla-container">
+                        <table class="tabla-posiciones">
+                            <thead>
+                                <tr>
+                                    <th>Pos</th>
+                                    <th style="text-align: left;">Equipo</th>
+                                    <th>PJ</th>
+                                    <th>PG</th>
+                                    <th>PP</th>
+                                    <th>Pts</th>
+                                    <th>Sets</th>
+                                    <th>Dif</th>
+                                    <th>Games</th>
+                                    <th>Dif</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${filas}
+                            </tbody>
+                        </table>
+                    </div>
                     <div class="leyenda">
                         <div class="leyenda-item">
                             <div class="leyenda-color color-1"></div>
@@ -524,30 +542,51 @@
             `;
         }
 
-        async function generarLlave() {
-            // Verificar que todos los grupos tengan partidos jugados
-            const gruposCompletos = grupos.every(g => g.estado === 'finalizado');
+        function renderizarBotonesLlave(categorias, llavesExistentes) {
+            const container = document.getElementById('generar-llaves-container');
+            container.innerHTML = '';
+            
+            categorias.forEach(categoria => {
+                const tieneLlave = llavesExistentes.includes(categoria);
+                const btn = document.createElement('button');
+                btn.className = tieneLlave ? 'btn btn-secondary' : 'btn btn-primary';
+                btn.innerHTML = tieneLlave 
+                    ? `🏆 Ver Llave ${categoria}` 
+                    : `🏆 Generar Llave ${categoria}`;
+                btn.onclick = () => tieneLlave 
+                    ? window.location.href = `llave-eliminacion.html?categoria=${encodeURIComponent(categoria)}`
+                    : generarLlave(categoria);
+                container.appendChild(btn);
+            });
+        }
+        
+        async function generarLlave(categoria) {
+            // Verificar si la categoría tiene todos los partidos jugados
+            const gruposCategoria = grupos.filter(g => g.categoria === categoria);
+            const gruposCompletos = gruposCategoria.every(g => g.estado === 'finalizado');
             
             if (!gruposCompletos) {
-                if (!confirm('Algunos grupos no tienen todos los partidos jugados. ¿Querés generar la llave igual?')) {
+                if (!confirm(`Algunos grupos de ${categoria} no tienen todos los partidos jugados. ¿Querés generar la llave igual?`)) {
                     return;
                 }
             }
             
             try {
                 const response = await fetch(`${API_URL}/torneo/${torneoId}/generar-llave`, {
-                    method: 'POST'
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ categoria })
                 });
                 
                 if (response.ok) {
                     const data = await response.json();
-                    alert(`✅ Llave generada exitosamente!\n\nTotal clasificados: ${data.totalClasificados}\nBYES otorgados: ${data.byes}\nRondas: ${data.rondas.join(' → ')}`);
-                    window.location.href = 'llave-eliminacion.html';
+                    alert(`✅ Llave generada exitosamente para ${categoria}!\n\nTotal clasificados: ${data.totalClasificados}\nBYES otorgados: ${data.byes}\nRondas: ${data.rondas.join(' → ')}`);
+                    window.location.href = `llave-eliminacion.html?categoria=${encodeURIComponent(categoria)}`;
                 } else {
                     const error = await response.json();
                     if (error.error.includes('Ya existe una llave')) {
-                        if (confirm('Ya existe una llave generada. ¿Querés verla?')) {
-                            window.location.href = 'llave-eliminacion.html';
+                        if (confirm(`Ya existe una llave para ${categoria}. ¿Querés verla?`)) {
+                            window.location.href = `llave-eliminacion.html?categoria=${encodeURIComponent(categoria)}`;
                         }
                     } else {
                         alert('Error: ' + error.error);
@@ -557,6 +596,19 @@
                 console.error('Error:', error);
                 alert('Error al generar la llave');
             }
+        }
+        
+        async function cargarCategoriasConLlave() {
+            try {
+                const response = await fetch(`${API_URL}/torneo/${torneoId}/categorias-llave`);
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.categorias;
+                }
+            } catch (error) {
+                console.error('Error al cargar categorías con llave:', error);
+            }
+            return [];
         }
     </script>
 </body>
