@@ -1773,15 +1773,27 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         function obtenerSiguienteJugador(tipo, grupoEvitar = null) {
             const array = jugadoresDisponibles[tipo];
             
+            console.log(`obtenerSiguienteJugador(${tipo}, grupoEvitar=${grupoEvitar}) - Array disponibles:`, array.map(j => ({id: j.id_inscripto, nombre: j.nombre})));
+            
             for (let i = 0; i < array.length; i++) {
                 const jugador = array[i];
+                console.log(`  Verificando jugador ${i}:`, {
+                    id: jugador.id_inscripto,
+                    nombre: jugador.nombre,
+                    yaAsignado: jugadoresAsignados.has(jugador.id_inscripto),
+                    mismoGrupo: grupoEvitar && jugador.id_grupo === grupoEvitar,
+                    condicion: !jugadoresAsignados.has(jugador.id_inscripto) && (!grupoEvitar || jugador.id_grupo !== grupoEvitar)
+                });
+                
                 if (!jugadoresAsignados.has(jugador.id_inscripto) && 
                     (!grupoEvitar || jugador.id_grupo !== grupoEvitar)) {
+                    console.log(`  ✅ Seleccionado: ${jugador.nombre} (ID: ${jugador.id_inscripto})`);
                     jugadoresAsignados.add(jugador.id_inscripto);
                     array.splice(i, 1); // Eliminar del array de disponibles
                     return jugador;
                 }
             }
+            console.log(`  ❌ No se encontró jugador disponible para tipo: ${tipo}`);
             return null;
         }
         
@@ -1868,6 +1880,55 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         // Validar que todos los clasificados estén en el bracket
         const jugadoresClasificados = clasificados.map(c => c.id_inscripto);
         const jugadoresFaltantes = jugadoresClasificados.filter(id => !jugadoresEnBracket.has(id));
+        
+        // LOGGING: Investigar jugadores faltantes
+        console.log('=== DEBUG GENERACIÓN LLAVE ===');
+        console.log('Categoría:', categoria);
+        console.log('Total clasificados:', clasificados.length);
+        console.log('Jugadores clasificados:', jugadoresClasificados);
+        console.log('Jugadores en bracket:', Array.from(jugadoresEnBracket));
+        console.log('Jugadores faltantes:', jugadoresFaltantes);
+        
+        // Investigar jugadores específicos 115 y 106
+        const jugador115 = clasificados.find(c => c.id_inscripto === 115);
+        const jugador106 = clasificados.find(c => c.id_inscripto === 106);
+        
+        console.log('=== INVESTIGACIÓN JUGADOR 115 ===');
+        if (jugador115) {
+            console.log('Jugador 115 encontrado en clasificados:', {
+                id: jugador115.id_inscripto,
+                nombre: jugador115.nombre,
+                posicion: jugador115.posicion,
+                grupo: jugador115.id_grupo,
+                puntos: jugador115.puntos
+            });
+            console.log('¿Tiene BYE?', conBye.has(115));
+            console.log('¿Está en jugadoresAsignados?', jugadoresAsignados.has(115));
+            console.log('¿Está en jugadoresEnBracket?', jugadoresEnBracket.has(115));
+        } else {
+            console.log('Jugador 115 NO encontrado en clasificados');
+        }
+        
+        console.log('=== INVESTIGACIÓN JUGADOR 106 ===');
+        if (jugador106) {
+            console.log('Jugador 106 encontrado en clasificados:', {
+                id: jugador106.id_inscripto,
+                nombre: jugador106.nombre,
+                posicion: jugador106.posicion,
+                grupo: jugador106.id_grupo,
+                puntos: jugador106.puntos
+            });
+            console.log('¿Tiene BYE?', conBye.has(106));
+            console.log('¿Está en jugadoresAsignados?', jugadoresAsignados.has(106));
+            console.log('¿Está en jugadoresEnBracket?', jugadoresEnBracket.has(106));
+        } else {
+            console.log('Jugador 106 NO encontrado en clasificados');
+        }
+        
+        console.log('=== ESTADO ARRAYS DISPONIBLES ===');
+        console.log('Primeros disponibles:', jugadoresDisponibles.primeros.map(p => ({id: p.id_inscripto, nombre: p.nombre})));
+        console.log('Segundos disponibles:', jugadoresDisponibles.segundos.map(s => ({id: s.id_inscripto, nombre: s.nombre})));
+        console.log('=== FIN DEBUG ===');
         
         if (jugadoresFaltantes.length > 0) {
             await connection.rollback();
