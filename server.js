@@ -1755,53 +1755,128 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         else if (potenciaDe2 >= 4) rondas = ['semifinal', 'final'];
         else rondas = ['final'];
         
-        // 7. Generar bracket
+        // 7. Generar bracket con lógica corregida
         // Separar primeros y segundos de cada grupo
         const primeros = clasificados.filter(c => c.posicion === 1);
         const segundos = clasificados.filter(c => c.posicion === 2);
         
-        // Mezclar arrays para distribución
-        // Estrategia: colocar primeros en posiciones impares, segundos en pares
-        // pero evitando cruces del mismo grupo
+        // Arrays de trabajo para evitar duplicados
+        const jugadoresDisponibles = {
+            primeros: [...primeros],
+            segundos: [...segundos]
+        };
+        
+        // Tracking de jugadores ya asignados
+        const jugadoresAsignados = new Set();
+        
+        // Función para obtener siguiente jugador disponible
+        function obtenerSiguienteJugador(tipo, grupoEvitar = null) {
+            const array = jugadoresDisponibles[tipo];
+            
+            for (let i = 0; i < array.length; i++) {
+                const jugador = array[i];
+                if (!jugadoresAsignados.has(jugador.id_inscripto) && 
+                    (!grupoEvitar || jugador.id_grupo !== grupoEvitar)) {
+                    jugadoresAsignados.add(jugador.id_inscripto);
+                    array.splice(i, 1); // Eliminar del array de disponibles
+                    return jugador;
+                }
+            }
+            return null;
+        }
+        
         const bracket = [];
-        let posPrimeros = 0;
-        let posSegundos = 0;
         
         for (let i = 0; i < potenciaDe2 / 2; i++) {
-            // Primero de un grupo vs Segundo de OTRO grupo
-            const primero = primeros[posPrimeros % primeros.length];
-            let segundo;
+            // Obtener el primer jugador disponible
+            const primero = obtenerSiguienteJugador('primeros');
+            if (!primero) break;
             
-            // Buscar segundo de grupo diferente
-            let intentos = 0;
-            do {
-                segundo = segundos[posSegundos % segundos.length];
-                posSegundos++;
-                intentos++;
-            } while (segundo && primero && segundo.id_grupo === primero.id_grupo && intentos < segundos.length);
-            
-            // Si no se pudo evitar el cruce del mismo grupo, usar el siguiente disponible
-            if (!segundo || (segundo.id_grupo === primero.id_grupo)) {
-                segundo = segundos.find(s => s.id_grupo !== primero.id_grupo) || segundos[0];
+            // Verificar si este jugador tiene BYE
+            if (conBye.has(primero.id_inscripto)) {
+                // Jugador con BYE - avanza automáticamente sin oponente
+                bracket.push({
+                    ronda: rondas[0],
+                    posicion: i + 1,
+                    id_inscripto_1: primero.id_inscripto,
+                    id_inscripto_2: null,  // ← Sin oponente para BYE
+                    id_grupo_1: primero.id_grupo,
+                    id_grupo_2: null,
+                    es_bye: true,
+                    ganador_id: primero.id_inscripto  // ← El propio jugador es ganador
+                });
+                continue;
             }
             
-            const esByePareja = conBye.has(primero.id_inscripto) || conBye.has(segundo?.id_inscripto);
+            // Si no tiene BYE, buscar oponente (segundo de otro grupo)
+            const segundo = obtenerSiguienteJugador('segundos', primero.id_grupo);
             
+            if (!segundo) {
+                // No hay suficientes segundos, crear partido con BYE automático
+                bracket.push({
+                    ronda: rondas[0],
+                    posicion: i + 1,
+                    id_inscripto_1: primero.id_inscripto,
+                    id_inscripto_2: null,
+                    id_grupo_1: primero.id_grupo,
+                    id_grupo_2: null,
+                    es_bye: true,
+                    ganador_id: primero.id_inscripto
+                });
+                continue;
+            }
+            
+            // Partido normal entre dos jugadores
             bracket.push({
                 ronda: rondas[0],
                 posicion: i + 1,
                 id_inscripto_1: primero.id_inscripto,
-                id_inscripto_2: segundo ? segundo.id_inscripto : null,
+                id_inscripto_2: segundo.id_inscripto,
                 id_grupo_1: primero.id_grupo,
-                id_grupo_2: segundo ? segundo.id_grupo : null,
-                es_bye: esByePareja,
-                ganador_id: esByePareja ? (conBye.has(primero.id_inscripto) ? segundo.id_inscripto : primero.id_inscripto) : null
+                id_grupo_2: segundo.id_grupo,
+                es_bye: false,
+                ganador_id: null
             });
-            
-            posPrimeros++;
         }
         
-        // 8. Insertar en base de datos
+        // 8. Validaciones finales para detectar duplicados
+        const jugadoresEnBracket = new Set();
+        const duplicadosEncontrados = [];
+        
+        bracket.forEach(partido => {
+            if (partido.id_inscripto_1) {
+                if (jugadoresEnBracket.has(partido.id_inscripto_1)) {
+                    duplicadosEncontrados.push(partido.id_inscripto_1);
+                }
+                jugadoresEnBracket.add(partido.id_inscripto_1);
+            }
+            if (partido.id_inscripto_2) {
+                if (jugadoresEnBracket.has(partido.id_inscripto_2)) {
+                    duplicadosEncontrados.push(partido.id_inscripto_2);
+                }
+                jugadoresEnBracket.add(partido.id_inscripto_2);
+            }
+        });
+        
+        if (duplicadosEncontrados.length > 0) {
+            await connection.rollback();
+            return res.status(500).json({ 
+                error: `Error de duplicación: jugadores repetidos en el bracket: ${duplicadosEncontrados.join(', ')}` 
+            });
+        }
+        
+        // Validar que todos los clasificados estén en el bracket
+        const jugadoresClasificados = clasificados.map(c => c.id_inscripto);
+        const jugadoresFaltantes = jugadoresClasificados.filter(id => !jugadoresEnBracket.has(id));
+        
+        if (jugadoresFaltantes.length > 0) {
+            await connection.rollback();
+            return res.status(500).json({ 
+                error: `Error: jugadores clasificados no incluidos en el bracket: ${jugadoresFaltantes.join(', ')}` 
+            });
+        }
+        
+        // 9. Insertar en base de datos
         for (const enfrentamiento of bracket) {
             await connection.execute(
                 `INSERT INTO llave_eliminacion 
@@ -1815,7 +1890,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             );
         }
         
-        // 9. Generar rondas siguientes (vacías inicialmente)
+        // 10. Generar rondas siguientes (vacías inicialmente)
         let partidosRondaActual = potenciaDe2 / 2;
         for (let r = 1; r < rondas.length; r++) {
             partidosRondaActual = partidosRondaActual / 2;
@@ -1829,7 +1904,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             }
         }
         
-        // 10. Actualizar estado de grupos
+        // 11. Actualizar estado de grupos
         await connection.execute(
             `UPDATE grupos SET estado = 'finalizado' WHERE id_torneo_fk = ?`,
             [idTorneo]
