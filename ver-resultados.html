@@ -12,12 +12,7 @@
             box-sizing: border-box;
         }
         
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
+
         
         .container {
             max-width: 1200px;
@@ -57,10 +52,17 @@
             align-items: center;
             gap: 5px;
             opacity: 0.8;
+            z-index: 10;
+            cursor: pointer;
+            padding: 10px;
         }
         
         .back-link:hover {
             opacity: 1;
+        }
+        
+        .back-link:active {
+            opacity: 0.6;
         }
         
         .content {
@@ -168,6 +170,11 @@
             text-align: left;
             font-weight: bold;
             color: #2c3e50;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            cursor: help;
         }
         
         .posicion-1 {
@@ -422,11 +429,19 @@
             }
             
             .tabla-posiciones .equipo {
-                font-size: 11px;
-                max-width: 120px;
+                font-size: 10px;
+                max-width: 90px;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
+            }
+            
+            .grupo-card {
+                overflow-x: auto;
+            }
+            
+            .tabla-posiciones {
+                min-width: 500px;
             }
             
             .partidos-list {
@@ -624,7 +639,7 @@
                 return `
                     <tr class="${posClass}">
                         <td><strong>${est.posicion}°</strong></td>
-                        <td class="equipo">${est.nombre_jugador}</td>
+                        <td class="equipo" title="${est.nombre_jugador}">${est.nombre_jugador}</td>
                         <td>${est.pj}</td>
                         <td>${est.pg}</td>
                         <td>${est.pp}</td>

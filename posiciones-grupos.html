@@ -146,6 +146,11 @@
             text-align: left;
             font-weight: bold;
             color: #2c3e50;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            cursor: help;
         }
         
         .posicion-1 {
@@ -268,6 +273,22 @@
             .tabla-posiciones th,
             .tabla-posiciones td {
                 padding: 8px 4px;
+            }
+            
+            .tabla-posiciones .equipo {
+                font-size: 10px;
+                max-width: 90px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            
+            .grupo-card {
+                overflow-x: auto;
+            }
+            
+            .tabla-posiciones {
+                min-width: 500px;
             }
         }
     </style>
@@ -396,7 +417,7 @@
                 return `
                     <tr class="${posClass} ${clasificadoClass}">
                         <td><strong>${est.posicion}°</strong></td>
-                        <td class="equipo">${est.nombre_jugador}</td>
+                        <td class="equipo" title="${est.nombre_jugador}">${est.nombre_jugador}</td>
                         <td>${est.pj}</td>
                         <td>${est.pg}</td>
                         <td>${est.pp}</td>
