@@ -1749,8 +1749,17 @@ footer {
 }
 
 .action-buttons button {
-    width: 100%;
-}/* hasta aca*/
+        width: 100%;
+    }
+    
+    /* Corrección para alinear títulos de grupos y categorías a la izquierda en mobile */
+    .grupo-header h3,
+    .categoria-header h3,
+    .grupo-card h3,
+    .categoria-card h3 {
+        text-align: left !important;
+    }
+/* hasta aca*/
 footer {
         flex-direction: column;
         text-align: center;

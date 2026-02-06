@@ -60,6 +60,17 @@ torneos/
 3. **Git commit + push** → dispara deploy automático
 4. **Verificar en** https://portaltorneos-riocuarto.com.ar
 
+### Ruta Local del Repositorio
+**Ruta principal:** `C:\torneos`
+- Todos los archivos del proyecto están en `C:\torneos\`
+- NO trabajar en `C:\Users\p_bun\torneonotocar\` - esa no es la ruta correcta
+
+### RESTRICCIÓN IMPORTANTE
+**SOLO PUEDE TRABAJAR EN LA CARPETA `C:\torneos`**
+- Salvo expresa respuesta afirmativa de Pablo Bunader, NO se puede modificar archivos fuera de `C:\torneos`
+- Se requiere aprobación explícita en el momento para trabajar en cualquier otra ruta
+- Esta regla es estricta y no tiene excepciones
+
 ### Backend (Render):
 - Variables de entorno en Dashboard de Render
 - Logs en Render Dashboard > Logs
