@@ -1008,15 +1008,65 @@ app.post('/api/partidos/:idPartido/resultado', async (req, res) => {
         // 2. Procesar WO si aplica
         if (esWO) {
             const ganadorId = ganadorWO === 'local' ? partido.id_inscriptoL : partido.id_inscriptoV;
+            const perdedorId = ganadorWO === 'local' ? partido.id_inscriptoV : partido.id_inscriptoL;
+            
+            // Limpiar sets anteriores
+            await connection.execute('DELETE FROM detalle_sets WHERE id_partido = ?', [idPartido]);
+            
+            // Verificar si hay sets cargados
+            let setsLocal = 0, setsVisitante = 0;
+            let gamesLocalTotal = 0, gamesVisitanteTotal = 0;
+            
+            if (sets && sets.length > 0) {
+                // Usar los sets cargados
+                for (let i = 0; i < sets.length; i++) {
+                    const set = sets[i];
+                    gamesLocalTotal += parseInt(set.gamesLocal);
+                    gamesVisitanteTotal += parseInt(set.gamesVisitante);
+                    
+                    if (set.gamesLocal > set.gamesVisitante) {
+                        setsLocal++;
+                    } else {
+                        setsVisitante++;
+                    }
+                    
+                    await connection.execute(
+                        `INSERT INTO detalle_sets (id_partido, numero_set, games_local, games_visitante, es_super_tiebreak) 
+                         VALUES (?, ?, ?, ?, FALSE)`,
+                        [idPartido, i + 1, set.gamesLocal, set.gamesVisitante]
+                    );
+                }
+            } else {
+                // WO sin sets: resultado 6-0 6-0
+                setsLocal = ganadorWO === 'local' ? 2 : 0;
+                setsVisitante = ganadorWO === 'local' ? 0 : 2;
+                gamesLocalTotal = ganadorWO === 'local' ? 12 : 0;
+                gamesVisitanteTotal = ganadorWO === 'local' ? 0 : 12;
+                
+                // Insertar sets 6-0 6-0
+                await connection.execute(
+                    `INSERT INTO detalle_sets (id_partido, numero_set, games_local, games_visitante, es_super_tiebreak) 
+                     VALUES (?, 1, 6, 0, FALSE)`,
+                    [idPartido]
+                );
+                await connection.execute(
+                    `INSERT INTO detalle_sets (id_partido, numero_set, games_local, games_visitante, es_super_tiebreak) 
+                     VALUES (?, 2, 6, 0, FALSE)`,
+                    [idPartido]
+                );
+            }
+            
             await connection.execute(
                 `UPDATE partido SET 
                     estado = ?,
                     ganador_id = ?,
                     sets_local = ?,
-                    sets_visitante = ?
+                    sets_visitante = ?,
+                    games_local = ?,
+                    games_visitante = ?
                  WHERE id = ?`,
                 [ganadorWO === 'local' ? 'wo_local' : 'wo_visitante', ganadorId, 
-                 ganadorWO === 'local' ? 2 : 0, ganadorWO === 'local' ? 0 : 2, idPartido]
+                 setsLocal, setsVisitante, gamesLocalTotal, gamesVisitanteTotal, idPartido]
             );
         } else {
             // 3. Calcular sets y games
@@ -1139,19 +1189,64 @@ app.put('/api/partidos/:idPartido/resultado', async (req, res) => {
         // Resetear estado antes de recalcular
         if (esWO) {
             const ganadorId = ganadorWO === 'local' ? partido.id_inscriptoL : partido.id_inscriptoV;
+            
+            // Limpiar sets anteriores
+            await connection.execute('DELETE FROM detalle_sets WHERE id_partido = ?', [idPartido]);
+            
+            // Verificar si hay sets cargados
+            let setsLocal = 0, setsVisitante = 0;
+            let gamesLocalTotal = 0, gamesVisitanteTotal = 0;
+            
+            if (sets && sets.length > 0) {
+                // Usar los sets cargados
+                for (let i = 0; i < sets.length; i++) {
+                    const set = sets[i];
+                    gamesLocalTotal += parseInt(set.gamesLocal);
+                    gamesVisitanteTotal += parseInt(set.gamesVisitante);
+                    
+                    if (set.gamesLocal > set.gamesVisitante) {
+                        setsLocal++;
+                    } else {
+                        setsVisitante++;
+                    }
+                    
+                    await connection.execute(
+                        `INSERT INTO detalle_sets (id_partido, numero_set, games_local, games_visitante, es_super_tiebreak) 
+                         VALUES (?, ?, ?, ?, FALSE)`,
+                        [idPartido, i + 1, set.gamesLocal, set.gamesVisitante]
+                    );
+                }
+            } else {
+                // WO sin sets: resultado 6-0 6-0
+                setsLocal = ganadorWO === 'local' ? 2 : 0;
+                setsVisitante = ganadorWO === 'local' ? 0 : 2;
+                gamesLocalTotal = ganadorWO === 'local' ? 12 : 0;
+                gamesVisitanteTotal = ganadorWO === 'local' ? 0 : 12;
+                
+                // Insertar sets 6-0 6-0
+                await connection.execute(
+                    `INSERT INTO detalle_sets (id_partido, numero_set, games_local, games_visitante, es_super_tiebreak) 
+                     VALUES (?, 1, 6, 0, FALSE)`,
+                    [idPartido]
+                );
+                await connection.execute(
+                    `INSERT INTO detalle_sets (id_partido, numero_set, games_local, games_visitante, es_super_tiebreak) 
+                     VALUES (?, 2, 6, 0, FALSE)`,
+                    [idPartido]
+                );
+            }
+            
             await connection.execute(
                 `UPDATE partido SET 
                     estado = ?,
                     ganador_id = ?,
                     sets_local = ?,
                     sets_visitante = ?,
-                    games_local = 0,
-                    games_visitante = 0,
-                    tiebreak_local = NULL,
-                    tiebreak_visitante = NULL
+                    games_local = ?,
+                    games_visitante = ?
                  WHERE id = ?`,
                 [ganadorWO === 'local' ? 'wo_local' : 'wo_visitante', ganadorId, 
-                 ganadorWO === 'local' ? 2 : 0, ganadorWO === 'local' ? 0 : 2, idPartido]
+                 setsLocal, setsVisitante, gamesLocalTotal, gamesVisitanteTotal, idPartido]
             );
         } else {
             let setsLocal = 0, setsVisitante = 0;
