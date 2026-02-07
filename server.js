@@ -1769,37 +1769,43 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         else if (potenciaDe2 >= 4) rondas = ['semifinal', 'final'];
         else rondas = ['final'];
         
-        // 7. Generar bracket correctamente
+        // 7. Generar bracket con zigzag correcto (A-B-B-A-A-B-B-A)
         const bracket = [];
         let posicion = 1;
         
-        // PRIMERO: Crear los BYES (mejores jugadores van directo a semifinal)
-        // Distribución zigzag: #1 → Lado A, #2 → Lado B
+        // Función para determinar lado según posición en bracket (0-indexed)
+        function getLado(pos) {
+            // Patrón: 0→A, 1→B, 2→B, 3→A, 4→A, 5→B, 6→B, 7→A, ...
+            const pattern = pos % 4;
+            return (pattern === 0 || pattern === 3) ? 'A' : 'B';
+        }
+        
+        // PRIMERO: Distribuir BYES con zigzag
         const byeLadoA = [];
         const byeLadoB = [];
         
         for (let i = 0; i < jugadoresConByeArray.length; i++) {
-            if (i % 2 === 0) {
+            if (getLado(i) === 'A') {
                 byeLadoA.push(jugadoresConByeArray[i]);
             } else {
                 byeLadoB.push(jugadoresConByeArray[i]);
             }
         }
         
-        // SEGUNDO: Crear pre-playoffs (peores jugadores se emparejan)
-        // Distribución zigzag en pre-playoffs
+        // SEGUNDO: Distribuir pre-playoffs con zigzag (continuando desde donde quedaron los BYES)
         const preLadoA = [];
         const preLadoB = [];
         
         for (let i = 0; i < jugadoresParaPrePlayoffs.length; i++) {
-            if (i % 2 === 0) {
+            const posInBracket = jugadoresConByeArray.length + i;
+            if (getLado(posInBracket) === 'A') {
                 preLadoA.push(jugadoresParaPrePlayoffs[i]);
             } else {
                 preLadoB.push(jugadoresParaPrePlayoffs[i]);
             }
         }
         
-        // TERCERO: Crear partidos de pre-playoffs lado A
+        // TERCERO: Crear partidos pre-playoffs lado A
         while (preLadoA.length >= 2) {
             const jugador1 = preLadoA.shift();
             let idxOponente = preLadoA.findIndex(j => j.id_grupo !== jugador1.id_grupo);
@@ -1819,7 +1825,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             });
         }
         
-        // CUARTO: Crear BYES lado A (van a semifinal)
+        // CUARTO: BYES lado A
         byeLadoA.forEach(jugador => {
             bracket.push({
                 ronda: rondas[0],
@@ -1834,7 +1840,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             });
         });
         
-        // QUINTO: Crear partidos de pre-playoffs lado B
+        // QUINTO: Crear partidos pre-playoffs lado B
         while (preLadoB.length >= 2) {
             const jugador1 = preLadoB.shift();
             let idxOponente = preLadoB.findIndex(j => j.id_grupo !== jugador1.id_grupo);
@@ -1854,7 +1860,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             });
         }
         
-        // SEXTO: Crear BYES lado B (van a semifinal)
+        // SEXTO: BYES lado B
         byeLadoB.forEach(jugador => {
             bracket.push({
                 ronda: rondas[0],
