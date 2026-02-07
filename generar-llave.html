@@ -395,21 +395,23 @@
                     return;
                 }
                 
-                // Calcular BYES
+                // Calcular estructura de la llave para esta categoría
                 const totalClasificados = clasificados.length;
-                const potenciaDe2 = Math.pow(2, Math.ceil(Math.log2(totalClasificados)));
-                const byes = potenciaDe2 - totalClasificados;
+                const potenciaDe2 = Math.pow(2, Math.floor(Math.log2(totalClasificados)));
+                const jugadoresAEliminar = totalClasificados - potenciaDe2;
+                const jugadoresAHacerJugar = jugadoresAEliminar * 2;
+                const jugadoresConBye = totalClasificados - jugadoresAHacerJugar;
                 
-                // Calcular ranking global
-                const rankingGlobal = [...clasificados].sort((a, b) => {
+                // Ordenar clasificados por criterios del reglamento (para asignar BYES a los mejores)
+                const clasificadosOrdenados = [...clasificados].sort((a, b) => {
                     if (b.puntos !== a.puntos) return b.puntos - a.puntos;
                     if (b.dif_sets !== a.dif_sets) return b.dif_sets - a.dif_sets;
                     return b.dif_games - a.dif_games;
                 });
                 
-                // Marcar BYES
-                rankingGlobal.forEach((c, index) => {
-                    c.tieneBye = index < byes;
+                // Marcar BYES (los mejores según ordenamiento)
+                clasificadosOrdenados.forEach((c, index) => {
+                    c.tieneBye = index < jugadoresConBye;
                 });
                 
                 // Determinar rondas
@@ -421,9 +423,10 @@
                 else rondas = ['final'];
                 
                 previewData = {
-                    clasificados: rankingGlobal,
+                    clasificados: clasificadosOrdenados,
                     totalClasificados,
-                    byes,
+                    jugadoresConBye,
+                    jugadoresAHacerJugar,
                     potenciaDe2,
                     rondas
                 };
@@ -441,7 +444,7 @@
             
             const clasificadosHtml = data.clasificados.map((c, index) => `
                 <div class="clasificado-card ${c.esPrimero ? 'primero' : 'segundo'} ${c.tieneBye ? 'bye' : ''}">
-                    <div class="clasificado-posicion">#${index + 1} Ranking Global</div>
+                    <div class="clasificado-posicion">#${index + 1}</div>
                     <div class="clasificado-nombre">${c.nombre_jugador}</div>
                     <div class="clasificado-grupo">
                         ${c.esPrimero ? '1°' : '2°'} del Grupo ${c.numero_grupo} | 
@@ -457,7 +460,7 @@
                         <div class="stat-label">Clasificados</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-value">${data.byes}</div>
+                        <div class="stat-value">${data.jugadoresConBye}</div>
                         <div class="stat-label">BYES</div>
                     </div>
                     <div class="stat-item">
@@ -473,15 +476,15 @@
                 <div class="info-box">
                     <h4>📋 Información sobre el sistema</h4>
                     <ul>
-                        <li><strong>BYES:</strong> Los ${data.byes} mejores del ranking global avanzan directamente</li>
-                        <li><strong>Emparejamiento:</strong> 1° de grupo vs 2° de OTRO grupo (evitando cruces del mismo grupo)</li>
+                        <li><strong>BYES:</strong> Los ${data.jugadoresConBye} mejores avanzan directamente</li>
+                        <li><strong>Pre-playoffs:</strong> ${data.jugadoresAHacerJugar / 2} partidos (${data.jugadoresAHacerJugar} jugadores)</li>
                         <li><strong>Desempate:</strong> Puntos → Diferencia de sets → Diferencia de games</li>
                         <li><strong>Playoffs:</strong> Sistema de eliminación directa hasta la final</li>
                     </ul>
                 </div>
                 
                 <div class="preview-container">
-                    <h2>👥 Clasificados (ordenados por ranking global)</h2>
+                    <h2>👥 Clasificados</h2>
                     <div class="clasificados-grid">
                         ${clasificadosHtml}
                     </div>

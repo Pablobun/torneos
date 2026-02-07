@@ -1850,7 +1850,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         
         // Validación adicional: verificar estructura matemática
         const totalElementosBracket = bracket.length;
-        const expectedTotal = jugadoresAHacerJugar + jugadoresConBye;
+        const expectedTotal = (jugadoresAHacerJugar / 2) + jugadoresConBye;
         
         if (totalElementosBracket !== expectedTotal) {
             await connection.rollback();
