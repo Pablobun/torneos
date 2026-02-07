@@ -1726,26 +1726,47 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             return res.status(400).json({ error: 'No hay clasificados disponibles' });
         }
         
-        // 3. Calcular BYES
+        // 3. Calcular estructura de pre-playoffs según reglamento
         const totalClasificados = clasificados.length;
-        const potenciaDe2 = Math.pow(2, Math.ceil(Math.log2(totalClasificados)));
-        const byes = potenciaDe2 - totalClasificados;
+        const potenciaDe2 = Math.pow(2, Math.floor(Math.log2(totalClasificados)));
+        const jugadoresAEliminar = totalClasificados - potenciaDe2;
+        const jugadoresAHacerJugar = jugadoresAEliminar * 2;
+        const jugadoresConBye = totalClasificados - jugadoresAHacerJugar;
         
-        // 4. Calcular ranking global de clasificados
-        // Ordenar por: puntos -> dif_sets -> dif_games
-        const rankingGlobal = [...clasificados].sort((a, b) => {
+        
+        
+        // 4. Aplicar criterios de desempate del reglamento
+        function aplicarCriteriosDesempate(a, b) {
+            // 1. Puntos (1 punto por partido ganado) - descendente
             if (b.puntos !== a.puntos) return b.puntos - a.puntos;
+            
+            // 2. Resultado directo (si hay empate entre 2 parejas, clasifica la que ganó entre ambas)
+            // NOTA: Esto se verificará más adelante con los resultados de partidos
+            
+            // 3. Diferencia de sets (sets ganados - sets perdidos) - descendente
             if (b.dif_sets !== a.dif_sets) return b.dif_sets - a.dif_sets;
-            return b.dif_games - a.dif_games;
-        });
-        
-        // 5. Asignar BYES a los mejores del ranking global
-        const conBye = new Set();
-        for (let i = 0; i < byes; i++) {
-            if (rankingGlobal[i]) {
-                conBye.add(rankingGlobal[i].id_inscripto);
-            }
+            
+            // 4. Diferencia de games (games ganados - games perdidos) - descendente
+            if (b.dif_games !== a.dif_games) return b.dif_games - a.dif_games;
+            
+            // 5. Sorteo (último recurso)
+            return Math.random() - 0.5;
         }
+        
+        // 5. Calcular ranking global según criterios del reglamento
+        const rankingGlobal = [...clasificados].sort(aplicarCriteriosDesempate);
+        
+        // 6. Separar jugadores para pre-playoffs y BYES
+        const jugadoresParaPrePlayoffs = rankingGlobal.slice(0, jugadoresAHacerJugar);
+        const jugadoresConByeArray = rankingGlobal.slice(jugadoresAHacerJugar);
+        
+        // 7. Determinar rondas según potencia de 2
+        let rondas = [];
+        if (potenciaDe2 >= 32) rondas = ['dieciseisavos', 'octavos', 'cuartos', 'semifinal', 'final'];
+        else if (potenciaDe2 >= 16) rondas = ['octavos', 'cuartos', 'semifinal', 'final'];
+        else if (potenciaDe2 >= 8) rondas = ['cuartos', 'semifinal', 'final'];
+        else if (potenciaDe2 >= 4) rondas = ['semifinal', 'final'];
+        else rondas = ['final'];
         
         // 6. Determinar rondas
         let rondas = [];
@@ -1755,146 +1776,102 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         else if (potenciaDe2 >= 4) rondas = ['semifinal', 'final'];
         else rondas = ['final'];
         
-        // 7. Generar bracket con lógica corregida
-        // Separar primeros y segundos de cada grupo
-        const primeros = clasificados.filter(c => c.posicion === 1);
-        const segundos = clasificados.filter(c => c.posicion === 2);
-        
-        // Arrays de trabajo para evitar duplicados
-        const jugadoresDisponibles = {
-            primeros: [...primeros],
-            segundos: [...segundos]
-        };
-        
-        // Tracking de jugadores ya asignados
-        const jugadoresAsignados = new Set();
-        
-        // Función para obtener siguiente jugador disponible
-        function obtenerSiguienteJugador(tipo, grupoEvitar = null) {
-            const array = jugadoresDisponibles[tipo];
-            
-            console.log(`obtenerSiguienteJugador(${tipo}, grupoEvitar=${grupoEvitar}) - Array disponibles:`, array.map(j => ({id: j.id_inscripto, nombre: j.nombre})));
-            
-            for (let i = 0; i < array.length; i++) {
-                const jugador = array[i];
-                console.log(`  Verificando jugador ${i}:`, {
-                    id: jugador.id_inscripto,
-                    nombre: jugador.nombre,
-                    yaAsignado: jugadoresAsignados.has(jugador.id_inscripto),
-                    mismoGrupo: grupoEvitar && jugador.id_grupo === grupoEvitar,
-                    condicion: !jugadoresAsignados.has(jugador.id_inscripto) && (!grupoEvitar || jugador.id_grupo !== grupoEvitar)
-                });
-                
-                if (!jugadoresAsignados.has(jugador.id_inscripto) && 
-                    (!grupoEvitar || jugador.id_grupo !== grupoEvitar)) {
-                    console.log(`  ✅ Seleccionado: ${jugador.nombre} (ID: ${jugador.id_inscripto})`);
-                    jugadoresAsignados.add(jugador.id_inscripto);
-                    array.splice(i, 1); // Eliminar del array de disponibles
-                    return jugador;
-                }
-            }
-            console.log(`  ❌ No se encontró jugador disponible para tipo: ${tipo}`);
-            return null;
-        }
-        
+        // 7. Generar bracket con lógica de pre-playoffs y BYES
         const bracket = [];
         let posicion = 1;
         
-        // Continuar hasta que no haya más jugadores disponibles
-        while (jugadoresDisponibles.primeros.length > 0 || jugadoresDisponibles.segundos.length > 0) {
-            console.log(`=== ITERACIÓN ${posicion} ===`);
-            console.log('Primeros restantes:', jugadoresDisponibles.primeros.length);
-            console.log('Segundos restantes:', jugadoresDisponibles.segundos.length);
-            
-            // Intentar obtener primer jugador
-            const primero = obtenerSiguienteJugador('primeros');
-            
-            if (primero) {
-                console.log(`Primer jugador obtenido: ${primero.nombre} (ID: ${primero.id_inscripto})`);
+        // 7.1 Primero, crear partidos de pre-playoffs si es necesario
+        if (jugadoresAHacerJugar > 0) {
+            for (let i = 0; i < jugadoresParaPrePlayoffs.length; i += 2) {
+                const jugador1 = jugadoresParaPrePlayoffs[i];
+                const jugador2 = jugadoresParaPrePlayoffs[i + 1];
                 
-                // Verificar si este jugador tiene BYE
-                if (conBye.has(primero.id_inscripto)) {
-                    console.log(`  → Jugador tiene BYE, avanza solo`);
+                if (jugador1 && jugador2) {
                     bracket.push({
-                        ronda: rondas[0],
+                        ronda: 'pre-playoff', // Ronda especial de pre-playoff
                         posicion: posicion,
-                        id_inscripto_1: primero.id_inscripto,
-                        id_inscripto_2: null,
-                        id_grupo_1: primero.id_grupo,
-                        id_grupo_2: null,
-                        es_bye: true,
-                        ganador_id: primero.id_inscripto
+                        id_inscripto_1: jugador1.id_inscripto,
+                        id_inscripto_2: jugador2.id_inscripto,
+                        id_grupo_1: jugador1.id_grupo,
+                        id_grupo_2: jugador2.id_grupo,
+                        es_bye: false,
+                        ganador_id: null,
+                        es_pre_playoff: true // Marcar como pre-playoff
                     });
-                } else {
-                    // Buscar oponente (segundo de otro grupo)
-                    const segundo = obtenerSiguienteJugador('segundos', primero.id_grupo);
-                    
-                    if (segundo) {
-                        console.log(`  → Oponente encontrado: ${segundo.nombre} (ID: ${segundo.id_inscripto})`);
-                        bracket.push({
-                            ronda: rondas[0],
-                            posicion: posicion,
-                            id_inscripto_1: primero.id_inscripto,
-                            id_inscripto_2: segundo.id_inscripto,
-                            id_grupo_1: primero.id_grupo,
-                            id_grupo_2: segundo.id_grupo,
-                            es_bye: false,
-                            ganador_id: null
-                        });
-                    } else {
-                        console.log(`  → No hay oponente, ${primero.nombre} avanza con BYE automático`);
-                        bracket.push({
-                            ronda: rondas[0],
-                            posicion: posicion,
-                            id_inscripto_1: primero.id_inscripto,
-                            id_inscripto_2: null,
-                            id_grupo_1: primero.id_grupo,
-                            id_grupo_2: null,
-                            es_bye: true,
-                            ganador_id: primero.id_inscripto
-                        });
-                    }
-                }
-            } else {
-                // No hay más primeros, pero pueden quedar segundos
-                const segundo = obtenerSiguienteJugador('segundos');
-                
-                if (segundo) {
-                    console.log(`Solo segundo disponible: ${segundo.nombre} (ID: ${segundo.id_inscripto}), avanza con BYE`);
-                    bracket.push({
-                        ronda: rondas[0],
-                        posicion: posicion,
-                        id_inscripto_1: segundo.id_inscripto,
-                        id_inscripto_2: null,
-                        id_grupo_1: segundo.id_grupo,
-                        id_grupo_2: null,
-                        es_bye: true,
-                        ganador_id: segundo.id_inscripto
-                    });
-                } else {
-                    console.log(`No hay más jugadores disponibles`);
-                    break;
+                    posicion++;
                 }
             }
-            
-            posicion++;
         }
         
-        console.log(`=== BRACKET FINAL CREADO ===`);
-        console.log(`Total partidos: ${bracket.length}`);
-        bracket.forEach((partido, i) => {
-            console.log(`Partido ${i + 1}: ${partido.es_bye ? 'BYE' : 'Normal'} - Jugador 1: ${partido.id_inscripto_1}, Jugador 2: ${partido.id_inscripto_2}`);
+        // 7.2 Luego, crear BYES para los mejores jugadores
+        jugadoresConByeArray.forEach((jugador, index) => {
+            bracket.push({
+                ronda: rondas[0], // Primera ronda real de playoffs
+                posicion: posicion,
+                id_inscripto_1: jugador.id_inscripto,
+                id_inscripto_2: null,
+                id_grupo_1: jugador.id_grupo,
+                id_grupo_2: null,
+                es_bye: true,
+                ganador_id: jugador.id_inscripto,
+                es_pre_playoff: false
+            });
+            posicion++;
         });
         
-        // 8. Validaciones finales para detectar duplicados
+// 8. Validaciones finales para detectar duplicados
         const jugadoresEnBracket = new Set();
         const duplicadosEncontrados = [];
         
-        bracket.forEach(partido => {
-            if (partido.id_inscripto_1) {
-                if (jugadoresEnBracket.has(partido.id_inscripto_1)) {
-                    duplicadosEncontrados.push(partido.id_inscripto_1);
+        bracket.forEach(elemento => {
+            if (elemento.id_inscripto_1) {
+                if (jugadoresEnBracket.has(elemento.id_inscripto_1)) {
+                    duplicadosEncontrados.push(elemento.id_inscripto_1);
                 }
+                jugadoresEnBracket.add(elemento.id_inscripto_1);
+            }
+            if (elemento.id_inscripto_2) {
+                if (jugadoresEnBracket.has(elemento.id_inscripto_2)) {
+                    duplicadosEncontrados.push(elemento.id_inscripto_2);
+                }
+                jugadoresEnBracket.add(elemento.id_inscripto_2);
+            }
+        });
+        
+        if (duplicadosEncontrados.length > 0) {
+            await connection.rollback();
+            return res.status(500).json({ 
+                error: `Error de duplicación: jugadores repetidos en el bracket: ${duplicadosEncontrados.join(', ')}` 
+            });
+        }
+        
+        // Validar que todos los clasificados estén en el bracket
+        const jugadoresClasificados = clasificados.map(c => c.id_inscripto);
+        const jugadoresFaltantes = jugadoresClasificados.filter(id => !jugadoresEnBracket.has(id));
+        
+        if (jugadoresFaltantes.length > 0) {
+            await connection.rollback();
+            return res.status(500).json({ 
+                error: `Error: jugadores clasificados no incluidos en el bracket: ${jugadoresFaltantes.join(', ')}` 
+            });
+        }
+        
+        // Validación adicional: verificar estructura matemática
+        const totalElementosBracket = bracket.length;
+        const expectedTotal = Math.max(jugadoresAHacerJugar, jugadoresConBye);
+        
+        console.log('=== VALIDACIÓN DE ESTRUCTURA ===');
+        console.log('Total elementos en bracket:', totalElementosBracket);
+        console.log('Total esperado:', expectedTotal);
+        console.log('Pre-playoffs:', bracket.filter(p => p.es_pre_playoff).length);
+        console.log('BYES:', bracket.filter(p => p.es_bye && !p.es_pre_playoff).length);
+        
+        if (totalElementosBracket !== expectedTotal) {
+            await connection.rollback();
+            return res.status(500).json({ 
+                error: `Error de estructura: se esperaban ${expectedTotal} elementos pero se crearon ${totalElementosBracket}` 
+            });
+        }
                 jugadoresEnBracket.add(partido.id_inscripto_1);
             }
             if (partido.id_inscripto_2) {
@@ -1916,55 +1893,6 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         const jugadoresClasificados = clasificados.map(c => c.id_inscripto);
         const jugadoresFaltantes = jugadoresClasificados.filter(id => !jugadoresEnBracket.has(id));
         
-        // LOGGING: Investigar jugadores faltantes
-        console.log('=== DEBUG GENERACIÓN LLAVE ===');
-        console.log('Categoría:', categoria);
-        console.log('Total clasificados:', clasificados.length);
-        console.log('Jugadores clasificados:', jugadoresClasificados);
-        console.log('Jugadores en bracket:', Array.from(jugadoresEnBracket));
-        console.log('Jugadores faltantes:', jugadoresFaltantes);
-        
-        // Investigar jugadores específicos 115 y 106
-        const jugador115 = clasificados.find(c => c.id_inscripto === 115);
-        const jugador106 = clasificados.find(c => c.id_inscripto === 106);
-        
-        console.log('=== INVESTIGACIÓN JUGADOR 115 ===');
-        if (jugador115) {
-            console.log('Jugador 115 encontrado en clasificados:', {
-                id: jugador115.id_inscripto,
-                nombre: jugador115.nombre,
-                posicion: jugador115.posicion,
-                grupo: jugador115.id_grupo,
-                puntos: jugador115.puntos
-            });
-            console.log('¿Tiene BYE?', conBye.has(115));
-            console.log('¿Está en jugadoresAsignados?', jugadoresAsignados.has(115));
-            console.log('¿Está en jugadoresEnBracket?', jugadoresEnBracket.has(115));
-        } else {
-            console.log('Jugador 115 NO encontrado en clasificados');
-        }
-        
-        console.log('=== INVESTIGACIÓN JUGADOR 106 ===');
-        if (jugador106) {
-            console.log('Jugador 106 encontrado en clasificados:', {
-                id: jugador106.id_inscripto,
-                nombre: jugador106.nombre,
-                posicion: jugador106.posicion,
-                grupo: jugador106.id_grupo,
-                puntos: jugador106.puntos
-            });
-            console.log('¿Tiene BYE?', conBye.has(106));
-            console.log('¿Está en jugadoresAsignados?', jugadoresAsignados.has(106));
-            console.log('¿Está en jugadoresEnBracket?', jugadoresEnBracket.has(106));
-        } else {
-            console.log('Jugador 106 NO encontrado en clasificados');
-        }
-        
-        console.log('=== ESTADO ARRAYS DISPONIBLES ===');
-        console.log('Primeros disponibles:', jugadoresDisponibles.primeros.map(p => ({id: p.id_inscripto, nombre: p.nombre})));
-        console.log('Segundos disponibles:', jugadoresDisponibles.segundos.map(s => ({id: s.id_inscripto, nombre: s.nombre})));
-        console.log('=== FIN DEBUG ===');
-        
         if (jugadoresFaltantes.length > 0) {
             await connection.rollback();
             return res.status(500).json({ 
@@ -1972,17 +1900,28 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             });
         }
         
+        // Validación adicional: verificar estructura matemática
+        const totalElementosBracket = bracket.length;
+        const expectedTotal = jugadoresAHacerJugar + jugadoresConBye;
+        
+        if (totalElementosBracket !== expectedTotal) {
+            await connection.rollback();
+            return res.status(500).json({ 
+                error: `Error de estructura: se esperaban ${expectedTotal} elementos pero se crearon ${totalElementosBracket}` 
+            });
+        }
+        
         // 9. Insertar en base de datos
-        for (const enfrentamiento of bracket) {
+        for (const elemento of bracket) {
             await connection.execute(
                 `INSERT INTO llave_eliminacion 
                  (id_torneo, categoria, ronda, posicion, id_inscripto_1, id_inscripto_2, 
                   id_grupo_1, id_grupo_2, es_bye, ganador_id)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [idTorneo, categoria, enfrentamiento.ronda, enfrentamiento.posicion, 
-                 enfrentamiento.id_inscripto_1, enfrentamiento.id_inscripto_2,
-                 enfrentamiento.id_grupo_1, enfrentamiento.id_grupo_2,
-                 enfrentamiento.es_bye, enfrentamiento.ganador_id]
+                [idTorneo, categoria, elemento.ronda, elemento.posicion, 
+                 elemento.id_inscripto_1, elemento.id_inscripto_2,
+                 elemento.id_grupo_1, elemento.id_grupo_2,
+                 elemento.es_bye, elemento.ganador_id]
             );
         }
         
@@ -2012,9 +1951,20 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             mensaje: `Llave de eliminación generada exitosamente para ${categoria}`,
             categoria: categoria,
             totalClasificados: totalClasificados,
-            byes: byes,
+            estructura: {
+                potenciaDe2: potenciaDe2,
+                jugadoresAEliminar: jugadoresAEliminar,
+                jugadoresAHacerJugar: jugadoresAHacerJugar,
+                jugadoresConBye: jugadoresConBye,
+                partidosPrePlayoffs: jugadoresAHacerJugar / 2
+            },
             rondas: rondas,
-            bracket: bracket
+            bracket: bracket,
+            resumen: {
+                prePlayoffs: bracket.filter(p => p.es_pre_playoff).length,
+                byes: bracket.filter(p => p.es_bye && !p.es_pre_playoff).length,
+                totalElementos: bracket.length
+            }
         });
         
     } catch (error) {
