@@ -1737,28 +1737,29 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         
         // 4. Aplicar criterios de desempate del reglamento
         function aplicarCriteriosDesempate(a, b) {
-            // 1. Puntos (1 punto por partido ganado) - descendente
+            // 1. PRIMERO por posición en grupo: 1° lugar antes que 2° lugar
+            if (a.posicion !== b.posicion) {
+                return a.posicion - b.posicion; // 1 va antes que 2
+            }
+            
+            // 2. Si ambos son 1° o ambos son 2°, ordenar por:
+            // Puntos → Diferencia de sets → Diferencia de games
             if (b.puntos !== a.puntos) return b.puntos - a.puntos;
-            
-            // 2. Resultado directo (si hay empate entre 2 parejas, clasifica la que ganó entre ambas)
-            // NOTA: Esto se verificará más adelante con los resultados de partidos
-            
-            // 3. Diferencia de sets (sets ganados - sets perdidos) - descendente
             if (b.dif_sets !== a.dif_sets) return b.dif_sets - a.dif_sets;
-            
-            // 4. Diferencia de games (games ganados - games perdidos) - descendente
             if (b.dif_games !== a.dif_games) return b.dif_games - a.dif_games;
             
-            // 5. Sorteo (último recurso)
+            // 3. Sorteo (último recurso)
             return Math.random() - 0.5;
         }
         
-        // 5. Calcular ranking global según criterios del reglamento
+        // 5. Calcular ranking: primero todos los 1°, luego todos los 2°, ordenados por criterios
         const rankingGlobal = [...clasificados].sort(aplicarCriteriosDesempate);
         
         // 6. Separar jugadores para pre-playoffs y BYES
-        const jugadoresParaPrePlayoffs = rankingGlobal.slice(0, jugadoresAHacerJugar);
-        const jugadoresConByeArray = rankingGlobal.slice(jugadoresAHacerJugar);
+        // Los MEJORES (primeros del ranking) reciben BYE
+        // Los PEORES (últimos del ranking) van a pre-playoffs
+        const jugadoresConByeArray = rankingGlobal.slice(0, jugadoresConBye);
+        const jugadoresParaPrePlayoffs = rankingGlobal.slice(-jugadoresAHacerJugar);
         
         // 6. Determinar rondas según potencia de 2
         let rondas = [];
@@ -1774,25 +1775,56 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         
         // 7.1 Primero, crear partidos de pre-playoffs si es necesario
         if (jugadoresAHacerJugar > 0) {
-            for (let i = 0; i < jugadoresParaPrePlayoffs.length; i += 2) {
-                const jugador1 = jugadoresParaPrePlayoffs[i];
-                const jugador2 = jugadoresParaPrePlayoffs[i + 1];
+            // Separar 1° y 2° lugares para emparejar entre grupos diferentes
+            const primerosPre = jugadoresParaPrePlayoffs.filter(j => j.posicion === 1);
+            const segundosPre = jugadoresParaPrePlayoffs.filter(j => j.posicion === 2);
+            
+            // Emparejar: 1° de un grupo vs 2° de OTRO grupo
+            while (primerosPre.length > 0 && segundosPre.length > 0) {
+                const primero = primerosPre.shift(); // Sacar el primer 1°
                 
-                if (jugador1 && jugador2) {
+                // Buscar un 2° de grupo diferente
+                let indiceSegundo = segundosPre.findIndex(s => s.id_grupo !== primero.id_grupo);
+                
+                // Si no hay de grupo diferente, tomar el primero disponible
+                if (indiceSegundo === -1) {
+                    indiceSegundo = 0;
+                }
+                
+                const segundo = segundosPre.splice(indiceSegundo, 1)[0]; // Sacar el 2°
+                
+                if (primero && segundo) {
                     bracket.push({
-                        ronda: 'pre-playoff', // Ronda especial de pre-playoff
+                        ronda: 'pre-playoff',
                         posicion: posicion,
-                        id_inscripto_1: jugador1.id_inscripto,
-                        id_inscripto_2: jugador2.id_inscripto,
-                        id_grupo_1: jugador1.id_grupo,
-                        id_grupo_2: jugador2.id_grupo,
+                        id_inscripto_1: primero.id_inscripto,
+                        id_inscripto_2: segundo.id_inscripto,
+                        id_grupo_1: primero.id_grupo,
+                        id_grupo_2: segundo.id_grupo,
                         es_bye: false,
                         ganador_id: null,
-                        es_pre_playoff: true // Marcar como pre-playoff
+                        es_pre_playoff: true
                     });
                     posicion++;
                 }
             }
+            
+            // Si quedan jugadores sin emparejar (caso imposible con la lógica actual pero por seguridad)
+            // Darles BYE automático
+            [...primerosPre, ...segundosPre].forEach(jugador => {
+                bracket.push({
+                    ronda: rondas[0],
+                    posicion: posicion,
+                    id_inscripto_1: jugador.id_inscripto,
+                    id_inscripto_2: null,
+                    id_grupo_1: jugador.id_grupo,
+                    id_grupo_2: null,
+                    es_bye: true,
+                    ganador_id: jugador.id_inscripto,
+                    es_pre_playoff: false
+                });
+                posicion++;
+            });
         }
         
         // 7.2 Luego, crear BYES para los mejores jugadores
