@@ -580,7 +580,9 @@
                 
                 if (response.ok) {
                     const data = await response.json();
-                    alert(`✅ Llave generada exitosamente para ${categoria}!\n\nTotal clasificados: ${data.totalClasificados}\nBYES otorgados: ${data.byes}\nRondas: ${data.rondas.join(' → ')}`);
+                    const byes = data.estructura ? data.estructura.jugadoresConBye : data.byes;
+                    const prePlayoffs = data.estructura ? (data.estructura.jugadoresAHacerJugar / 2) : 0;
+                    alert(`✅ Llave generada exitosamente para ${categoria}!\n\nTotal clasificados: ${data.totalClasificados}\nPre-playoffs: ${prePlayoffs} partidos\nBYES otorgados: ${byes}\nRondas: ${data.rondas ? data.rondas.join(' → ') : data.rondas}`);
                     window.location.href = `llave-eliminacion.html?categoria=${encodeURIComponent(categoria)}`;
                 } else {
                     const error = await response.json();
