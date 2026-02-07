@@ -1760,15 +1760,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         const jugadoresParaPrePlayoffs = rankingGlobal.slice(0, jugadoresAHacerJugar);
         const jugadoresConByeArray = rankingGlobal.slice(jugadoresAHacerJugar);
         
-        // 7. Determinar rondas según potencia de 2
-        let rondas = [];
-        if (potenciaDe2 >= 32) rondas = ['dieciseisavos', 'octavos', 'cuartos', 'semifinal', 'final'];
-        else if (potenciaDe2 >= 16) rondas = ['octavos', 'cuartos', 'semifinal', 'final'];
-        else if (potenciaDe2 >= 8) rondas = ['cuartos', 'semifinal', 'final'];
-        else if (potenciaDe2 >= 4) rondas = ['semifinal', 'final'];
-        else rondas = ['final'];
-        
-        // 6. Determinar rondas
+        // 6. Determinar rondas según potencia de 2
         let rondas = [];
         if (potenciaDe2 >= 32) rondas = ['dieciseisavos', 'octavos', 'cuartos', 'semifinal', 'final'];
         else if (potenciaDe2 >= 16) rondas = ['octavos', 'cuartos', 'semifinal', 'final'];
@@ -1819,7 +1811,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             posicion++;
         });
         
-// 8. Validaciones finales para detectar duplicados
+        // 8. Validaciones finales para detectar duplicados
         const jugadoresEnBracket = new Set();
         const duplicadosEncontrados = [];
         
@@ -1835,50 +1827,6 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                     duplicadosEncontrados.push(elemento.id_inscripto_2);
                 }
                 jugadoresEnBracket.add(elemento.id_inscripto_2);
-            }
-        });
-        
-        if (duplicadosEncontrados.length > 0) {
-            await connection.rollback();
-            return res.status(500).json({ 
-                error: `Error de duplicación: jugadores repetidos en el bracket: ${duplicadosEncontrados.join(', ')}` 
-            });
-        }
-        
-        // Validar que todos los clasificados estén en el bracket
-        const jugadoresClasificados = clasificados.map(c => c.id_inscripto);
-        const jugadoresFaltantes = jugadoresClasificados.filter(id => !jugadoresEnBracket.has(id));
-        
-        if (jugadoresFaltantes.length > 0) {
-            await connection.rollback();
-            return res.status(500).json({ 
-                error: `Error: jugadores clasificados no incluidos en el bracket: ${jugadoresFaltantes.join(', ')}` 
-            });
-        }
-        
-        // Validación adicional: verificar estructura matemática
-        const totalElementosBracket = bracket.length;
-        const expectedTotal = Math.max(jugadoresAHacerJugar, jugadoresConBye);
-        
-        console.log('=== VALIDACIÓN DE ESTRUCTURA ===');
-        console.log('Total elementos en bracket:', totalElementosBracket);
-        console.log('Total esperado:', expectedTotal);
-        console.log('Pre-playoffs:', bracket.filter(p => p.es_pre_playoff).length);
-        console.log('BYES:', bracket.filter(p => p.es_bye && !p.es_pre_playoff).length);
-        
-        if (totalElementosBracket !== expectedTotal) {
-            await connection.rollback();
-            return res.status(500).json({ 
-                error: `Error de estructura: se esperaban ${expectedTotal} elementos pero se crearon ${totalElementosBracket}` 
-            });
-        }
-                jugadoresEnBracket.add(partido.id_inscripto_1);
-            }
-            if (partido.id_inscripto_2) {
-                if (jugadoresEnBracket.has(partido.id_inscripto_2)) {
-                    duplicadosEncontrados.push(partido.id_inscripto_2);
-                }
-                jugadoresEnBracket.add(partido.id_inscripto_2);
             }
         });
         
