@@ -2545,7 +2545,17 @@ async function revertirGanadorEnLlave(connection, idTorneo, categoria, rondaActu
     
     // Calcular posición en siguiente ronda
     let siguientePosicion;
-    if (partidosRondaActual[0].total === partidosRondaSiguiente[0].total) {
+    
+    // MAPEO ESPECIAL: Pre-playoffs a semifinales (debe coincidir con avanzarGanadorEnLlave)
+    // Pre-playoff #1 → Semifinal pos 2
+    // Pre-playoff #2 → Semifinal pos 4
+    if (rondaActual === 'pre-playoff' && siguienteRonda === 'semifinal') {
+        const mapeoPrePlayoffASemifinal = {
+            1: 2,  // Pre-playoff #1 → Semifinal posición 2
+            2: 4   // Pre-playoff #2 → Semifinal posición 4
+        };
+        siguientePosicion = mapeoPrePlayoffASemifinal[posicionActual] || Math.ceil(posicionActual / 2);
+    } else if (partidosRondaActual[0].total === partidosRondaSiguiente[0].total) {
         // Mapeo 1 a 1 (caso especial: igual cantidad de partidos en ambas rondas)
         siguientePosicion = posicionActual;
     } else {
@@ -2668,7 +2678,17 @@ async function avanzarGanadorEnLlave(connection, idTorneo, categoria, rondaActua
     
     // Calcular posición en siguiente ronda
     let siguientePosicion;
-    if (partidosRondaActual[0].total === partidosRondaSiguiente[0].total) {
+    
+    // MAPEO ESPECIAL: Pre-playoffs a semifinales
+    // Pre-playoff #1 → Semifinal pos 2 (contra BYE #1)
+    // Pre-playoff #2 → Semifinal pos 4 (contra BYE #2)
+    if (rondaActual === 'pre-playoff' && siguienteRonda === 'semifinal') {
+        const mapeoPrePlayoffASemifinal = {
+            1: 2,  // Ganador pre-playoff #1 va a semifinal posición 2
+            2: 4   // Ganador pre-playoff #2 va a semifinal posición 4
+        };
+        siguientePosicion = mapeoPrePlayoffASemifinal[posicionActual] || Math.ceil(posicionActual / 2);
+    } else if (partidosRondaActual[0].total === partidosRondaSiguiente[0].total) {
         // Mapeo 1 a 1 (caso especial: igual cantidad de partidos en ambas rondas)
         // Ej: 2 pre-playoffs → 2 semifinales
         siguientePosicion = posicionActual;
@@ -2679,9 +2699,11 @@ async function avanzarGanadorEnLlave(connection, idTorneo, categoria, rondaActua
     }
     
     // Verificar si ya existe el enfrentamiento en la siguiente ronda
+    // Usar SELECT FOR UPDATE para bloquear y evitar race conditions
     let [enfrentamientoSiguiente] = await connection.execute(
         `SELECT * FROM llave_eliminacion 
-         WHERE id_torneo = ? AND categoria = ? AND ronda = ? AND posicion = ?`,
+         WHERE id_torneo = ? AND categoria = ? AND ronda = ? AND posicion = ?
+         FOR UPDATE`,
         [idTorneo, categoria, siguienteRonda, siguientePosicion]
     );
     
@@ -2689,7 +2711,8 @@ async function avanzarGanadorEnLlave(connection, idTorneo, categoria, rondaActua
         // Buscar más ampliamente por si hay diferencias de formato
         const [enfrentamientoAlternativo] = await connection.execute(
             `SELECT * FROM llave_eliminacion 
-             WHERE id_torneo = ? AND LOWER(categoria) = LOWER(?) AND ronda = ? AND posicion = ?`,
+             WHERE id_torneo = ? AND LOWER(categoria) = LOWER(?) AND ronda = ? AND posicion = ?
+             FOR UPDATE`,
             [idTorneo, categoria, siguienteRonda, siguientePosicion]
         );
         
@@ -2701,14 +2724,15 @@ async function avanzarGanadorEnLlave(connection, idTorneo, categoria, rondaActua
             // Si ya existe uno (aunque sea diferente posición), NO crear otro
             const [cualquierEnfrentamiento] = await connection.execute(
                 `SELECT id FROM llave_eliminacion 
-                 WHERE id_torneo = ? AND categoria = ? AND ronda = ? LIMIT 1`,
+                 WHERE id_torneo = ? AND categoria = ? AND ronda = ? 
+                 FOR UPDATE LIMIT 1`,
                 [idTorneo, categoria, siguienteRonda]
             );
             
             if (cualquierEnfrentamiento.length > 0) {
                 // Ya existe un enfrentamiento en esta ronda, usar ese
                 const [enfrentamientoExistente] = await connection.execute(
-                    `SELECT * FROM llave_eliminacion WHERE id = ?`,
+                    `SELECT * FROM llave_eliminacion WHERE id = ? FOR UPDATE`,
                     [cualquierEnfrentamiento[0].id]
                 );
                 enfrentamientoSiguiente = enfrentamientoExistente;
