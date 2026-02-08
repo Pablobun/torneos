@@ -438,8 +438,16 @@
                             <input type="time" id="horario-hora">
                         </div>
                         <div class="form-group">
-                            <label>Cancha</label>
-                            <input type="number" id="horario-cancha" min="1" value="1">
+                            <label>Lugar</label>
+                            <select id="horario-lugar">
+                                <option value="Aeroclub" selected>Aeroclub</option>
+                                <option value="Malon">Malon</option>
+                                <option value="Challenger">Challenger</option>
+                                <option value="Estudiantes">Estudiantes</option>
+                                <option value="Tenis Rio Cuarto">Tenis Rio Cuarto</option>
+                                <option value="Banda Norte">Banda Norte</option>
+                                <option value="Jockey Club">Jockey Club</option>
+                            </select>
                         </div>
                     </div>
                     <button class="btn btn-primary" onclick="crearHorario()">➕ Agregar Horario</button>
@@ -676,7 +684,7 @@
                 <div class="horario-card ${h.disponible ? '' : 'ocupado'}">
                     <div class="horario-info">
                         <h4>${h.dia_semana} ${new Date(h.fecha).toLocaleDateString()}</h4>
-                        <p>${h.hora_inicio} - Cancha ${h.cancha}</p>
+                        <p>${h.hora_inicio} - ${h.lugar || 'Aeroclub'}</p>
                         <p style="font-size: 10px; color: ${h.disponible ? '#4CAF50' : '#f44336'};">
                             ${h.disponible ? '✓ Disponible' : '✗ Ocupado'}
                         </p>
@@ -692,7 +700,7 @@
             const dia = document.getElementById('horario-dia').value;
             const fecha = document.getElementById('horario-fecha').value;
             const hora = document.getElementById('horario-hora').value;
-            const cancha = document.getElementById('horario-cancha').value;
+            const lugar = document.getElementById('horario-lugar').value;
             
             if (!fecha || !hora) {
                 alert('Por favor completá la fecha y hora');
@@ -703,7 +711,7 @@
                 const response = await fetch(`${API_URL}/horarios-playoffs/${torneoId}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ dia_semana: dia, fecha, hora_inicio: hora, cancha })
+                    body: JSON.stringify({ dia_semana: dia, fecha, hora_inicio: hora, lugar })
                 });
                 
                 if (response.ok) {
