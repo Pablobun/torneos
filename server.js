@@ -2145,9 +2145,14 @@ app.post('/api/llave/:idLlave/resultado', async (req, res) => {
     const { idLlave } = req.params;
     const { sets, esWO, ganadorWO, superTiebreak } = req.body;
     
+    // DEBUG INICIO: Verificar que el endpoint se ejecuta
+    console.log(`🔥🔥🔥 DEBUG - Endpoint POST /api/llave/${idLlave}/resultado llamado`);
+    console.log(`🔥🔥🔥 DEBUG - Body recibido:`, { sets: sets ? 'presente' : 'ausente', esWO, ganadorWO });
+    
     let connection;
     
     try {
+        console.log(`🔥🔥🔥 DEBUG - Iniciando transacción...`);
         connection = await mysql.createConnection(connectionConfig);
         await connection.beginTransaction();
         
