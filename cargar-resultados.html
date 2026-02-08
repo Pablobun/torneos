@@ -646,15 +646,9 @@
                 return 'El super tie-break debe llegar al menos a 10 puntos';
             }
             
-            // Si el ganador tiene 10, el perdedor puede tener máximo 8
-            // Si el perdedor tiene 9 o más, el ganador debe tener al menos 11
-            if (max === 10 && min >= 9) {
-                return 'Con 10-9 debe continuar hasta 11-9, 12-10, etc.';
-            }
-            
-            // Debe haber diferencia de al menos 2 puntos
-            if (max - min < 2) {
-                return 'El super tie-break debe ganarse por diferencia de 2 puntos';
+            // Debe haber diferencia de exactamente 2 puntos
+            if (max - min !== 2) {
+                return 'El super tie-break debe ganarse por diferencia de exactamente 2 puntos (ej: 10-8, 11-9, 12-10, 14-12, 20-18)';
             }
             
             return null; // Todo OK
