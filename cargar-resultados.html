@@ -291,7 +291,12 @@
         </div>
         
         <div class="filters">
-            <label>Filtrar por Grupo:</label>
+            <label>Filtrar por Categoría:</label>
+            <select id="filtro-categoria">
+                <option value="">Todas las categorías</option>
+            </select>
+            
+            <label style="margin-left: 20px;">Grupo:</label>
             <select id="filtro-grupo">
                 <option value="">Todos los grupos</option>
             </select>
@@ -340,23 +345,54 @@
                 const response = await fetch(`${API_URL}/grupos/${torneoId}`);
                 if (response.ok) {
                     grupos = await response.json();
-                    llenarFiltroGrupos();
+                    llenarFiltros();
                 }
             } catch (error) {
                 console.error('Error al cargar grupos:', error);
             }
         }
 
-        function llenarFiltroGrupos() {
-            const select = document.getElementById('filtro-grupo');
-            grupos.forEach(grupo => {
+        function llenarFiltros() {
+            // Llenar filtro de categorías
+            const selectCategoria = document.getElementById('filtro-categoria');
+            const categorias = [...new Set(grupos.map(g => g.categoria))];
+            categorias.forEach(categoria => {
+                const option = document.createElement('option');
+                option.value = categoria;
+                option.textContent = categoria;
+                selectCategoria.appendChild(option);
+            });
+            selectCategoria.addEventListener('change', actualizarFiltroGrupos);
+            
+            // Llenar filtro de grupos (inicialmente todos)
+            actualizarFiltroGrupos();
+            
+            document.getElementById('filtro-grupo').addEventListener('change', filtrarPartidos);
+            document.getElementById('filtro-estado').addEventListener('change', filtrarPartidos);
+        }
+        
+        function actualizarFiltroGrupos() {
+            const categoriaSeleccionada = document.getElementById('filtro-categoria').value;
+            const selectGrupo = document.getElementById('filtro-grupo');
+            
+            // Limpiar opciones actuales excepto la primera
+            while (selectGrupo.options.length > 1) {
+                selectGrupo.remove(1);
+            }
+            
+            // Filtrar grupos por categoría seleccionada
+            const gruposFiltrados = categoriaSeleccionada 
+                ? grupos.filter(g => g.categoria === categoriaSeleccionada)
+                : grupos;
+            
+            gruposFiltrados.forEach(grupo => {
                 const option = document.createElement('option');
                 option.value = grupo.id;
                 option.textContent = `Grupo ${grupo.numero_grupo} - ${grupo.categoria}`;
-                select.appendChild(option);
+                selectGrupo.appendChild(option);
             });
             
-            select.addEventListener('change', filtrarPartidos);
+            filtrarPartidos();
         }
 
         async function cargarPartidos() {
@@ -376,15 +412,22 @@
 
         function renderizarPartidos() {
             const container = document.getElementById('partidos-container');
+            const filtroCategoria = document.getElementById('filtro-categoria').value;
             const filtroGrupo = document.getElementById('filtro-grupo').value;
             const filtroEstado = document.getElementById('filtro-estado').value;
             
             let partidosFiltrados = partidos;
             
+            // Filtrar por categoría
+            if (filtroCategoria) {
+                partidosFiltrados = partidosFiltrados.filter(p => p.categoria === filtroCategoria);
+            }
+            
+            // Filtrar por grupo
             if (filtroGrupo) {
                 partidosFiltrados = partidosFiltrados.filter(p => {
-                    const grupo = grupos.find(g => g.numero_grupo == p.grupo);
-                    return grupo && grupo.id == filtroGrupo;
+                    const grupo = grupos.find(g => g.id == filtroGrupo);
+                    return grupo && p.grupo == grupo.numero_grupo && p.categoria === grupo.categoria;
                 });
             }
             
