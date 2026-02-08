@@ -1925,15 +1925,15 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         // Validación adicional: verificar estructura matemática
         // Nueva estructura: pre-playoffs + semifinales (4 posiciones) + final
         const totalElementosBracket = bracket.length;
-        const prePlayoffs = jugadoresAHacerJugar / 2;
-        const semifinales = 4; // 4 posiciones en semifinal
-        const final = 1;
-        const expectedTotal = prePlayoffs + semifinales + final;
+        const cantidadPrePlayoffs = jugadoresAHacerJugar / 2;
+        const cantidadSemifinales = 4; // 4 posiciones en semifinal
+        const cantidadFinal = 1;
+        const expectedTotal = cantidadPrePlayoffs + cantidadSemifinales + cantidadFinal;
         
         if (totalElementosBracket !== expectedTotal) {
             await connection.rollback();
             return res.status(500).json({ 
-                error: `Error de estructura: se esperaban ${expectedTotal} elementos (pre-playoffs: ${prePlayoffs}, semifinales: ${semifinales}, final: ${final}) pero se crearon ${totalElementosBracket}` 
+                error: `Error de estructura: se esperaban ${expectedTotal} elementos (pre-playoffs: ${cantidadPrePlayoffs}, semifinales: ${cantidadSemifinales}, final: ${cantidadFinal}) pero se crearon ${totalElementosBracket}` 
             });
         }
         
