@@ -1830,24 +1830,11 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             });
         }
         
-        // Semifinal posición 2: Vacía, espera ganador del pre-playoff #1
-        bracket.push({
-            ronda: 'semifinal',
-            posicion: 2,
-            id_inscripto_1: null,
-            id_inscripto_2: null,
-            id_grupo_1: null,
-            id_grupo_2: null,
-            es_bye: false,
-            ganador_id: null,
-            es_pre_playoff: false
-        });
-        
-        // Semifinal posición 3: BYE del segundo mejor jugador (si hay más BYES)
+        // Semifinal posición 2: BYE del segundo mejor jugador (si hay más BYES)
         if (byeJugadores.length > 1) {
             bracket.push({
                 ronda: 'semifinal',
-                posicion: 3,
+                posicion: 2,
                 id_inscripto_1: byeJugadores[1].id_inscripto,
                 id_inscripto_2: null,
                 id_grupo_1: byeJugadores[1].id_grupo,
@@ -1856,20 +1843,20 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                 ganador_id: byeJugadores[1].id_inscripto,
                 es_pre_playoff: false
             });
+        } else {
+            // Si no hay segundo BYE, crear semifinal vacía
+            bracket.push({
+                ronda: 'semifinal',
+                posicion: 2,
+                id_inscripto_1: null,
+                id_inscripto_2: null,
+                id_grupo_1: null,
+                id_grupo_2: null,
+                es_bye: false,
+                ganador_id: null,
+                es_pre_playoff: false
+            });
         }
-        
-        // Semifinal posición 4: Vacía, espera ganador del pre-playoff #2
-        bracket.push({
-            ronda: 'semifinal',
-            posicion: 4,
-            id_inscripto_1: null,
-            id_inscripto_2: null,
-            id_grupo_1: null,
-            id_grupo_2: null,
-            es_bye: false,
-            ganador_id: null,
-            es_pre_playoff: false
-        });
         
         // Agregar pre-playoffs al bracket (después de semifinales para mantener orden lógico)
         bracket.push(...prePlayoffs);
@@ -1925,10 +1912,11 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         }
         
         // Validación adicional: verificar estructura matemática
-        // Nueva estructura: pre-playoffs + semifinales (4 posiciones) + final
+        // Estructura: pre-playoffs + 2 semifinales + final
         const totalElementosBracket = bracket.length;
-        const cantidadPrePlayoffs = jugadoresAHacerJugar / 2;
-        const cantidadSemifinales = 4; // 4 posiciones en semifinal
+        const cantidadPrePlayoffs = prePlayoffs.length;
+        const cantidadByes = byeJugadores.length;
+        const cantidadSemifinales = 2; // Solo 2 semifinales
         const cantidadFinal = 1;
         const expectedTotal = cantidadPrePlayoffs + cantidadSemifinales + cantidadFinal;
         
@@ -2555,7 +2543,29 @@ async function revertirGanadorEnLlave(connection, idTorneo, categoria, rondaActu
     if (!progresion) return; // Es la final, no hay siguiente
     
     const siguienteRonda = progresion.siguiente;
-    const siguientePosicion = Math.ceil(posicionActual / 2);
+    
+    // Obtener cantidad de partidos en cada ronda para determinar el mapeo
+    const [partidosRondaActual] = await connection.execute(
+        `SELECT COUNT(*) as total FROM llave_eliminacion 
+         WHERE id_torneo = ? AND categoria = ? AND ronda = ?`,
+        [idTorneo, categoria, rondaActual]
+    );
+    
+    const [partidosRondaSiguiente] = await connection.execute(
+        `SELECT COUNT(*) as total FROM llave_eliminacion 
+         WHERE id_torneo = ? AND categoria = ? AND ronda = ?`,
+        [idTorneo, categoria, siguienteRonda]
+    );
+    
+    // Calcular posición en siguiente ronda
+    let siguientePosicion;
+    if (partidosRondaActual[0].total === partidosRondaSiguiente[0].total) {
+        // Mapeo 1 a 1 (caso especial: igual cantidad de partidos en ambas rondas)
+        siguientePosicion = posicionActual;
+    } else {
+        // Lógica standard: cada 2 partidos van a 1
+        siguientePosicion = Math.ceil(posicionActual / 2);
+    }
     
     // Buscar el enfrentamiento en la siguiente ronda
     const [enfrentamientoSiguiente] = await connection.execute(
@@ -2646,9 +2656,30 @@ async function avanzarGanadorEnLlave(connection, idTorneo, categoria, rondaActua
     
     const siguienteRonda = progresion.siguiente;
     
+    // Obtener cantidad de partidos en cada ronda para determinar el mapeo
+    const [partidosRondaActual] = await connection.execute(
+        `SELECT COUNT(*) as total FROM llave_eliminacion 
+         WHERE id_torneo = ? AND categoria = ? AND ronda = ?`,
+        [idTorneo, categoria, rondaActual]
+    );
+    
+    const [partidosRondaSiguiente] = await connection.execute(
+        `SELECT COUNT(*) as total FROM llave_eliminacion 
+         WHERE id_torneo = ? AND categoria = ? AND ronda = ?`,
+        [idTorneo, categoria, siguienteRonda]
+    );
+    
     // Calcular posición en siguiente ronda
-    // Cada 2 partidos de la ronda actual van a 1 partido de la siguiente
-    const siguientePosicion = Math.ceil(posicionActual / 2);
+    let siguientePosicion;
+    if (partidosRondaActual[0].total === partidosRondaSiguiente[0].total) {
+        // Mapeo 1 a 1 (caso especial: igual cantidad de partidos en ambas rondas)
+        // Ej: 2 pre-playoffs → 2 semifinales
+        siguientePosicion = posicionActual;
+    } else {
+        // Lógica standard: cada 2 partidos van a 1
+        // Ej: 4 octavos → 2 cuartos, 8 dieciseisavos → 4 octavos
+        siguientePosicion = Math.ceil(posicionActual / 2);
+    }
     
     // Verificar si ya existe el enfrentamiento en la siguiente ronda
     const [enfrentamientoSiguiente] = await connection.execute(
