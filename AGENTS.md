@@ -112,6 +112,7 @@ PORT=10000
 4. **MANTENER compatibilidad** con estructura existente
 5. **PROBAR cambios** antes de pedir commit/push
 6. **DOCUMENTAR endpoints** nuevos en este archivo
+7. **GIT - El usuario hace los commits y push** - NO preguntar si hacer push, el usuario lo gestiona manualmente
 
 ## Endpoints API Actuales
 

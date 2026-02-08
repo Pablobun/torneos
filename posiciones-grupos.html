@@ -562,13 +562,33 @@
         
         async function generarLlave(categoria) {
             // Verificar si la categoría tiene todos los partidos jugados
+            // Obtener números de grupos de la categoría seleccionada
             const gruposCategoria = grupos.filter(g => g.categoria === categoria);
-            const gruposCompletos = gruposCategoria.every(g => g.estado === 'finalizado');
+            const numerosGruposCategoria = gruposCategoria.map(g => g.numero_grupo);
             
-            if (!gruposCompletos) {
-                if (!confirm(`Algunos grupos de ${categoria} no tienen todos los partidos jugados. ¿Querés generar la llave igual?`)) {
-                    return;
+            // Cargar partidos del torneo
+            try {
+                const responsePartidos = await fetch(`${API_URL}/partidos/${torneoId}`);
+                if (responsePartidos.ok) {
+                    const partidosData = await responsePartidos.json();
+                    // Filtrar partidos de la categoría (por grupo y categoría)
+                    const partidosCategoria = partidosData.filter(p => 
+                        p.categoria === categoria && numerosGruposCategoria.includes(p.grupo)
+                    );
+                    
+                    // Verificar si hay partidos pendientes
+                    const partidosPendientes = partidosCategoria.filter(p => 
+                        !p.estado || p.estado === 'pendiente'
+                    );
+                    
+                    if (partidosPendientes.length > 0) {
+                        if (!confirm(`Algunos grupos de ${categoria} no tienen todos los partidos jugados (${partidosPendientes.length} pendientes). ¿Querés generar la llave igual?`)) {
+                            return;
+                        }
+                    }
                 }
+            } catch (e) {
+                console.error('Error al verificar partidos:', e);
             }
             
             try {
