@@ -483,9 +483,12 @@
                         return `${set.games_local}/${set.games_visitante}`;
                     }).join(' ');
                     
+                    const ganadorNombre = localGanador ? partido.local_nombre : partido.visitante_nombre;
+                    
                     resultadoHtml = `
                         <div class="resultado-actual">
                             <h4>✓ Resultado cargado</h4>
+                            <p style="margin: 5px 0; color: #ff9800; font-weight: bold;">Ganador: ${ganadorNombre}</p>
                             <div class="resultado-tenis" style="font-size: 18px; font-weight: bold; color: #2c3e50; font-family: 'Courier New', monospace; letter-spacing: 2px; margin-top: 8px;">
                                 ${setsFormato}
                             </div>
