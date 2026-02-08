@@ -2689,17 +2689,29 @@ async function avanzarGanadorEnLlave(connection, idTorneo, categoria, rondaActua
     );
     
     if (enfrentamientoSiguiente.length === 0) {
-        // Crear enfrentamiento si no existe (para casos sin pre-playoffs)
-        const esPar = posicionActual % 2 === 0;
-        const campo = esPar ? 'id_inscripto_2' : 'id_inscripto_1';
-        
-        await connection.execute(
-            `INSERT INTO llave_eliminacion 
-             (id_torneo, categoria, ronda, posicion, ${campo}, es_bye)
-             VALUES (?, ?, ?, ?, ?, FALSE)`,
-            [idTorneo, categoria, siguienteRonda, siguientePosicion, ganadorId]
+        // Buscar más ampliamente por si hay diferencias de formato
+        const [enfrentamientoAlternativo] = await connection.execute(
+            `SELECT * FROM llave_eliminacion 
+             WHERE id_torneo = ? AND LOWER(categoria) = LOWER(?) AND ronda = ? AND posicion = ?`,
+            [idTorneo, categoria, siguienteRonda, siguientePosicion]
         );
-        return;
+        
+        if (enfrentamientoAlternativo.length > 0) {
+            // Usar el encontrado con búsqueda flexible
+            enfrentamientoSiguiente.push(...enfrentamientoAlternativo);
+        } else {
+            // Crear enfrentamiento si no existe
+            const esPar = posicionActual % 2 === 0;
+            const campo = esPar ? 'id_inscripto_2' : 'id_inscripto_1';
+            
+            await connection.execute(
+                `INSERT INTO llave_eliminacion 
+                 (id_torneo, categoria, ronda, posicion, ${campo}, es_bye)
+                 VALUES (?, ?, ?, ?, ?, FALSE)`,
+                [idTorneo, categoria, siguienteRonda, siguientePosicion, ganadorId]
+            );
+            return;
+        }
     }
     
     // Actualizar enfrentamiento existente
