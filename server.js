@@ -2131,7 +2131,7 @@ app.put('/api/llave/:idLlave/horario', async (req, res) => {
         
         // 3. Marcar horario como ocupado
         await connection.execute(
-            `UPDATE horarios SET disponible = FALSE WHERE id = ? AND es_playoff = TRUE`,
+            `UPDATE horarios SET activo = 0 WHERE id = ? AND es_playoff = TRUE`,
             [id_horario_playoffs]
         );
         
@@ -2385,7 +2385,7 @@ app.post('/api/horarios-playoffs/:idTorneo', async (req, res) => {
     try {
         const connection = await mysql.createConnection(connectionConfig);
         const [result] = await connection.execute(
-            `INSERT INTO horarios (id_torneo_fk, dia_semana, fecha, hora_inicio, lugar, es_playoff, disponible)
+            `INSERT INTO horarios (id_torneo_fk, dia_semana, fecha, hora_inicio, lugar, es_playoff, activo)
              VALUES (?, ?, ?, ?, ?, TRUE, TRUE)`,
             [idTorneo, dia_semana, fecha, hora_inicio, cancha || 1]
         );
