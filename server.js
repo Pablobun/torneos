@@ -2267,7 +2267,14 @@ app.post('/api/llave/:idLlave/resultado', async (req, res) => {
         );
         
         // 6. Avanzar ganador a siguiente ronda
-        await avanzarGanadorEnLlave(connection, llave.id_torneo, llave.categoria, llave.ronda, llave.posicion, ganadorId);
+        console.log(`🚀 DEBUG - Llamando avanzarGanadorEnLlave para llave ${idLlave}: ronda=${llave.ronda}, pos=${llave.posicion}, ganador=${ganadorId}`);
+        try {
+            await avanzarGanadorEnLlave(connection, llave.id_torneo, llave.categoria, llave.ronda, llave.posicion, ganadorId);
+            console.log(`✅ DEBUG - avanzarGanadorEnLlave completado exitosamente`);
+        } catch (avanceError) {
+            console.error(`❌ DEBUG - Error en avanzarGanadorEnLlave:`, avanceError.message);
+            throw avanceError;
+        }
         
         await connection.commit();
         
@@ -2760,6 +2767,16 @@ async function avanzarGanadorEnLlave(connection, idTorneo, categoria, rondaActua
     // Actualizar enfrentamiento existente
     const enfrentamiento = enfrentamientoSiguiente[0];
     
+    // DEBUGGING: Log del estado del enfrentamiento
+    console.log(`🔍 DEBUG - Enfrentamiento encontrado:`, {
+        id: enfrentamiento.id,
+        ronda: enfrentamiento.ronda,
+        posicion: enfrentamiento.posicion,
+        id_inscripto_1: enfrentamiento.id_inscripto_1,
+        id_inscripto_2: enfrentamiento.id_inscripto_2,
+        ganadorIdQueLlega: ganadorId
+    });
+    
     // LÓGICA CORREGIDA: Completar el enfrentamiento, no pisar
     // Si id_inscripto_1 tiene un jugador (BYE o normal) y id_inscripto_2 está vacío → ganador a id_inscripto_2
     // Si id_inscripto_1 está vacío → ganador a id_inscripto_1
@@ -2770,15 +2787,18 @@ async function avanzarGanadorEnLlave(connection, idTorneo, categoria, rondaActua
         // Hay alguien en posición 1 (BYE o ganador previo), completar posición 2
         campo = 'id_inscripto_2';
         campoGrupo = 'id_grupo_2';
+        console.log(`✅ DEBUG - Posición 1 ocupada, completando posición 2`);
     } else if (!enfrentamiento.id_inscripto_1) {
         // Posición 1 vacía, poner ganador ahí
         campo = 'id_inscripto_1';
         campoGrupo = 'id_grupo_1';
+        console.log(`✅ DEBUG - Posición 1 vacía, colocando en posición 1`);
     } else {
         // Ambos ocupados - usar lógica de paridad para reemplazo/edición
         const esPar = posicionActual % 2 === 0;
         campo = esPar ? 'id_inscripto_2' : 'id_inscripto_1';
         campoGrupo = esPar ? 'id_grupo_2' : 'id_grupo_1';
+        console.log(`⚠️ DEBUG - Ambas posiciones ocupadas, usando lógica de paridad`);
     }
     
     // Obtener grupo del ganador
@@ -2787,12 +2807,16 @@ async function avanzarGanadorEnLlave(connection, idTorneo, categoria, rondaActua
         [ganadorId]
     );
     
+    console.log(`📝 DEBUG - Actualizando: ${campo} = ${ganadorId} en enfrentamiento ${enfrentamiento.id}`);
+    
     await connection.execute(
         `UPDATE llave_eliminacion 
          SET ${campo} = ?, ${campoGrupo} = ?
          WHERE id = ?`,
         [ganadorId, ganadorInfo.length > 0 ? ganadorInfo[0].id_grupo : null, enfrentamiento.id]
     );
+    
+    console.log(`✅ DEBUG - Actualización completada`);
 }
 
 // ==========================================================
