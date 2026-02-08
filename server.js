@@ -2544,19 +2544,15 @@ async function revertirGanadorEnLlave(connection, idTorneo, categoria, rondaActu
     );
     
     // Calcular posición en siguiente ronda
+    // REGLA: El bracket ya está generado correctamente (sin cruces de mismo grupo)
+    // Solo necesitamos MAPEO DIRECTO POR POSICIÓN
     let siguientePosicion;
     
-    // MAPEO ESPECIAL: Pre-playoffs a semifinales (debe coincidir con avanzarGanadorEnLlave)
-    // Pre-playoff #1 → Semifinal pos 2
-    // Pre-playoff #2 → Semifinal pos 4
+    // Mapeo específico para pre-playoffs → semifinales
     if (rondaActual === 'pre-playoff' && siguienteRonda === 'semifinal') {
-        const mapeoPrePlayoffASemifinal = {
-            1: 2,  // Pre-playoff #1 → Semifinal posición 2
-            2: 4   // Pre-playoff #2 → Semifinal posición 4
-        };
-        siguientePosicion = mapeoPrePlayoffASemifinal[posicionActual] || Math.ceil(posicionActual / 2);
+        siguientePosicion = posicionActual; // Mapeo 1 a 1
     } else if (partidosRondaActual[0].total === partidosRondaSiguiente[0].total) {
-        // Mapeo 1 a 1 (caso especial: igual cantidad de partidos en ambas rondas)
+        // Mapeo 1 a 1 para cualquier ronda con igual cantidad de partidos
         siguientePosicion = posicionActual;
     } else {
         // Lógica standard: cada 2 partidos van a 1
@@ -2677,24 +2673,21 @@ async function avanzarGanadorEnLlave(connection, idTorneo, categoria, rondaActua
     );
     
     // Calcular posición en siguiente ronda
+    // REGLA: El bracket ya está generado correctamente (sin cruces de mismo grupo)
+    // Solo necesitamos MAPEO DIRECTO POR POSICIÓN
     let siguientePosicion;
     
-    // MAPEO ESPECIAL: Pre-playoffs a semifinales
-    // Pre-playoff #1 → Semifinal pos 2 (contra BYE #1)
-    // Pre-playoff #2 → Semifinal pos 4 (contra BYE #2)
+    // Mapeo específico para pre-playoffs → semifinales
+    // Pre-playoff #1 (posición 1) → Semifinal #1 (posición 1)
+    // Pre-playoff #2 (posición 2) → Semifinal #2 (posición 2)
     if (rondaActual === 'pre-playoff' && siguienteRonda === 'semifinal') {
-        const mapeoPrePlayoffASemifinal = {
-            1: 2,  // Ganador pre-playoff #1 va a semifinal posición 2
-            2: 4   // Ganador pre-playoff #2 va a semifinal posición 4
-        };
-        siguientePosicion = mapeoPrePlayoffASemifinal[posicionActual] || Math.ceil(posicionActual / 2);
+        siguientePosicion = posicionActual; // Mapeo 1 a 1
+        console.log(`🎯 Ganador pre-playoff pos ${posicionActual} → Semifinal pos ${siguientePosicion}`);
     } else if (partidosRondaActual[0].total === partidosRondaSiguiente[0].total) {
-        // Mapeo 1 a 1 (caso especial: igual cantidad de partidos en ambas rondas)
-        // Ej: 2 pre-playoffs → 2 semifinales
+        // Mapeo 1 a 1 para cualquier ronda con igual cantidad de partidos
         siguientePosicion = posicionActual;
     } else {
         // Lógica standard: cada 2 partidos van a 1
-        // Ej: 4 octavos → 2 cuartos, 8 dieciseisavos → 4 octavos
         siguientePosicion = Math.ceil(posicionActual / 2);
     }
     
