@@ -2024,7 +2024,7 @@ app.get('/api/torneo/:idTorneo/llave', async (req, res) => {
         
         query += `
              ORDER BY 
-                FIELD(l.ronda, 'final', 'semifinal', 'cuartos', 'octavos', 'dieciseisavos'),
+                FIELD(l.ronda, 'final', 'semifinal', 'cuartos', 'octavos', 'dieciseisavos', 'pre-playoff'),
                 l.posicion`;
         
         const [llave] = await connection.execute(query, params);
@@ -2277,7 +2277,7 @@ app.post('/api/llave/:idLlave/resultado', async (req, res) => {
         );
         
         // 6. Avanzar ganador a siguiente ronda
-        await avanzarGanadorEnLlave(connection, idTorneo = llave.id_torneo, llave.ronda, llave.posicion, ganadorId);
+        await avanzarGanadorEnLlave(connection, llave.id_torneo, llave.categoria, llave.ronda, llave.posicion, ganadorId);
         
         await connection.commit();
         
@@ -2298,9 +2298,10 @@ app.post('/api/llave/:idLlave/resultado', async (req, res) => {
 // ==========================================================
 // FUNCIÓN: AVANZAR GANADOR EN LA LLAVE
 // ==========================================================
-async function avanzarGanadorEnLlave(connection, idTorneo, rondaActual, posicionActual, ganadorId) {
+async function avanzarGanadorEnLlave(connection, idTorneo, categoria, rondaActual, posicionActual, ganadorId) {
     // Mapeo de rondas y cómo se avanza
     const progresionRondas = {
+        'pre-playoff': { siguiente: 'semifinal', divisor: 2 },
         'dieciseisavos': { siguiente: 'octavos', divisor: 2 },
         'octavos': { siguiente: 'cuartos', divisor: 2 },
         'cuartos': { siguiente: 'semifinal', divisor: 2 },
@@ -2318,8 +2319,8 @@ async function avanzarGanadorEnLlave(connection, idTorneo, rondaActual, posicion
     // Verificar si ya existe el enfrentamiento en la siguiente ronda
     const [enfrentamientoSiguiente] = await connection.execute(
         `SELECT * FROM llave_eliminacion 
-         WHERE id_torneo = ? AND ronda = ? AND posicion = ?`,
-        [idTorneo, siguienteRonda, posicionSiguiente]
+         WHERE id_torneo = ? AND categoria = ? AND ronda = ? AND posicion = ?`,
+        [idTorneo, categoria, siguienteRonda, posicionSiguiente]
     );
     
     if (enfrentamientoSiguiente.length === 0) {
@@ -2328,8 +2329,8 @@ async function avanzarGanadorEnLlave(connection, idTorneo, rondaActual, posicion
         await connection.execute(
             `INSERT INTO llave_eliminacion 
              (id_torneo, categoria, ronda, posicion, ${campo}, es_bye)
-             VALUES (?, 'general', ?, ?, ?, FALSE)`,
-            [idTorneo, siguienteRonda, posicionSiguiente, ganadorId]
+             VALUES (?, ?, ?, ?, ?, FALSE)`,
+            [idTorneo, categoria, siguienteRonda, posicionSiguiente, ganadorId]
         );
     } else {
         // Actualizar enfrentamiento existente
