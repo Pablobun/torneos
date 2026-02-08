@@ -629,8 +629,12 @@
                         <span class="match-number">#${match.posicion}</span>
                         <div class="match-actions">
                             ${!esBye && !porDefinir ? `
-                                ${!fechaHora ? `<button class="btn-horario" onclick="abrirModalHorario(${match.id})">📅 Horario</button>` : ''}
-                                ${!tieneResultado && match.id_partido_asignado ? `<button class="btn-resultado" onclick="abrirModalResultado(${match.id})">🎾 Resultado</button>` : ''}
+                                ${!fechaHora ? `<button class="btn-horario" onclick="abrirModalHorario(${match.id})">📅 Horario</button>` : `<button class="btn-horario" onclick="abrirModalHorario(${match.id})">✏️ Horario</button>`}
+                                ${!tieneResultado && match.id_partido_asignado ? `<button class="btn-resultado" onclick="abrirModalResultado(${match.id}, false)">🎾 Cargar Resultado</button>` : ''}
+                                ${tieneResultado ? `
+                                    <button class="btn-resultado" onclick="abrirModalResultado(${match.id}, true)">✏️ Editar</button>
+                                    <button class="btn-eliminar" onclick="eliminarResultado(${match.id})" style="background: #f44336; margin-left: 5px;">🗑️</button>
+                                ` : ''}
                             ` : ''}
                         </div>
                     </div>
@@ -801,8 +805,11 @@
             }
         }
 
-        function abrirModalResultado(matchId) {
+        let editandoResultado = false;
+        
+        function abrirModalResultado(matchId, editar = false) {
             currentMatchId = matchId;
+            editandoResultado = editar;
             const modal = document.getElementById('modal-resultado');
             const content = document.getElementById('modal-resultado-content');
             
@@ -811,6 +818,18 @@
             for (const ronda in llaveData.bracket) {
                 match = llaveData.bracket[ronda].find(m => m.id === matchId);
                 if (match) break;
+            }
+            
+            // Si estamos editando, cargar datos existentes
+            let set1Local = '', set1Visit = '', set2Local = '', set2Visit = '';
+            let tbLocal = '', tbVisit = '';
+            let woChecked = '';
+            let woGanadorLocal = '';
+            let woGanadorVisit = '';
+            
+            if (editar && match.ganador_id) {
+                // Aquí idealmente cargaríamos los sets desde el backend
+                // Por ahora, dejamos los campos vacíos para que el usuario reingrese
             }
             
             content.innerHTML = `
@@ -854,7 +873,7 @@
                 </div>
                 
                 <button class="btn btn-primary" onclick="guardarResultadoPlayoff()" style="width: 100%;">
-                    ✅ Guardar Resultado
+                    ${editar ? '✏️ Actualizar Resultado' : '✅ Guardar Resultado'}
                 </button>
             `;
             
@@ -890,6 +909,35 @@
             select.style.display = check.checked ? 'block' : 'none';
         }
 
+        // Funciones de validación
+        function validarSet(local, visitante, setNum) {
+            if (local === visitante) return `El set ${setNum} no puede terminar empatado`;
+            const max = Math.max(local, visitante);
+            const min = Math.min(local, visitante);
+            if (max > 7) return `El set ${setNum} no puede tener más de 7 games`;
+            if (max === 7) {
+                if (min !== 5 && min !== 6) return `Si hay 7 games en el set ${setNum}, el otro debe tener 5 o 6`;
+            } else if (max === 6) {
+                if (min >= 5) return `El set ${setNum}: si hay 6-5 debe continuar hasta 7-5 o 7-6`;
+            } else {
+                return `El set ${setNum} debe llegar al menos a 6 games para un jugador`;
+            }
+            return null;
+        }
+
+        function validarSuperTiebreak(local, visitante) {
+            if (local === visitante) return 'El super tie-break no puede terminar empatado';
+            const max = Math.max(local, visitante);
+            const min = Math.min(local, visitante);
+            if (max < 10) return 'El super tie-break debe llegar al menos a 10 puntos';
+            if (max === 10) {
+                if (max - min < 2) return 'Con 10 puntos, la diferencia debe ser al menos 2';
+            } else {
+                if (max - min !== 2) return 'Con más de 10 puntos, la diferencia debe ser exactamente 2';
+            }
+            return null;
+        }
+
         async function guardarResultadoPlayoff() {
             const esWO = document.getElementById('wo-check').checked;
             
@@ -910,20 +958,50 @@
                       gamesVisitante: parseInt(document.getElementById('set2-visit').value) || 0 }
                 ];
                 
+                // Validar sets
+                for (let i = 0; i < sets.length; i++) {
+                    const error = validarSet(sets[i].gamesLocal, sets[i].gamesVisitante, i + 1);
+                    if (error) {
+                        alert(error);
+                        return;
+                    }
+                }
+                
+                // Validar que haya ganador de sets (2-0 o 2-1)
+                let setsLocal = 0, setsVisitante = 0;
+                for (const set of sets) {
+                    if (set.gamesLocal > set.gamesVisitante) setsLocal++;
+                    else setsVisitante++;
+                }
+                
+                if (setsLocal === setsVisitante) {
+                    alert('El partido debe tener un ganador (2 sets a 0 o 2 sets a 1)');
+                    return;
+                }
+                
                 data.sets = sets;
                 
                 const superTB = document.getElementById('super-tiebreak-section');
                 if (superTB.style.display === 'block') {
+                    const tbLocal = parseInt(document.getElementById('tb-local').value) || 0;
+                    const tbVisit = parseInt(document.getElementById('tb-visit').value) || 0;
+                    
+                    const error = validarSuperTiebreak(tbLocal, tbVisit);
+                    if (error) {
+                        alert(error);
+                        return;
+                    }
+                    
                     data.superTiebreak = {
-                        local: parseInt(document.getElementById('tb-local').value) || 0,
-                        visitante: parseInt(document.getElementById('tb-visit').value) || 0
+                        local: tbLocal,
+                        visitante: tbVisit
                     };
                 }
             }
             
             try {
                 const response = await fetch(`${API_URL}/llave/${currentMatchId}/resultado`, {
-                    method: 'POST',
+                    method: editandoResultado ? 'PUT' : 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
@@ -936,6 +1014,27 @@
                 }
             } catch (error) {
                 console.error('Error:', error);
+            }
+        }
+
+        async function eliminarResultado(matchId) {
+            if (!confirm('¿Estás seguro de eliminar este resultado?\n\nEsto también eliminará al ganador de la siguiente ronda.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/llave/${matchId}/resultado`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    await cargarBracket();
+                } else {
+                    alert('Error al eliminar el resultado');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al eliminar el resultado');
             }
         }
 

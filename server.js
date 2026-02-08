@@ -1945,8 +1945,8 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                 await connection.execute(
                     `INSERT INTO llave_eliminacion 
                      (id_torneo, categoria, ronda, posicion, id_inscripto_1, id_inscripto_2, es_bye)
-                     VALUES (?, 'general', ?, ?, NULL, NULL, FALSE)`,
-                    [idTorneo, rondas[r], i + 1]
+                     VALUES (?, ?, ?, ?, NULL, NULL, FALSE)`,
+                    [idTorneo, categoria, rondas[r], i + 1]
                 );
             }
         }
@@ -2294,6 +2294,292 @@ app.post('/api/llave/:idLlave/resultado', async (req, res) => {
         if (connection) await connection.end();
     }
 });
+
+// ==========================================================
+// ENDPOINT: EDITAR RESULTADO EN PLAYOFFS
+// ==========================================================
+app.put('/api/llave/:idLlave/resultado', async (req, res) => {
+    const { idLlave } = req.params;
+    const { sets, esWO, ganadorWO, superTiebreak } = req.body;
+    
+    let connection;
+    
+    try {
+        connection = await mysql.createConnection(connectionConfig);
+        await connection.beginTransaction();
+        
+        // 1. Obtener info de la llave
+        const [llaveInfo] = await connection.execute(
+            `SELECT * FROM llave_eliminacion WHERE id = ?`,
+            [idLlave]
+        );
+        
+        if (llaveInfo.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ error: 'Enfrentamiento no encontrado' });
+        }
+        
+        const llave = llaveInfo[0];
+        
+        // 2. Verificar que tenga partido y resultado
+        if (!llave.id_partido || !llave.ganador_id) {
+            await connection.rollback();
+            return res.status(400).json({ error: 'No hay resultado previo para editar' });
+        }
+        
+        const ganadorAnterior = llave.ganador_id;
+        
+        // 3. Calcular nuevo ganador
+        let ganadorId = null;
+        
+        if (esWO) {
+            ganadorId = ganadorWO === 'local' ? llave.id_inscripto_1 : llave.id_inscripto_2;
+        } else {
+            let setsLocal = 0, setsVisitante = 0;
+            
+            for (const set of sets) {
+                if (parseInt(set.gamesLocal) > parseInt(set.gamesVisitante)) {
+                    setsLocal++;
+                } else {
+                    setsVisitante++;
+                }
+            }
+            
+            if (superTiebreak && setsLocal === 1 && setsVisitante === 1) {
+                if (superTiebreak.local > superTiebreak.visitante) {
+                    setsLocal++;
+                } else {
+                    setsVisitante++;
+                }
+            }
+            
+            ganadorId = setsLocal > setsVisitante ? llave.id_inscripto_1 : llave.id_inscripto_2;
+        }
+        
+        // 4. Actualizar llave con nuevo ganador
+        await connection.execute(
+            `UPDATE llave_eliminacion SET ganador_id = ? WHERE id = ?`,
+            [ganadorId, idLlave]
+        );
+        
+        // 5. Guardar resultado en partido
+        let setsLocal = 0, setsVisitante = 0;
+        let gamesLocalTotal = 0, gamesVisitanteTotal = 0;
+        let tiebreakLocal = null, tiebreakVisitante = null;
+        
+        if (!esWO) {
+            await connection.execute('DELETE FROM detalle_sets WHERE id_partido = ?', [llave.id_partido]);
+            
+            for (let i = 0; i < sets.length; i++) {
+                const set = sets[i];
+                gamesLocalTotal += parseInt(set.gamesLocal);
+                gamesVisitanteTotal += parseInt(set.gamesVisitante);
+                
+                if (set.gamesLocal > set.gamesVisitante) {
+                    setsLocal++;
+                } else {
+                    setsVisitante++;
+                }
+                
+                await connection.execute(
+                    `INSERT INTO detalle_sets (id_partido, numero_set, games_local, games_visitante, es_super_tiebreak) 
+                     VALUES (?, ?, ?, ?, FALSE)`,
+                    [llave.id_partido, i + 1, set.gamesLocal, set.gamesVisitante]
+                );
+            }
+            
+            if (superTiebreak && setsLocal === 1 && setsVisitante === 1) {
+                tiebreakLocal = superTiebreak.local;
+                tiebreakVisitante = superTiebreak.visitante;
+                gamesLocalTotal += tiebreakLocal;
+                gamesVisitanteTotal += tiebreakVisitante;
+                
+                await connection.execute(
+                    `INSERT INTO detalle_sets (id_partido, numero_set, games_local, games_visitante, es_super_tiebreak) 
+                     VALUES (?, 3, ?, ?, TRUE)`,
+                    [llave.id_partido, tiebreakLocal, tiebreakVisitante]
+                );
+            }
+        }
+        
+        await connection.execute(
+            `UPDATE partido SET 
+                estado = ?,
+                ganador_id = ?,
+                sets_local = ?,
+                sets_visitante = ?,
+                games_local = ?,
+                games_visitante = ?,
+                tiebreak_local = ?,
+                tiebreak_visitante = ?
+             WHERE id = ?`,
+            [esWO ? (ganadorWO === 'local' ? 'wo_local' : 'wo_visitante') : 'jugado',
+             ganadorId, setsLocal, setsVisitante, gamesLocalTotal, gamesVisitanteTotal,
+             tiebreakLocal, tiebreakVisitante, llave.id_partido]
+        );
+        
+        // 6. Si cambió el ganador, actualizar la siguiente ronda
+        if (ganadorId !== ganadorAnterior) {
+            // Revertir ganador anterior de siguiente ronda
+            await revertirGanadorEnLlave(connection, llave.id_torneo, llave.categoria, llave.ronda, llave.posicion, ganadorAnterior);
+            // Avanzar nuevo ganador
+            await avanzarGanadorEnLlave(connection, llave.id_torneo, llave.categoria, llave.ronda, llave.posicion, ganadorId);
+        }
+        
+        await connection.commit();
+        
+        res.status(200).json({
+            mensaje: 'Resultado actualizado correctamente',
+            ganadorId: ganadorId
+        });
+        
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Error al editar resultado en playoffs:', error);
+        res.status(500).json({ error: 'Error al editar el resultado' });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// ==========================================================
+// ENDPOINT: ELIMINAR RESULTADO EN PLAYOFFS
+// ==========================================================
+app.delete('/api/llave/:idLlave/resultado', async (req, res) => {
+    const { idLlave } = req.params;
+    
+    let connection;
+    
+    try {
+        connection = await mysql.createConnection(connectionConfig);
+        await connection.beginTransaction();
+        
+        // 1. Obtener info de la llave
+        const [llaveInfo] = await connection.execute(
+            `SELECT * FROM llave_eliminacion WHERE id = ?`,
+            [idLlave]
+        );
+        
+        if (llaveInfo.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ error: 'Enfrentamiento no encontrado' });
+        }
+        
+        const llave = llaveInfo[0];
+        
+        // 2. Verificar que tenga resultado
+        if (!llave.ganador_id) {
+            await connection.rollback();
+            return res.status(400).json({ error: 'No hay resultado para eliminar' });
+        }
+        
+        const ganadorId = llave.ganador_id;
+        
+        // 3. Limpiar resultado de la llave actual
+        await connection.execute(
+            `UPDATE llave_eliminacion SET ganador_id = NULL WHERE id = ?`,
+            [idLlave]
+        );
+        
+        // 4. Limpiar resultado del partido
+        if (llave.id_partido) {
+            await connection.execute(
+                `UPDATE partido SET 
+                    estado = 'pendiente',
+                    ganador_id = NULL,
+                    sets_local = 0,
+                    sets_visitante = 0,
+                    games_local = 0,
+                    games_visitante = 0,
+                    tiebreak_local = NULL,
+                    tiebreak_visitante = NULL
+                 WHERE id = ?`,
+                [llave.id_partido]
+            );
+            
+            // 5. Eliminar detalle de sets
+            await connection.execute(
+                'DELETE FROM detalle_sets WHERE id_partido = ?',
+                [llave.id_partido]
+            );
+        }
+        
+        // 6. Revertir ganador de la siguiente ronda
+        await revertirGanadorEnLlave(connection, llave.id_torneo, llave.categoria, llave.ronda, llave.posicion, ganadorId);
+        
+        await connection.commit();
+        
+        res.status(200).json({
+            mensaje: 'Resultado eliminado correctamente'
+        });
+        
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Error al eliminar resultado en playoffs:', error);
+        res.status(500).json({ error: 'Error al eliminar el resultado' });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// ==========================================================
+// FUNCIÓN: REVERTIR GANADOR DE LA LLAVE
+// ==========================================================
+async function revertirGanadorEnLlave(connection, idTorneo, categoria, rondaActual, posicionActual, ganadorId) {
+    const progresionRondas = {
+        'pre-playoff': { siguiente: 'semifinal', divisor: 2 },
+        'dieciseisavos': { siguiente: 'octavos', divisor: 2 },
+        'octavos': { siguiente: 'cuartos', divisor: 2 },
+        'cuartos': { siguiente: 'semifinal', divisor: 2 },
+        'semifinal': { siguiente: 'final', divisor: 2 },
+        'final': null
+    };
+    
+    const progresion = progresionRondas[rondaActual];
+    if (!progresion) return; // Es la final, no hay siguiente
+    
+    const siguienteRonda = progresion.siguiente;
+    const posicionSiguiente = Math.ceil(posicionActual / progresion.divisor);
+    
+    // Buscar el enfrentamiento en la siguiente ronda
+    const [enfrentamientoSiguiente] = await connection.execute(
+        `SELECT * FROM llave_eliminacion 
+         WHERE id_torneo = ? AND categoria = ? AND ronda = ? AND posicion = ?`,
+        [idTorneo, categoria, siguienteRonda, posicionSiguiente]
+    );
+    
+    if (enfrentamientoSiguiente.length > 0) {
+        const enfrentamiento = enfrentamientoSiguiente[0];
+        
+        // Limpiar el campo donde estaba el ganador
+        if (enfrentamiento.id_inscripto_1 === ganadorId) {
+            await connection.execute(
+                `UPDATE llave_eliminacion 
+                 SET id_inscripto_1 = NULL, id_grupo_1 = NULL, ganador_id = NULL
+                 WHERE id = ?`,
+                [enfrentamiento.id]
+            );
+        } else if (enfrentamiento.id_inscripto_2 === ganadorId) {
+            await connection.execute(
+                `UPDATE llave_eliminacion 
+                 SET id_inscripto_2 = NULL, id_grupo_2 = NULL, ganador_id = NULL
+                 WHERE id = ?`,
+                [enfrentamiento.id]
+            );
+        }
+        
+        // Si tiene partido asociado, también limpiarlo
+        if (enfrentamiento.id_partido) {
+            await connection.execute(
+                `UPDATE partido SET 
+                    id_inscriptoL = CASE WHEN id_inscriptoL = ? THEN NULL ELSE id_inscriptoL END,
+                    id_inscriptoV = CASE WHEN id_inscriptoV = ? THEN NULL ELSE id_inscriptoV END
+                 WHERE id = ?`,
+                [ganadorId, ganadorId, enfrentamiento.id_partido]
+            );
+        }
+    }
+}
 
 // ==========================================================
 // FUNCIÓN: AVANZAR GANADOR EN LA LLAVE
