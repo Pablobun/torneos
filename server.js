@@ -58,7 +58,7 @@ app.get('/api/torneo-activo', async (req, res) => {
 // ==========================================================
 app.get('/api/horarios/:idTorneo', async (req, res) => {
     const { idTorneo } = req.params;
-    const sql = 'SELECT id, dia_semana, fecha, hora_inicio FROM horarios WHERE id_torneo_fk = ? AND activo = 1 ORDER BY fecha, hora_inicio';
+    const sql = 'SELECT id, dia_semana, fecha, hora_inicio FROM horarios WHERE id_torneo_fk = ? AND activo = 1 AND (es_playoff = FALSE OR es_playoff IS NULL) ORDER BY fecha, hora_inicio';
     try {
         const connection = await mysql.createConnection(connectionConfig);
         const [rows] = await connection.execute(sql, [idTorneo]);
@@ -874,7 +874,7 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
         
         // 1. OBTENER DATOS DE LA BASE
         const [horariosResult] = await connection.execute(
-            'SELECT id, dia_semana, fecha, hora_inicio, Canchas FROM horarios WHERE id_torneo_fk = ?',
+            'SELECT id, dia_semana, fecha, hora_inicio, Canchas FROM horarios WHERE id_torneo_fk = ? AND (es_playoff = FALSE OR es_playoff IS NULL)',
             [idTorneo]
         );
 
@@ -2012,7 +2012,7 @@ app.get('/api/torneo/:idTorneo/llave', async (req, res) => {
              LEFT JOIN inscriptos i2 ON l.id_inscripto_2 = i2.id
              LEFT JOIN inscriptos g ON l.ganador_id = g.id
              LEFT JOIN partido p ON l.id_partido = p.id
-             LEFT JOIN horarios_playoffs hp ON p.id_horario = hp.id
+             LEFT JOIN horarios hp ON p.id_horario = hp.id AND hp.es_playoff = TRUE
              WHERE l.id_torneo = ?`;
         
         const params = [idTorneo];
@@ -2131,7 +2131,7 @@ app.put('/api/llave/:idLlave/horario', async (req, res) => {
         
         // 3. Marcar horario como ocupado
         await connection.execute(
-            `UPDATE horarios_playoffs SET disponible = FALSE WHERE id = ?`,
+            `UPDATE horarios SET disponible = FALSE WHERE id = ? AND es_playoff = TRUE`,
             [id_horario_playoffs]
         );
         
@@ -2364,8 +2364,8 @@ app.get('/api/horarios-playoffs/:idTorneo', async (req, res) => {
     try {
         const connection = await mysql.createConnection(connectionConfig);
         const [horarios] = await connection.execute(
-            `SELECT * FROM horarios_playoffs 
-             WHERE id_torneo = ? 
+            `SELECT * FROM horarios 
+             WHERE id_torneo = ? AND es_playoff = TRUE
              ORDER BY fecha, hora_inicio`,
             [idTorneo]
         );
@@ -2385,8 +2385,8 @@ app.post('/api/horarios-playoffs/:idTorneo', async (req, res) => {
     try {
         const connection = await mysql.createConnection(connectionConfig);
         const [result] = await connection.execute(
-            `INSERT INTO horarios_playoffs (id_torneo, dia_semana, fecha, hora_inicio, cancha)
-             VALUES (?, ?, ?, ?, ?)`,
+            `INSERT INTO horarios (id_torneo, dia_semana, fecha, hora_inicio, cancha, es_playoff)
+             VALUES (?, ?, ?, ?, ?, TRUE)`,
             [idTorneo, dia_semana, fecha, hora_inicio, cancha || 1]
         );
         await connection.end();
@@ -2407,7 +2407,7 @@ app.delete('/api/horarios-playoffs/:idHorario', async (req, res) => {
     try {
         const connection = await mysql.createConnection(connectionConfig);
         await connection.execute(
-            `DELETE FROM horarios_playoffs WHERE id = ?`,
+            `DELETE FROM horarios WHERE id = ? AND es_playoff = TRUE`,
             [idHorario]
         );
         await connection.end();
