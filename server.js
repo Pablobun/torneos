@@ -2129,11 +2129,8 @@ app.put('/api/llave/:idLlave/horario', async (req, res) => {
             );
         }
         
-        // 3. Marcar horario como ocupado
-        await connection.execute(
-            `UPDATE horarios SET activo = 0 WHERE id = ? AND es_playoff = TRUE`,
-            [id_horario_playoffs]
-        );
+        // 3. No marcar horario como ocupado (permitir reuso)
+        // Los horarios de playoffs pueden usarse múltiples veces
         
         await connection.commit();
         

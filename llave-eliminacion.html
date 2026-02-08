@@ -681,12 +681,12 @@
             }
             
             container.innerHTML = horariosData.map(h => `
-                <div class="horario-card ${h.activo ? '' : 'ocupado'}">
+                <div class="horario-card">
                     <div class="horario-info">
                         <h4>${h.dia_semana} ${new Date(h.fecha).toLocaleDateString()}</h4>
                         <p>${h.hora_inicio} - ${h.lugar || 'Aeroclub'}</p>
-                        <p style="font-size: 10px; color: ${h.activo ? '#4CAF50' : '#f44336'};">
-                            ${h.activo ? '✓ Disponible' : '✗ Ocupado'}
+                        <p style="font-size: 10px; color: #4CAF50;">
+                            ✓ Horario disponible (reusable)
                         </p>
                     </div>
                     <button class="btn btn-danger" onclick="eliminarHorario(${h.id})" style="font-size: 12px; padding: 5px 10px;">
@@ -752,11 +752,12 @@
             const modal = document.getElementById('modal-horario');
             const content = document.getElementById('modal-horario-content');
             
-            const disponibles = horariosData.filter(h => h.activo);
+            // Mostrar TODOS los horarios (permiten reuso)
+            const todosHorarios = horariosData;
             
-            if (disponibles.length === 0) {
+            if (todosHorarios.length === 0) {
                 content.innerHTML = `
-                    <p style="color: #666;">No hay horarios disponibles.</p>
+                    <p style="color: #666;">No hay horarios creados.</p>
                     <p>Agregá horarios en la pestaña "Horarios".</p>
                 `;
             } else {
@@ -764,7 +765,7 @@
                     <div style="margin-bottom: 20px;">
                         <label style="display: block; margin-bottom: 10px; font-weight: bold;">Seleccionar horario:</label>
                         <select id="select-horario" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 5px;">
-                            ${disponibles.map(h => `
+                            ${todosHorarios.map(h => `
                                 <option value="${h.id}">${h.dia_semana} ${new Date(h.fecha).toLocaleDateString()} - ${h.hora_inicio} (${h.lugar || 'Sin lugar'})</option>
                             `).join('')}
                         </select>
