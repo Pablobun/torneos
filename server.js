@@ -1652,7 +1652,9 @@ app.get('/api/partidos/:idTorneo/detallados', async (req, res) => {
              LEFT JOIN inscriptos iv ON p.id_inscriptoV = iv.id
              LEFT JOIN grupo_integrantes gil ON p.id_inscriptoL = gil.id_inscripto
              LEFT JOIN grupos g ON gil.id_grupo = g.id AND g.id_torneo_fk = ?
-             WHERE il.id_torneo_fk = ? OR iv.id_torneo_fk = ?
+             LEFT JOIN llave_eliminacion l ON p.id = l.id_partido
+             WHERE (il.id_torneo_fk = ? OR iv.id_torneo_fk = ?)
+             AND l.id IS NULL
              ORDER BY h.fecha, h.hora_inicio`,
             [idTorneo, idTorneo, idTorneo]
         );
@@ -2565,21 +2567,51 @@ async function revertirGanadorEnLlave(connection, idTorneo, categoria, rondaActu
     if (enfrentamientoSiguiente.length > 0) {
         const enfrentamiento = enfrentamientoSiguiente[0];
         
-        // Limpiar el campo donde estaba el ganador
+        // LÓGICA CORREGIDA: Si al limpiar queda solo un BYE, mantener el BYE
+        // Si el ganador está en id_inscripto_2 y id_inscripto_1 es un BYE → solo limpiar id_inscripto_2
+        // Si el ganador está en id_inscripto_1 y id_inscripto_2 es un BYE → solo limpiar id_inscripto_1
+        // En cualquier otro caso → limpiar normalmente
+        
         if (enfrentamiento.id_inscripto_1 === ganadorId) {
-            await connection.execute(
-                `UPDATE llave_eliminacion 
-                 SET id_inscripto_1 = NULL, id_grupo_1 = NULL, ganador_id = NULL
-                 WHERE id = ?`,
-                [enfrentamiento.id]
-            );
+            // Ganador está en posición 1
+            const otroEsBye = enfrentamiento.id_inscripto_2 && enfrentamiento.es_bye === 1;
+            if (otroEsBye) {
+                // Mantener el BYE en posición 2, limpiar solo posición 1
+                await connection.execute(
+                    `UPDATE llave_eliminacion 
+                     SET id_inscripto_1 = NULL, id_grupo_1 = NULL, ganador_id = NULL
+                     WHERE id = ?`,
+                    [enfrentamiento.id]
+                );
+            } else {
+                // No hay BYE, limpiar normalmente
+                await connection.execute(
+                    `UPDATE llave_eliminacion 
+                     SET id_inscripto_1 = NULL, id_grupo_1 = NULL, ganador_id = NULL
+                     WHERE id = ?`,
+                    [enfrentamiento.id]
+                );
+            }
         } else if (enfrentamiento.id_inscripto_2 === ganadorId) {
-            await connection.execute(
-                `UPDATE llave_eliminacion 
-                 SET id_inscripto_2 = NULL, id_grupo_2 = NULL, ganador_id = NULL
-                 WHERE id = ?`,
-                [enfrentamiento.id]
-            );
+            // Ganador está en posición 2
+            const otroEsBye = enfrentamiento.id_inscripto_1 && enfrentamiento.es_bye === 1;
+            if (otroEsBye) {
+                // Mantener el BYE en posición 1, limpiar solo posición 2
+                await connection.execute(
+                    `UPDATE llave_eliminacion 
+                     SET id_inscripto_2 = NULL, id_grupo_2 = NULL, ganador_id = NULL
+                     WHERE id = ?`,
+                    [enfrentamiento.id]
+                );
+            } else {
+                // No hay BYE, limpiar normalmente
+                await connection.execute(
+                    `UPDATE llave_eliminacion 
+                     SET id_inscripto_2 = NULL, id_grupo_2 = NULL, ganador_id = NULL
+                     WHERE id = ?`,
+                    [enfrentamiento.id]
+                );
+            }
         }
         
         // Si tiene partido asociado, también limpiarlo
@@ -2642,11 +2674,26 @@ async function avanzarGanadorEnLlave(connection, idTorneo, categoria, rondaActua
     // Actualizar enfrentamiento existente
     const enfrentamiento = enfrentamientoSiguiente[0];
     
-    // Determinar qué campo actualizar (id_inscripto_1 o id_inscripto_2)
-    // Si la posición actual es impar → id_inscripto_1, si es par → id_inscripto_2
-    const esPar = posicionActual % 2 === 0;
-    const campo = esPar ? 'id_inscripto_2' : 'id_inscripto_1';
-    const campoGrupo = esPar ? 'id_grupo_2' : 'id_grupo_1';
+    // LÓGICA CORREGIDA: Completar el enfrentamiento, no pisar
+    // Si id_inscripto_1 tiene un jugador (BYE o normal) y id_inscripto_2 está vacío → ganador a id_inscripto_2
+    // Si id_inscripto_1 está vacío → ganador a id_inscripto_1
+    // Si ambos están ocupados, determinar según paridad (para reemplazo o edición)
+    let campo, campoGrupo;
+    
+    if (enfrentamiento.id_inscripto_1 && !enfrentamiento.id_inscripto_2) {
+        // Hay alguien en posición 1 (BYE o ganador previo), completar posición 2
+        campo = 'id_inscripto_2';
+        campoGrupo = 'id_grupo_2';
+    } else if (!enfrentamiento.id_inscripto_1) {
+        // Posición 1 vacía, poner ganador ahí
+        campo = 'id_inscripto_1';
+        campoGrupo = 'id_grupo_1';
+    } else {
+        // Ambos ocupados - usar lógica de paridad para reemplazo/edición
+        const esPar = posicionActual % 2 === 0;
+        campo = esPar ? 'id_inscripto_2' : 'id_inscripto_1';
+        campoGrupo = esPar ? 'id_grupo_2' : 'id_grupo_1';
+    }
     
     // Obtener grupo del ganador
     const [ganadorInfo] = await connection.execute(

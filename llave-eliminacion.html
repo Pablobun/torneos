@@ -604,12 +604,16 @@
         }
 
         function crearMatchCard(match) {
-            const esBye = match.es_bye;
             const tieneResultado = match.ganador_id !== null;
             const porDefinir = !match.id_inscripto_1 || !match.id_inscripto_2;
             
+            // CORREGIDO: Un partido es "BYE puro" solo si tiene un jugador y es_bye=true
+            // Si tiene ambos jugadores, es un partido normal (aunque uno venga de BYE)
+            const esByePuro = match.es_bye && ((match.id_inscripto_1 && !match.id_inscripto_2) || (!match.id_inscripto_1 && match.id_inscripto_2));
+            const esPartidoCompleto = match.id_inscripto_1 && match.id_inscripto_2;
+            
             let matchClass = '';
-            if (esBye) matchClass = 'bye';
+            if (esByePuro) matchClass = 'bye';
             else if (tieneResultado) matchClass = 'jugado';
             else if (porDefinir) matchClass = 'por-definir';
             
@@ -623,12 +627,15 @@
                 `${new Date(match.fecha).toLocaleDateString()} ${match.hora_inicio || ''}` : 
                 null;
             
+            // Botones: mostrar si es partido completo o si es BYE puro esperando
+            const mostrarBotones = esPartidoCompleto || esByePuro;
+            
             return `
                 <div class="match ${matchClass}" data-id="${match.id}">
                     <div class="match-header">
                         <span class="match-number">#${match.posicion}</span>
                         <div class="match-actions">
-                            ${!esBye && !porDefinir ? `
+                            ${mostrarBotones && !porDefinir ? `
                                 ${!fechaHora ? `<button class="btn-horario" onclick="abrirModalHorario(${match.id})">📅 Horario</button>` : `<button class="btn-horario" onclick="abrirModalHorario(${match.id})">✏️ Horario</button>`}
                                 ${!tieneResultado && match.id_partido_asignado ? `<button class="btn-resultado" onclick="abrirModalResultado(${match.id}, false)">🎾 Cargar Resultado</button>` : ''}
                                 ${tieneResultado ? `
@@ -647,7 +654,7 @@
                         ${tieneResultado && match.ganador_id === match.id_inscripto_2 ? '<span class="score">🏆</span>' : ''}
                     </div>
                     ${fechaHora ? `<div class="match-date">📅 ${fechaHora}</div>` : ''}
-                    ${esBye ? '<div class="match-date" style="background: #ff9800; color: white;">BYE - Avanza directo</div>' : ''}
+                    ${esByePuro ? '<div class="match-date" style="background: #ff9800; color: white;">BYE - Avanza directo</div>' : ''}
                 </div>
             `;
         }
