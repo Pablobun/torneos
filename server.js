@@ -1941,21 +1941,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             );
         }
         
-        // 10. Generar rondas siguientes (vacías inicialmente)
-        let partidosRondaActual = potenciaDe2 / 2;
-        for (let r = 1; r < rondas.length; r++) {
-            partidosRondaActual = partidosRondaActual / 2;
-            for (let i = 0; i < partidosRondaActual; i++) {
-                await connection.execute(
-                    `INSERT INTO llave_eliminacion 
-                     (id_torneo, categoria, ronda, posicion, id_inscripto_1, id_inscripto_2, es_bye)
-                     VALUES (?, ?, ?, ?, NULL, NULL, FALSE)`,
-                    [idTorneo, categoria, rondas[r], i + 1]
-                );
-            }
-        }
-        
-        // 11. Actualizar estado de grupos
+        // 10. Actualizar estado de grupos
         await connection.execute(
             `UPDATE grupos SET estado = 'finalizado' WHERE id_torneo_fk = ?`,
             [idTorneo]
