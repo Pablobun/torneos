@@ -2568,13 +2568,24 @@ async function revertirGanadorEnLlave(connection, idTorneo, categoria, rondaActu
     }
     
     // Buscar el enfrentamiento en la siguiente ronda
-    const [enfrentamientoSiguiente] = await connection.execute(
+    let [enfrentamientoSiguiente] = await connection.execute(
         `SELECT * FROM llave_eliminacion 
          WHERE id_torneo = ? AND categoria = ? AND ronda = ? AND posicion = ?`,
         [idTorneo, categoria, siguienteRonda, siguientePosicion]
     );
     
     if (enfrentamientoSiguiente.length > 0) {
+        // Si hay múltiples enfrentamientos (duplicados), usar el primero y eliminar los demás
+        if (enfrentamientoSiguiente.length > 1) {
+            console.warn(`Encontrados ${enfrentamientoSiguiente.length} duplicados en ${siguienteRonda} pos ${siguientePosicion}. Usando el primero.`);
+            for (let i = 1; i < enfrentamientoSiguiente.length; i++) {
+                await connection.execute(
+                    `DELETE FROM llave_eliminacion WHERE id = ?`,
+                    [enfrentamientoSiguiente[i].id]
+                );
+            }
+        }
+        
         const enfrentamiento = enfrentamientoSiguiente[0];
         
         // LÓGICA CORREGIDA: Si al limpiar queda solo un BYE, mantener el BYE
@@ -2682,7 +2693,7 @@ async function avanzarGanadorEnLlave(connection, idTorneo, categoria, rondaActua
     }
     
     // Verificar si ya existe el enfrentamiento en la siguiente ronda
-    const [enfrentamientoSiguiente] = await connection.execute(
+    let [enfrentamientoSiguiente] = await connection.execute(
         `SELECT * FROM llave_eliminacion 
          WHERE id_torneo = ? AND categoria = ? AND ronda = ? AND posicion = ?`,
         [idTorneo, categoria, siguienteRonda, siguientePosicion]
@@ -2698,19 +2709,48 @@ async function avanzarGanadorEnLlave(connection, idTorneo, categoria, rondaActua
         
         if (enfrentamientoAlternativo.length > 0) {
             // Usar el encontrado con búsqueda flexible
-            enfrentamientoSiguiente.push(...enfrentamientoAlternativo);
+            enfrentamientoSiguiente = enfrentamientoAlternativo;
         } else {
-            // Crear enfrentamiento si no existe
-            const esPar = posicionActual % 2 === 0;
-            const campo = esPar ? 'id_inscripto_2' : 'id_inscripto_1';
-            
-            await connection.execute(
-                `INSERT INTO llave_eliminacion 
-                 (id_torneo, categoria, ronda, posicion, ${campo}, es_bye)
-                 VALUES (?, ?, ?, ?, ?, FALSE)`,
-                [idTorneo, categoria, siguienteRonda, siguientePosicion, ganadorId]
+            // ANTI-DUPLICADO: Buscar cualquier enfrentamiento en la siguiente ronda
+            // Si ya existe uno (aunque sea diferente posición), NO crear otro
+            const [cualquierEnfrentamiento] = await connection.execute(
+                `SELECT id FROM llave_eliminacion 
+                 WHERE id_torneo = ? AND categoria = ? AND ronda = ? LIMIT 1`,
+                [idTorneo, categoria, siguienteRonda]
             );
-            return;
+            
+            if (cualquierEnfrentamiento.length > 0) {
+                // Ya existe un enfrentamiento en esta ronda, usar ese
+                const [enfrentamientoExistente] = await connection.execute(
+                    `SELECT * FROM llave_eliminacion WHERE id = ?`,
+                    [cualquierEnfrentamiento[0].id]
+                );
+                enfrentamientoSiguiente = enfrentamientoExistente;
+            } else {
+                // Realmente no existe, crearlo
+                const esPar = posicionActual % 2 === 0;
+                const campo = esPar ? 'id_inscripto_2' : 'id_inscripto_1';
+                
+                await connection.execute(
+                    `INSERT INTO llave_eliminacion 
+                     (id_torneo, categoria, ronda, posicion, ${campo}, es_bye)
+                     VALUES (?, ?, ?, ?, ?, FALSE)`,
+                    [idTorneo, categoria, siguienteRonda, siguientePosicion, ganadorId]
+                );
+                return;
+            }
+        }
+    }
+    
+    // Si hay múltiples enfrentamientos (duplicados), usar el primero y eliminar los demás
+    if (enfrentamientoSiguiente.length > 1) {
+        console.warn(`Encontrados ${enfrentamientoSiguiente.length} duplicados en ${siguienteRonda} pos ${siguientePosicion}. Usando el primero.`);
+        // Eliminar duplicados (mantener solo el primero)
+        for (let i = 1; i < enfrentamientoSiguiente.length; i++) {
+            await connection.execute(
+                `DELETE FROM llave_eliminacion WHERE id = ?`,
+                [enfrentamientoSiguiente[i].id]
+            );
         }
     }
     
