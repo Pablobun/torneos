@@ -599,6 +599,67 @@
             }
         });
 
+        function validarSet(local, visitante, setNum) {
+            // Validar que no sean iguales (el set debe tener ganador)
+            if (local === visitante) {
+                return `El set ${setNum} no puede terminar empatado`;
+            }
+            
+            const max = Math.max(local, visitante);
+            const min = Math.min(local, visitante);
+            
+            // Validar máximos permitidos
+            if (max > 7) {
+                return `El set ${setNum} no puede tener más de 7 games`;
+            }
+            
+            // Caso 7-5 o 7-6
+            if (max === 7) {
+                if (min !== 5 && min !== 6) {
+                    return `Si hay 7 games en el set ${setNum}, el otro debe tener 5 o 6`;
+                }
+            }
+            // Caso 6-X
+            else if (max === 6) {
+                if (min >= 5) {
+                    return `El set ${setNum}: si hay 6-5 debe continuar hasta 7-5 o 7-6`;
+                }
+            }
+            // Ninguno llegó a 6 o 7 (set no terminado)
+            else {
+                return `El set ${setNum} debe llegar al menos a 6 games para un jugador`;
+            }
+            
+            return null; // Todo OK
+        }
+        
+        function validarSuperTiebreak(local, visitante) {
+            if (local === visitante) {
+                return 'El super tie-break no puede terminar empatado';
+            }
+            
+            const max = Math.max(local, visitante);
+            const min = Math.min(local, visitante);
+            
+            // Debe llegar al menos a 10
+            if (max < 10) {
+                return 'El super tie-break debe llegar al menos a 10 puntos';
+            }
+            
+            // Si el ganador tiene 10, el perdedor puede tener máximo 8
+            // Si el perdedor tiene 9 o más, el ganador debe tener al menos 11
+            if (max === 10 && min >= 9) {
+                return 'Con 10-9 debe continuar hasta 11-9, 12-10, etc.';
+            }
+            
+            // Debe haber diferencia de al menos 2 puntos
+            if (max - min < 2) {
+                return 'El super tie-break debe ganarse por diferencia de 2 puntos';
+            }
+            
+            return null; // Todo OK
+        }
+
         async function guardarResultado(partidoId) {
             const card = document.querySelector(`.partido-card[data-id="${partidoId}"]`);
             const woCheck = card.querySelector('.wo-check');
@@ -627,6 +688,13 @@
                         return;
                     }
                     
+                    // Validar el set
+                    const error = validarSet(local, visitante, i);
+                    if (error) {
+                        alert(error);
+                        return;
+                    }
+                    
                     sets.push({ gamesLocal: local, gamesVisitante: visitante });
                 }
                 
@@ -640,6 +708,13 @@
                     
                     if (isNaN(tbLocal) || isNaN(tbVisitante)) {
                         alert('Por favor completá el super tie-break');
+                        return;
+                    }
+                    
+                    // Validar super tie-break
+                    const error = validarSuperTiebreak(tbLocal, tbVisitante);
+                    if (error) {
+                        alert(error);
                         return;
                     }
                     
