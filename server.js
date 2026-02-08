@@ -2380,14 +2380,14 @@ app.get('/api/horarios-playoffs/:idTorneo', async (req, res) => {
 
 app.post('/api/horarios-playoffs/:idTorneo', async (req, res) => {
     const { idTorneo } = req.params;
-    const { dia_semana, fecha, hora_inicio, cancha } = req.body;
+    const { dia_semana, fecha, hora_inicio, lugar } = req.body;
     
     try {
         const connection = await mysql.createConnection(connectionConfig);
         const [result] = await connection.execute(
             `INSERT INTO horarios (id_torneo_fk, dia_semana, fecha, hora_inicio, lugar, es_playoff, activo)
              VALUES (?, ?, ?, ?, ?, TRUE, TRUE)`,
-            [idTorneo, dia_semana, fecha, hora_inicio, cancha || 1]
+            [idTorneo, dia_semana, fecha, hora_inicio, lugar]
         );
         await connection.end();
         
