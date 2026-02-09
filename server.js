@@ -2156,9 +2156,13 @@ app.post('/api/llave/:idLlave/resultado', async (req, res) => {
         connection = await mysql.createConnection(connectionConfig);
         await connection.beginTransaction();
         
-        // 1. Obtener info de la llave
+        // 1. Obtener info de la llave con datos del partido y horario
         const [llaveInfo] = await connection.execute(
-            `SELECT * FROM llave_eliminacion WHERE id = ?`,
+            `SELECT l.*, p.id_horario, h.fecha, h.hora_inicio 
+             FROM llave_eliminacion l
+             LEFT JOIN partido p ON l.id_partido = p.id
+             LEFT JOIN horarios h ON p.id_horario = h.id
+             WHERE l.id = ?`,
             [idLlave]
         );
         
@@ -2175,7 +2179,16 @@ app.post('/api/llave/:idLlave/resultado', async (req, res) => {
             return res.status(400).json({ error: 'No hay partido asignado a este enfrentamiento' });
         }
         
-        // 3. Calcular ganador
+        // 3. Verificar que tenga horario asignado
+        if (!llave.fecha || !llave.hora_inicio) {
+            await connection.rollback();
+            return res.status(400).json({ 
+                error: 'Partido sin Horario asignado',
+                mensaje: 'Debe asignar un horario antes de cargar el resultado'
+            });
+        }
+        
+        // 4. Calcular ganador
         let ganadorId = null;
         
         if (esWO) {
@@ -2202,13 +2215,13 @@ app.post('/api/llave/:idLlave/resultado', async (req, res) => {
             ganadorId = setsLocal > setsVisitante ? llave.id_inscripto_1 : llave.id_inscripto_2;
         }
         
-        // 4. Actualizar llave con ganador
+        // 5. Actualizar llave con ganador
         await connection.execute(
             `UPDATE llave_eliminacion SET ganador_id = ? WHERE id = ?`,
             [ganadorId, idLlave]
         );
         
-        // 5. Guardar resultado en partido (usar endpoint existente)
+        // 6. Guardar resultado en partido (usar endpoint existente)
         // Primero actualizar el partido directamente
         let setsLocal = 0, setsVisitante = 0;
         let gamesLocalTotal = 0, gamesVisitanteTotal = 0;
