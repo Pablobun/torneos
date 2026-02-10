@@ -1061,22 +1061,50 @@
                     }
                 }
                 
-                // Validar que haya ganador de sets (2-0 o 2-1)
+                // Validar que haya ganador de sets (2-0 o 2-1, o 1-1 con super tie-break)
                 let setsLocal = 0, setsVisitante = 0;
                 for (const set of sets) {
                     if (set.gamesLocal > set.gamesVisitante) setsLocal++;
                     else setsVisitante++;
                 }
                 
+                const superTB = document.getElementById('super-tiebreak-section');
+                const haySuperTiebreak = superTB.style.display === 'block';
+                
+                // Si es 1-1, debe haber super tie-break válido
                 if (setsLocal === setsVisitante) {
-                    alert('El partido debe tener un ganador (2 sets a 0 o 2 sets a 1)');
-                    return;
+                    if (!haySuperTiebreak) {
+                        alert('El partido debe tener un ganador (2 sets a 0 o 2 sets a 1)');
+                        return;
+                    }
+                    // Si hay super tie-break visible, validarlo
+                    const tbLocal = parseInt(document.getElementById('tb-local').value) || 0;
+                    const tbVisit = parseInt(document.getElementById('tb-visit').value) || 0;
+                    
+                    if (tbLocal === 0 && tbVisit === 0) {
+                        alert('Debes completar el Super Tie-Break para determinar el ganador');
+                        return;
+                    }
+                    
+                    const error = validarSuperTiebreak(tbLocal, tbVisit);
+                    if (error) {
+                        alert(error);
+                        return;
+                    }
+                } else if (haySuperTiebreak) {
+                    // Si NO es 1-1 pero el super tie-break está visible, verificar que no esté completado
+                    const tbLocal = parseInt(document.getElementById('tb-local').value) || 0;
+                    const tbVisit = parseInt(document.getElementById('tb-visit').value) || 0;
+                    
+                    if (tbLocal > 0 || tbVisit > 0) {
+                        alert('No debe haber Super Tie-Break si el partido terminó 2-0');
+                        return;
+                    }
                 }
                 
                 data.sets = sets;
                 
-                const superTB = document.getElementById('super-tiebreak-section');
-                if (superTB.style.display === 'block') {
+                if (haySuperTiebreak) {
                     const tbLocal = parseInt(document.getElementById('tb-local').value) || 0;
                     const tbVisit = parseInt(document.getElementById('tb-visit').value) || 0;
                     
