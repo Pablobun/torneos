@@ -1977,6 +1977,7 @@ app.get('/api/torneo/:idTorneo/llave', async (req, res) => {
                 i2.integrantes as nombre_2,
                 g.integrantes as nombre_ganador,
                 p.id as id_partido_asignado,
+                p.estado as partido_estado,
                 hp.fecha,
                 hp.hora_inicio
              FROM llave_eliminacion l

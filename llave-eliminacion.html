@@ -627,9 +627,13 @@
                 `${new Date(match.fecha).toLocaleDateString()} ${match.hora_inicio || ''}` : 
                 null;
             
-            // Construir HTML de resultados si hay sets detalle
+            // Construir HTML de resultados si hay sets detalle o es WO
             let resultadoHtml = '';
-            if (match.sets_detalle && match.sets_detalle.length > 0) {
+            const esWO = match.partido_estado === 'wo_local' || match.partido_estado === 'wo_visitante';
+            
+            if (esWO) {
+                resultadoHtml = `<div style="text-align: center; padding: 8px 0; font-size: 16px; font-weight: bold; color: #f44336; background: #ffebee; border-radius: 4px; margin: 5px 0;">W.O.</div>`;
+            } else if (match.sets_detalle && match.sets_detalle.length > 0) {
                 const setsDisplay = match.sets_detalle.map((set) => {
                     const esSuperTB = set.es_super_tiebreak;
                     const style = esSuperTB ? 'style="color: #ff9800; font-weight: bold;"' : '';
