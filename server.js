@@ -2433,13 +2433,9 @@ app.put('/api/llave/:idLlave/resultado', async (req, res) => {
              tiebreakLocal, tiebreakVisitante, llave.id_partido]
         );
         
-        // 6. Si cambió el ganador, actualizar la siguiente ronda
-        if (ganadorId !== ganadorAnterior) {
-            // Revertir ganador anterior de siguiente ronda
-            await revertirGanadorEnLlave(connection, llave.id_torneo, llave.categoria, llave.ronda, llave.posicion, ganadorAnterior);
-            // Avanzar nuevo ganador
-            await avanzarGanadorEnLlave(connection, llave.id_torneo, llave.categoria, llave.ronda, llave.posicion, ganadorId);
-        }
+        // 6. SIEMPRE avanzar el ganador a la siguiente ronda (sin importar si cambió o no)
+        // Esto soluciona el problema de los BYE que ya tienen ganador_id seteado
+        await avanzarGanadorEnLlave(connection, llave.id_torneo, llave.categoria, llave.ronda, llave.posicion, ganadorId);
         
         await connection.commit();
         
