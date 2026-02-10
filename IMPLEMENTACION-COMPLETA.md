@@ -38,6 +38,13 @@ function aplicarCriteriosDesempate(a, b) {
 
 ### **3. Estructura de Pre-Playoffs**
 
+#### **Fundamento Principal**
+- ** Se organiza los jugadores clasificados de tal forma que no puedan cruzar su camino del mismo lado de la llave hasta la final. 
+Ejemplo: Grupos A B C
+2 clasificados por grupos son 6 jugadores necesito llegar a 4 o sea 2 byes.
+SI jugado A1 esta en una llave el jugador A2 debe ir por el lado contrario de la llave.
+
+
 #### **Lógica Correcta:**
 - **Peores jugadores** (según ranking) juegan pre-playoffs
 - **Mejores jugadores** reciben BYES directos
