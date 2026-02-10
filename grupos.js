@@ -1,5 +1,16 @@
 document.addEventListener('DOMContentLoaded', function () {
     const API_BASE_URL = 'https://academia-torneos.onrender.com/api';
+    const token = localStorage.getItem('token');
+    
+    // Headers comunes para llamadas autenticadas
+    const getHeaders = () => ({
+        'Authorization': `Bearer ${token}`
+    });
+    
+    const postHeaders = () => ({
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+    });
     
     // Elementos del DOM
     const infoTorneo = document.getElementById('info-torneo');
@@ -51,7 +62,7 @@ async function inicializar() {
 
     // Cargar torneo activo
     async function cargarTorneoActivo() {
-        const response = await fetch(`${API_BASE_URL}/torneo-activo`);
+        const response = await fetch(`${API_BASE_URL}/torneo-activo`, { headers: getHeaders() });
         if (!response.ok) throw new Error('No hay torneo activo');
         
         torneoActivo = await response.json();
@@ -373,9 +384,7 @@ async function inicializar() {
         try {
             const response = await fetch(`${API_BASE_URL}/armar-grupos`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: postHeaders(),
                 body: JSON.stringify({
                     configuracionGrupos: configuracionGrupos,
                     idTorneo: torneoActivo.id
@@ -443,9 +452,7 @@ async function inicializar() {
         try {
             const response = await fetch(`${API_BASE_URL}/guardar-grupos`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: postHeaders(),
                 body: JSON.stringify({
                     grupos: gruposGenerados,
                     partidos: partidosGenerados,
@@ -493,7 +500,8 @@ async function inicializar() {
         
         try {
             const response = await fetch(`${API_BASE_URL}/limpiar-torneo/${torneoActivo.id}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: getHeaders()
             });
             
             if (!response.ok) {

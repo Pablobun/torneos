@@ -1,5 +1,16 @@
 document.addEventListener('DOMContentLoaded', function () {
     const API_BASE_URL = 'https://academia-torneos.onrender.com/api';
+    const token = localStorage.getItem('token');
+    
+    // Headers comunes para llamadas autenticadas
+    const getHeaders = () => ({
+        'Authorization': `Bearer ${token}`
+    });
+    
+    const postHeaders = () => ({
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+    });
     
     // Elementos del DOM
     const infoTorneo = document.getElementById('info-torneo');
@@ -360,9 +371,7 @@ document.addEventListener('DOMContentLoaded', function () {
             
             const response = await fetch(`${API_BASE_URL}/partidos/${partidoId}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: postHeaders(),
                 body: JSON.stringify({
                     id_horario: nuevoHorarioId
                 })

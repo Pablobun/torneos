@@ -13,6 +13,19 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <script>
+        // Verificar autenticación
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+        const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('usuario');
+            window.location.href = 'login.html';
+        }
+    </script>
     <div class="container">
         <header>
             <img src="logo.png" alt="Logo Academia de Tenis" class="header-logo">
@@ -21,6 +34,18 @@
                 <p class="subtitle">Sistema Inteligente de Agrupación</p>
             </div>
         </header>
+        
+        <!-- Barra de usuario -->
+        <div id="user-bar" style="background: #2c3e50; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center;">
+            <span id="user-name">👤 Cargando...</span>
+            <button onclick="logout()" style="background: #f44336; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">🚪 Cerrar Sesión</button>
+        </div>
+        
+        <script>
+            if (usuario && usuario.nombre) {
+                document.getElementById('user-name').textContent = `👤 ${usuario.nombre} ${usuario.tipo_usuario === 1 ? '(Admin)' : '(Profe)'}`;
+            }
+        </script>
 
         <main>
             <!-- Estado del torneo -->

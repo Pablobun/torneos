@@ -93,6 +93,40 @@
     </style>
 </head>
 <body class="editar-grupos">
+    <script>
+        // Verificar autenticación
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+        
+        // Obtener información del usuario
+        const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+        
+        // Verificar grupos
+        async function verificarGrupos() {
+            try {
+                const response = await fetch('https://academia-torneos.onrender.com/api/verificar-grupos', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                window.hayGrupos = data.hayGrupos;
+                return data.hayGrupos;
+            } catch (error) {
+                console.error('Error al verificar grupos:', error);
+                window.hayGrupos = false;
+                return false;
+            }
+        }
+        
+        // Función de logout
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('usuario');
+            window.location.href = 'login.html';
+        }
+    </script>
+    
     <div class="container">
         <header>
             <img src="logo.png" alt="Logo Academia de Tenis" class="header-logo">
@@ -101,6 +135,19 @@
                 <p class="subtitle">Gestión de Horarios y Enfrentamientos</p>
             </div>
         </header>
+        
+        <!-- Barra de usuario -->
+        <div id="user-bar" style="background: #2c3e50; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center;">
+            <span id="user-name">👤 Cargando...</span>
+            <div>
+                <button id="btn-reset-password" onclick="abrirModalResetPassword()" style="display: none; background: #ff9800; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-right: 10px;">
+                    🔄 Resetear Contraseña
+                </button>
+                <button onclick="logout()" style="background: #f44336; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">
+                    🚪 Cerrar Sesión
+                </button>
+            </div>
+        </div>
 
         <main>
             <!-- Estado del torneo -->
@@ -208,6 +255,143 @@
         </footer>
     </div>
 
+    <!-- Modal para resetear contraseña -->
+    <div id="modal-reset-password" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background: white; padding: 30px; border-radius: 10px; max-width: 400px; width: 90%;">
+            <h3>🔄 Resetear Contraseña</h3>
+            <p style="color: #666; margin-bottom: 20px;">Seleccioná el usuario para resetear su contraseña:</p>
+            <select id="select-usuario-reset" style="width: 100%; padding: 10px; margin-bottom: 20px; border: 2px solid #ddd; border-radius: 5px;">
+                <option value="">Cargando usuarios...</option>
+            </select>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="cerrarModalResetPassword()" style="flex: 1; padding: 12px; background: #ddd; border: none; border-radius: 5px; cursor: pointer;">Cancelar</button>
+                <button onclick="resetearPassword()" style="flex: 1; padding: 12px; background: #ff9800; color: white; border: none; border-radius: 5px; cursor: pointer;">Resetear</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mostrar nombre de usuario
+        if (usuario && usuario.nombre) {
+            document.getElementById('user-name').textContent = `👤 ${usuario.nombre} ${usuario.tipo_usuario === 1 ? '(Admin)' : '(Profe)'}`;
+            
+            // Mostrar botón de resetear password solo para admin
+            if (usuario.tipo_usuario === 1) {
+                document.getElementById('btn-reset-password').style.display = 'inline-block';
+            }
+        }
+        
+        // Modal de reset password
+        function abrirModalResetPassword() {
+            document.getElementById('modal-reset-password').style.display = 'flex';
+            cargarUsuariosParaReset();
+        }
+        
+        function cerrarModalResetPassword() {
+            document.getElementById('modal-reset-password').style.display = 'none';
+        }
+        
+        async function cargarUsuariosParaReset() {
+            try {
+                const response = await fetch('https://academia-torneos.onrender.com/api/usuarios', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                
+                const select = document.getElementById('select-usuario-reset');
+                select.innerHTML = '<option value="">Seleccionar usuario...</option>';
+                
+                data.usuarios.forEach(u => {
+                    const option = document.createElement('option');
+                    option.value = u.nombre;
+                    option.textContent = `${u.nombre} ${u.tipo_usuario === 1 ? '(Admin)' : '(Profe)'}`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error al cargar usuarios:', error);
+                alert('Error al cargar usuarios');
+            }
+        }
+        
+        async function resetearPassword() {
+            const nombre = document.getElementById('select-usuario-reset').value;
+            if (!nombre) {
+                alert('Seleccioná un usuario');
+                return;
+            }
+            
+            if (!confirm(`¿Estás seguro de resetear la contraseña de ${nombre}?\n\nEl usuario deberá establecer una nueva contraseña al iniciar sesión.`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('https://academia-torneos.onrender.com/api/auth/reset-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ nombre })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert(data.mensaje);
+                    cerrarModalResetPassword();
+                } else {
+                    alert(data.error || 'Error al resetear contraseña');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error de conexión');
+            }
+        }
+        
+        // Verificar grupos y ajustar interfaz
+        verificarGrupos().then(hayGrupos => {
+            const menuGestion = document.getElementById('menu-gestion');
+            const estadoTorneo = document.getElementById('estado-torneo');
+            
+            if (!hayGrupos) {
+                // Ocultar menú si no hay grupos
+                if (menuGestion) menuGestion.style.display = 'none';
+                
+                // Mostrar mensaje y botón para ir a grupos
+                estadoTorneo.innerHTML = `
+                    <h2>⚠️ Grupos no generados</h2>
+                    <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 20px 0;">
+                        <p style="color: #856404; font-size: 16px; margin-bottom: 15px;">
+                            No se han generado los grupos para el torneo activo.
+                        </p>
+                        <p style="color: #856404; margin-bottom: 20px;">
+                            Debes generar los grupos antes de poder acceder a las demás funciones.
+                        </p>
+                        <a href="grupos.html" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                            🚀 Ir a Generar Grupos
+                        </a>
+                    </div>
+                `;
+            } else {
+                // Agregar botón "Ir a Grupos" en el menú
+                const menuGrid = document.querySelector('.menu-grid');
+                if (menuGrid) {
+                    const btnGrupos = document.createElement('a');
+                    btnGrupos.href = 'grupos.html';
+                    btnGrupos.className = 'menu-card';
+                    btnGrupos.innerHTML = `
+                        <div class="menu-icon">⚙️</div>
+                        <div class="menu-content">
+                            <h3>Generar/Ver Grupos</h3>
+                            <p>Configurar y generar grupos del torneo</p>
+                        </div>
+                    `;
+                    menuGrid.insertBefore(btnGrupos, menuGrid.firstChild);
+                }
+            }
+        });
+    </script>
+    
     <script src="editar-grupos.js"></script>
 </body>
 </html>

@@ -2895,6 +2895,264 @@ app.delete('/api/horarios-playoffs/:idHorario', async (req, res) => {
     }
 });
 
+// ==========================================================
+// SECCIÓN DE AUTENTICACIÓN
+// ==========================================================
+
+const JWT_SECRET = process.env.JWT_SECRET || 'torneos-secret-key-2024';
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+
+// Middleware para verificar token JWT
+function authMiddleware(req, res, next) {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+        return res.status(401).json({ error: 'No autorizado', mensaje: 'Debes iniciar sesión' });
+    }
+    
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.usuario = decoded;
+        next();
+    } catch (error) {
+        return res.status(401).json({ error: 'Token inválido', mensaje: 'Sesión expirada' });
+    }
+}
+
+// Middleware para verificar si es admin
+function adminMiddleware(req, res, next) {
+    if (req.usuario.tipo_usuario !== 1) {
+        return res.status(403).json({ error: 'Acceso denegado', mensaje: 'Solo administradores' });
+    }
+    next();
+}
+
+// ==========================================================
+// ENDPOINT: LOGIN
+// ==========================================================
+app.post('/api/auth/login', async (req, res) => {
+    const { nombre, pass } = req.body;
+    
+    if (!nombre || !pass) {
+        return res.status(400).json({ error: 'Nombre y contraseña requeridos' });
+    }
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        const [usuarios] = await connection.execute(
+            'SELECT * FROM usuario WHERE nombre = ? AND activo = 1',
+            [nombre]
+        );
+        
+        await connection.end();
+        
+        if (usuarios.length === 0) {
+            return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+        }
+        
+        const usuario = usuarios[0];
+        
+        // Verificar si es primera vez (pass vacío o NULL)
+        if (!usuario.pass || usuario.pass === '') {
+            return res.status(200).json({
+                primera_vez: true,
+                nombre: usuario.nombre,
+                mensaje: 'Debes establecer una contraseña'
+            });
+        }
+        
+        // Verificar contraseña
+        const validPassword = await bcrypt.compare(pass, usuario.pass);
+        if (!validPassword) {
+            return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+        }
+        
+        // Generar token JWT
+        const token = jwt.sign(
+            { 
+                id: usuario.id, 
+                nombre: usuario.nombre, 
+                tipo_usuario: usuario.tipo_usuario 
+            },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+        
+        res.status(200).json({
+            token,
+            usuario: {
+                id: usuario.id,
+                nombre: usuario.nombre,
+                tipo_usuario: usuario.tipo_usuario
+            },
+            mensaje: 'Login exitoso'
+        });
+        
+    } catch (error) {
+        console.error('Error en login:', error);
+        res.status(500).json({ error: 'Error al iniciar sesión' });
+    }
+});
+
+// ==========================================================
+// ENDPOINT: ESTABLECER CONTRASEÑA (Primera vez o reset)
+// ==========================================================
+app.post('/api/auth/establecer-password', async (req, res) => {
+    const { nombre, pass_nueva, pass_confirmar } = req.body;
+    
+    if (!nombre || !pass_nueva || !pass_confirmar) {
+        return res.status(400).json({ error: 'Todos los campos son requeridos' });
+    }
+    
+    if (pass_nueva !== pass_confirmar) {
+        return res.status(400).json({ error: 'Las contraseñas no coinciden' });
+    }
+    
+    if (pass_nueva.length < 6) {
+        return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+    }
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        // Verificar que el usuario existe
+        const [usuarios] = await connection.execute(
+            'SELECT * FROM usuario WHERE nombre = ? AND activo = 1',
+            [nombre]
+        );
+        
+        if (usuarios.length === 0) {
+            await connection.end();
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+        
+        // Encriptar nueva contraseña
+        const hashedPassword = await bcrypt.hash(pass_nueva, 10);
+        
+        // Actualizar en BD
+        await connection.execute(
+            'UPDATE usuario SET pass = ? WHERE nombre = ?',
+            [hashedPassword, nombre]
+        );
+        
+        await connection.end();
+        
+        res.status(200).json({ mensaje: 'Contraseña establecida correctamente' });
+        
+    } catch (error) {
+        console.error('Error al establecer contraseña:', error);
+        res.status(500).json({ error: 'Error al guardar la contraseña' });
+    }
+});
+
+// ==========================================================
+// ENDPOINT: RESETEAR CONTRASEÑA (Solo admin)
+// ==========================================================
+app.post('/api/auth/reset-password', authMiddleware, adminMiddleware, async (req, res) => {
+    const { nombre } = req.body;
+    
+    if (!nombre) {
+        return res.status(400).json({ error: 'Nombre de usuario requerido' });
+    }
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        // Verificar que el usuario existe
+        const [usuarios] = await connection.execute(
+            'SELECT * FROM usuario WHERE nombre = ?',
+            [nombre]
+        );
+        
+        if (usuarios.length === 0) {
+            await connection.end();
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+        
+        // Resetear contraseña (establecer como vacía)
+        await connection.execute(
+            'UPDATE usuario SET pass = NULL WHERE nombre = ?',
+            [nombre]
+        );
+        
+        await connection.end();
+        
+        res.status(200).json({ 
+            mensaje: `Contraseña de ${nombre} reseteada. Deberá establecer una nueva al iniciar sesión.` 
+        });
+        
+    } catch (error) {
+        console.error('Error al resetear contraseña:', error);
+        res.status(500).json({ error: 'Error al resetear la contraseña' });
+    }
+});
+
+// ==========================================================
+// ENDPOINT: LISTAR USUARIOS (Para el modal de reset)
+// ==========================================================
+app.get('/api/usuarios', authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        const [usuarios] = await connection.execute(
+            'SELECT id, nombre, tipo_usuario, activo FROM usuario WHERE activo = 1 ORDER BY nombre'
+        );
+        
+        await connection.end();
+        
+        res.status(200).json({ usuarios });
+        
+    } catch (error) {
+        console.error('Error al listar usuarios:', error);
+        res.status(500).json({ error: 'Error al obtener usuarios' });
+    }
+});
+
+// ==========================================================
+// ENDPOINT: VERIFICAR TOKEN
+// ==========================================================
+app.get('/api/auth/me', authMiddleware, async (req, res) => {
+    res.status(200).json({ usuario: req.usuario });
+});
+
+// ==========================================================
+// ENDPOINT: VERIFICAR SI HAY GRUPOS GENERADOS
+// ==========================================================
+app.get('/api/verificar-grupos', authMiddleware, async (req, res) => {
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        // Obtener torneo activo
+        const [torneo] = await connection.execute(
+            'SELECT id FROM torneo WHERE estado = "inscripcion_abierta" ORDER BY id DESC LIMIT 1'
+        );
+        
+        if (torneo.length === 0) {
+            await connection.end();
+            return res.status(200).json({ hayGrupos: false, mensaje: 'No hay torneo activo' });
+        }
+        
+        // Verificar si hay grupos generados
+        const [grupos] = await connection.execute(
+            'SELECT COUNT(*) as cantidad FROM grupos WHERE id_torneo_fk = ?',
+            [torneo[0].id]
+        );
+        
+        await connection.end();
+        
+        res.status(200).json({ 
+            hayGrupos: grupos[0].cantidad > 0,
+            cantidad: grupos[0].cantidad
+        });
+        
+    } catch (error) {
+        console.error('Error al verificar grupos:', error);
+        res.status(500).json({ error: 'Error al verificar grupos' });
+    }
+});
+
 // 5. Puerto de escucha
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {

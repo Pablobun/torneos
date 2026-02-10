@@ -284,11 +284,33 @@
     </style>
 </head>
 <body>
+    <script>
+        // Verificar autenticación
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+        const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('usuario');
+            window.location.href = 'login.html';
+        }
+    </script>
     <div class="container">
         <div class="header">
             <h1>🎾 Cargar Resultados</h1>
-            <a href="editar-grupos.html" class="back-btn">← Volver</a>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <span id="user-name" style="color: white; font-size: 14px;"></span>
+                <a href="editar-grupos.html" class="back-btn">← Volver</a>
+                <button onclick="logout()" style="background: #f44336; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">🚪</button>
+            </div>
         </div>
+        <script>
+            if (usuario && usuario.nombre) {
+                document.getElementById('user-name').textContent = `👤 ${usuario.nombre}`;
+            }
+        </script>
         
         <div class="filters">
             <label>Filtrar por Categoría:</label>
