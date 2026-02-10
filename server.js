@@ -1735,61 +1735,41 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         const jugadoresAHacerJugar = jugadoresAEliminar * 2;
         const jugadoresConBye = totalClasificados - jugadoresAHacerJugar;
         
-        
-        
         // 4. Aplicar criterios de desempate del reglamento
         function aplicarCriteriosDesempate(a, b) {
-            // 1. PRIMERO por posición en grupo: 1° lugar antes que 2° lugar
-            if (a.posicion !== b.posicion) {
-                return a.posicion - b.posicion; // 1 va antes que 2
-            }
-            
-            // 2. Si ambos son 1° o ambos son 2°, ordenar por:
-            // Puntos → Diferencia de sets → Diferencia de games
+            if (a.posicion !== b.posicion) return a.posicion - b.posicion;
             if (b.puntos !== a.puntos) return b.puntos - a.puntos;
             if (b.dif_sets !== a.dif_sets) return b.dif_sets - a.dif_sets;
             if (b.dif_games !== a.dif_games) return b.dif_games - a.dif_games;
-            
-            // 3. Sorteo (último recurso)
             return Math.random() - 0.5;
         }
         
-        // 5. Calcular ranking: primero todos los 1°, luego todos los 2°, ordenados por criterios
+        // 5. Ordenar todos los clasificados por ranking global
         const rankingGlobal = [...clasificados].sort(aplicarCriteriosDesempate);
         
-        // 6. Separar jugadores para pre-playoffs y BYES
-        // Los MEJORES (primeros del ranking) reciben BYE
-        // Los PEORES (últimos del ranking) van a pre-playoffs
+        // 6. Separar: BYE (mejores) y Pre-playoffs (peores)
         const jugadoresConByeArray = rankingGlobal.slice(0, jugadoresConBye);
         const jugadoresParaPrePlayoffs = rankingGlobal.slice(-jugadoresAHacerJugar);
         
-        // 6. Determinar rondas según potencia de 2
-        let rondas = [];
-        if (potenciaDe2 >= 32) rondas = ['dieciseisavos', 'octavos', 'cuartos', 'semifinal', 'final'];
-        else if (potenciaDe2 >= 16) rondas = ['octavos', 'cuartos', 'semifinal', 'final'];
-        else if (potenciaDe2 >= 8) rondas = ['cuartos', 'semifinal', 'final'];
-        else if (potenciaDe2 >= 4) rondas = ['semifinal', 'final'];
-        else rondas = ['final'];
+        // 7. Determinar rondas según potencia de 2
+        const rondasMap = {
+            32: ['dieciseisavos', 'octavos', 'cuartos', 'semifinal', 'final'],
+            16: ['octavos', 'cuartos', 'semifinal', 'final'],
+            8: ['cuartos', 'semifinal', 'final'],
+            4: ['semifinal', 'final'],
+            2: ['final']
+        };
+        const rondas = rondasMap[potenciaDe2] || ['final'];
+        const primeraRonda = rondas[0];
         
-        // 7. Generar bracket estructurado para playoffs
-        // Estructura: Primero semifinales con BYES, luego pre-playoffs
-        // Los pre-playoffs alimentan posiciones específicas de semifinal
+        // 8. Crear bracket completo
         const bracket = [];
         let posicionPrePlayoff = 1;
         
-        // Para 6 jugadores: 2 pre-playoffs + 4 semifinalistas (2 BYES + 2 ganadores pre-playoff)
-        // Semifinal estructura: 
-        //   - Pos 1: BYE del mejor jugador (lado A)
-        //   - Pos 2: Ganador pre-playoff #1 (lado A)
-        //   - Pos 3: BYE del segundo mejor (lado B)  
-        //   - Pos 4: Ganador pre-playoff #2 (lado B)
-        
-        // Separar jugadores para pre-playoffs
-        const prePlayoffJugadores = jugadoresParaPrePlayoffs;
-        const byeJugadores = jugadoresConByeArray;
-        
-        // Crear pre-playoffs primero (necesitamos sus posiciones para mapear a semifinal)
+        // PASO 1: Crear pre-playoffs
         const prePlayoffs = [];
+        const prePlayoffJugadores = [...jugadoresParaPrePlayoffs];
+        
         while (prePlayoffJugadores.length >= 2) {
             const jugador1 = prePlayoffJugadores.shift();
             let idxOponente = prePlayoffJugadores.findIndex(j => j.id_grupo !== jugador1.id_grupo);
@@ -1809,72 +1789,91 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             });
         }
         
-        // Ahora crear semifinales en orden correcto
-        // Mapeo: pre-playoff posición 1 → semifinal posición 2
-        //        pre-playoff posición 2 → semifinal posición 4
-        //        BYE posición 0 → semifinal posición 1
-        //        BYE posición 1 → semifinal posición 3
-        
-        // Semifinal posición 1: BYE del mejor jugador (si hay BYES)
-        if (byeJugadores.length > 0) {
-            bracket.push({
-                ronda: 'semifinal',
-                posicion: 1,
-                id_inscripto_1: byeJugadores[0].id_inscripto,
-                id_inscripto_2: null,
-                id_grupo_1: byeJugadores[0].id_grupo,
-                id_grupo_2: null,
-                es_bye: true,
-                ganador_id: byeJugadores[0].id_inscripto,
-                es_pre_playoff: false
-            });
-        }
-        
-        // Semifinal posición 2: BYE del segundo mejor jugador (si hay más BYES)
-        if (byeJugadores.length > 1) {
-            bracket.push({
-                ronda: 'semifinal',
-                posicion: 2,
-                id_inscripto_1: byeJugadores[1].id_inscripto,
-                id_inscripto_2: null,
-                id_grupo_1: byeJugadores[1].id_grupo,
-                id_grupo_2: null,
-                es_bye: true,
-                ganador_id: byeJugadores[1].id_inscripto,
-                es_pre_playoff: false
-            });
-        } else {
-            // Si no hay segundo BYE, crear semifinal vacía
-            bracket.push({
-                ronda: 'semifinal',
-                posicion: 2,
-                id_inscripto_1: null,
-                id_inscripto_2: null,
-                id_grupo_1: null,
-                id_grupo_2: null,
-                es_bye: false,
-                ganador_id: null,
-                es_pre_playoff: false
-            });
-        }
-        
-        // Agregar pre-playoffs al bracket (después de semifinales para mantener orden lógico)
         bracket.push(...prePlayoffs);
         
-        // Crear final vacía
-        bracket.push({
-            ronda: 'final',
-            posicion: 1,
-            id_inscripto_1: null,
-            id_inscripto_2: null,
-            id_grupo_1: null,
-            id_grupo_2: null,
-            es_bye: false,
-            ganador_id: null,
-            es_pre_playoff: false
-        });
+        // PASO 2: Crear primera ronda de playoffs con BYE
+        const numPartidosPrimeraRonda = potenciaDe2 / 2;
+        const primeraRondaPartidos = [];
+        const byeJugadores = [...jugadoresConByeArray];
+        const posicionesAsignadas = new Set();
         
-        // 8. Validaciones finales para detectar duplicados
+        // Distribuir BYE en posiciones alternadas
+        for (let i = 0; i < byeJugadores.length; i++) {
+            let posicion;
+            if (i % 2 === 0) {
+                posicion = Math.floor(i / 2);
+            } else {
+                posicion = numPartidosPrimeraRonda - 1 - Math.floor(i / 2);
+            }
+            
+            if (!posicionesAsignadas.has(posicion)) {
+                const jugador = byeJugadores[i];
+                primeraRondaPartidos.push({
+                    ronda: primeraRonda,
+                    posicion: posicion + 1,
+                    id_inscripto_1: jugador.id_inscripto,
+                    id_inscripto_2: null,
+                    id_grupo_1: jugador.id_grupo,
+                    id_grupo_2: null,
+                    es_bye: true,
+                    ganador_id: null, // CAMBIO: No setear ganador_id para BYE
+                    es_pre_playoff: false
+                });
+                posicionesAsignadas.add(posicion);
+            }
+        }
+        
+        // Slots vacíos para ganadores de pre-playoffs
+        const numGanadoresPrePlayoffs = prePlayoffs.length;
+        let posicionesLibres = [];
+        for (let i = 0; i < numPartidosPrimeraRonda; i++) {
+            if (!posicionesAsignadas.has(i)) {
+                posicionesLibres.push(i);
+            }
+        }
+        
+        for (let i = 0; i < numGanadoresPrePlayoffs; i++) {
+            if (i < posicionesLibres.length) {
+                const posicion = posicionesLibres[i];
+                primeraRondaPartidos.push({
+                    ronda: primeraRonda,
+                    posicion: posicion + 1,
+                    id_inscripto_1: null,
+                    id_inscripto_2: null,
+                    id_grupo_1: null,
+                    id_grupo_2: null,
+                    es_bye: false,
+                    ganador_id: null,
+                    es_pre_playoff: false
+                });
+                posicionesAsignadas.add(posicion);
+            }
+        }
+        
+        primeraRondaPartidos.sort((a, b) => a.posicion - b.posicion);
+        bracket.push(...primeraRondaPartidos);
+        
+        // PASO 3: Crear rondas siguientes
+        for (let i = 1; i < rondas.length; i++) {
+            const ronda = rondas[i];
+            const numPartidos = Math.pow(2, rondas.length - i - 1);
+            
+            for (let j = 0; j < numPartidos; j++) {
+                bracket.push({
+                    ronda: ronda,
+                    posicion: j + 1,
+                    id_inscripto_1: null,
+                    id_inscripto_2: null,
+                    id_grupo_1: null,
+                    id_grupo_2: null,
+                    es_bye: false,
+                    ganador_id: null,
+                    es_pre_playoff: false
+                });
+            }
+        }
+        
+        // 9. Validaciones
         const jugadoresEnBracket = new Set();
         const duplicadosEncontrados = [];
         
@@ -1900,7 +1899,6 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             });
         }
         
-        // Validar que todos los clasificados estén en el bracket
         const jugadoresClasificados = clasificados.map(c => c.id_inscripto);
         const jugadoresFaltantes = jugadoresClasificados.filter(id => !jugadoresEnBracket.has(id));
         
@@ -1911,23 +1909,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             });
         }
         
-        // Validación adicional: verificar estructura matemática
-        // Estructura: pre-playoffs + 2 semifinales + final
-        const totalElementosBracket = bracket.length;
-        const cantidadPrePlayoffs = prePlayoffs.length;
-        const cantidadByes = byeJugadores.length;
-        const cantidadSemifinales = 2; // Solo 2 semifinales
-        const cantidadFinal = 1;
-        const expectedTotal = cantidadPrePlayoffs + cantidadSemifinales + cantidadFinal;
-        
-        if (totalElementosBracket !== expectedTotal) {
-            await connection.rollback();
-            return res.status(500).json({ 
-                error: `Error de estructura: se esperaban ${expectedTotal} elementos (pre-playoffs: ${cantidadPrePlayoffs}, semifinales: ${cantidadSemifinales}, final: ${cantidadFinal}) pero se crearon ${totalElementosBracket}` 
-            });
-        }
-        
-        // 9. Insertar en base de datos
+        // 10. Insertar en BD
         for (const elemento of bracket) {
             await connection.execute(
                 `INSERT INTO llave_eliminacion 
@@ -1941,7 +1923,6 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             );
         }
         
-        // 10. Actualizar estado de grupos
         await connection.execute(
             `UPDATE grupos SET estado = 'finalizado' WHERE id_torneo_fk = ?`,
             [idTorneo]
@@ -1958,7 +1939,8 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                 jugadoresAEliminar: jugadoresAEliminar,
                 jugadoresAHacerJugar: jugadoresAHacerJugar,
                 jugadoresConBye: jugadoresConBye,
-                partidosPrePlayoffs: jugadoresAHacerJugar / 2
+                partidosPrePlayoffs: prePlayoffs.length,
+                primeraRonda: primeraRonda
             },
             rondas: rondas,
             bracket: bracket,
