@@ -2001,6 +2001,38 @@ app.get('/api/torneo/:idTorneo/llave', async (req, res) => {
         
         const [llave] = await connection.execute(query, params);
         
+        // Obtener detalles de sets para cada partido
+        const partidosIds = llave.filter(e => e.id_partido).map(e => e.id_partido);
+        
+        if (partidosIds.length > 0) {
+            const placeholders = partidosIds.map(() => '?').join(',');
+            const [setsDetalle] = await connection.execute(
+                `SELECT id_partido, numero_set, games_local, games_visitante, es_super_tiebreak 
+                 FROM detalle_sets 
+                 WHERE id_partido IN (${placeholders})
+                 ORDER BY id_partido, numero_set`,
+                partidosIds
+            );
+            
+            // Agrupar sets por partido
+            const setsPorPartido = {};
+            for (const set of setsDetalle) {
+                if (!setsPorPartido[set.id_partido]) {
+                    setsPorPartido[set.id_partido] = [];
+                }
+                setsPorPartido[set.id_partido].push(set);
+            }
+            
+            // Agregar sets a cada enfrentamiento
+            for (const enfrentamiento of llave) {
+                if (enfrentamiento.id_partido && setsPorPartido[enfrentamiento.id_partido]) {
+                    enfrentamiento.sets_detalle = setsPorPartido[enfrentamiento.id_partido];
+                } else {
+                    enfrentamiento.sets_detalle = [];
+                }
+            }
+        }
+        
         await connection.end();
         
         // Organizar por rondas

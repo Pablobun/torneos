@@ -580,6 +580,17 @@
                 `${new Date(match.fecha).toLocaleDateString()} ${match.hora_inicio || ''}` : 
                 null;
             
+            // Construir HTML de resultados si hay sets detalle
+            let resultadoHtml = '';
+            if (match.sets_detalle && match.sets_detalle.length > 0) {
+                const setsDisplay = match.sets_detalle.map((set, index) => {
+                    const esSuperTB = set.es_super_tiebreak;
+                    const style = esSuperTB ? 'style="color: #ff9800; font-weight: bold;"' : '';
+                    return `<span ${style}>${set.games_local}/${set.games_visitante}</span>`;
+                }).join(' ');
+                resultadoHtml = `<div class="match-resultado" style="text-align: center; padding: 10px 0; font-size: 18px; font-family: monospace; letter-spacing: 2px; background: #f8f9fa; border-radius: 5px; margin: 8px 0;">${setsDisplay}</div>`;
+            }
+            
             return `
                 <div class="match ${matchClass}">
                     <div class="match-header">
@@ -592,6 +603,7 @@
                             ${tieneResultado && match.ganador_id === match.id_inscripto_1 ? '<span class="winner-icon">🏆</span>' : ''}
                         </div>
                     </div>
+                    ${resultadoHtml}
                     <div class="team">
                         <span class="team-name ${team2Class} ${match.id_inscripto_2 ? '' : 'por-definir'}">${team2Name}</span>
                         <div class="team-result">
