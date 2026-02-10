@@ -2170,54 +2170,25 @@ app.post('/api/llave/:idLlave/resultado', async (req, res) => {
             });
         }
         
-        // 4. Calcular ganador
+        // 4. Procesar sets y calcular totales
+        let setsLocal = 0, setsVisitante = 0;
+        let gamesLocalTotal = 0, gamesVisitanteTotal = 0;
+        let tiebreakLocal = null, tiebreakVisitante = null;
         let ganadorId = null;
         
         if (esWO) {
             ganadorId = ganadorWO === 'local' ? llave.id_inscripto_1 : llave.id_inscripto_2;
         } else {
-            let setsLocal = 0, setsVisitante = 0;
-            
-            for (const set of sets) {
-                if (parseInt(set.gamesLocal) > parseInt(set.gamesVisitante)) {
-                    setsLocal++;
-                } else {
-                    setsVisitante++;
-                }
-            }
-            
-            if (superTiebreak && setsLocal === 1 && setsVisitante === 1) {
-                if (superTiebreak.local > superTiebreak.visitante) {
-                    setsLocal++;
-                } else {
-                    setsVisitante++;
-                }
-            }
-            
-            ganadorId = setsLocal > setsVisitante ? llave.id_inscripto_1 : llave.id_inscripto_2;
-        }
-        
-        // 5. Actualizar llave con ganador
-        await connection.execute(
-            `UPDATE llave_eliminacion SET ganador_id = ? WHERE id = ?`,
-            [ganadorId, idLlave]
-        );
-        
-        // 6. Guardar resultado en partido (usar endpoint existente)
-        // Primero actualizar el partido directamente
-        let setsLocal = 0, setsVisitante = 0;
-        let gamesLocalTotal = 0, gamesVisitanteTotal = 0;
-        let tiebreakLocal = null, tiebreakVisitante = null;
-        
-        if (!esWO) {
+            // Guardar detalle de sets en BD
             await connection.execute('DELETE FROM detalle_sets WHERE id_partido = ?', [llave.id_partido]);
             
+            // Procesar sets 1 y 2
             for (let i = 0; i < sets.length; i++) {
                 const set = sets[i];
                 gamesLocalTotal += parseInt(set.gamesLocal);
                 gamesVisitanteTotal += parseInt(set.gamesVisitante);
                 
-                if (set.gamesLocal > set.gamesVisitante) {
+                if (parseInt(set.gamesLocal) > parseInt(set.gamesVisitante)) {
                     setsLocal++;
                 } else {
                     setsVisitante++;
@@ -2230,12 +2201,14 @@ app.post('/api/llave/:idLlave/resultado', async (req, res) => {
                 );
             }
             
+            // Procesar super tie-break si hay 1-1 en sets
             if (superTiebreak && setsLocal === 1 && setsVisitante === 1) {
-                tiebreakLocal = superTiebreak.local;
-                tiebreakVisitante = superTiebreak.visitante;
+                tiebreakLocal = parseInt(superTiebreak.local);
+                tiebreakVisitante = parseInt(superTiebreak.visitante);
                 gamesLocalTotal += tiebreakLocal;
                 gamesVisitanteTotal += tiebreakVisitante;
                 
+                // El super tie-break determina el tercer set
                 if (tiebreakLocal > tiebreakVisitante) {
                     setsLocal++;
                 } else {
@@ -2248,8 +2221,18 @@ app.post('/api/llave/:idLlave/resultado', async (req, res) => {
                     [llave.id_partido, tiebreakLocal, tiebreakVisitante]
                 );
             }
+            
+            // Determinar ganador DESPUÉS de procesar todos los sets incluyendo super TB
+            ganadorId = setsLocal > setsVisitante ? llave.id_inscripto_1 : llave.id_inscripto_2;
         }
         
+        // 5. Actualizar llave con ganador
+        await connection.execute(
+            `UPDATE llave_eliminacion SET ganador_id = ? WHERE id = ?`,
+            [ganadorId, idLlave]
+        );
+        
+        // 6. Actualizar partido con resultado
         await connection.execute(
             `UPDATE partido SET 
                 estado = ?,
