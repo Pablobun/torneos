@@ -2922,7 +2922,7 @@ function authMiddleware(req, res, next) {
 
 // Middleware para verificar si es admin
 function adminMiddleware(req, res, next) {
-    if (req.usuario.tipo_usuario !== 1) {
+    if (req.usuario.tipousuario !== 1) {
         return res.status(403).json({ error: 'Acceso denegado', mensaje: 'Solo administradores' });
     }
     next();
@@ -2974,7 +2974,7 @@ app.post('/api/auth/login', async (req, res) => {
             { 
                 id: usuario.id, 
                 nombre: usuario.nombre, 
-                tipo_usuario: usuario.tipo_usuario 
+                tipo_usuario: usuario.tipousuario 
             },
             JWT_SECRET,
             { expiresIn: '24h' }
@@ -2985,7 +2985,7 @@ app.post('/api/auth/login', async (req, res) => {
             usuario: {
                 id: usuario.id,
                 nombre: usuario.nombre,
-                tipo_usuario: usuario.tipo_usuario
+                tipo_usuario: usuario.tipousuario
             },
             mensaje: 'Login exitoso'
         });
@@ -3126,7 +3126,7 @@ app.get('/api/verificar-grupos', authMiddleware, async (req, res) => {
         
         // Obtener torneo activo
         const [torneo] = await connection.execute(
-            'SELECT id FROM torneo WHERE estado = "inscripcion_abierta" ORDER BY id DESC LIMIT 1'
+            'SELECT id FROM torneo WHERE activo_inscripcion = 1 ORDER BY id DESC LIMIT 1'
         );
         
         if (torneo.length === 0) {
