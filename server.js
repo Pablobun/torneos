@@ -3126,7 +3126,7 @@ app.get('/api/verificar-grupos', authMiddleware, async (req, res) => {
         
         // Obtener torneo activo
         const [torneo] = await connection.execute(
-            'SELECT id FROM torneo WHERE activo_inscripcion = 1 ORDER BY id DESC LIMIT 1'
+            'SELECT id FROM torneos WHERE activo_inscripcion = 1 ORDER BY id DESC LIMIT 1'
         );
         
         if (torneo.length === 0) {
