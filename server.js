@@ -3097,7 +3097,7 @@ app.get('/api/usuarios', authMiddleware, adminMiddleware, async (req, res) => {
         const connection = await mysql.createConnection(connectionConfig);
         
         const [usuarios] = await connection.execute(
-            'SELECT id, nombre, tipo_usuario, activo FROM usuario WHERE activo = 1 ORDER BY nombre'
+            'SELECT id, nombre, tipousuario, activo FROM usuario WHERE activo = 1 ORDER BY nombre'
         );
         
         await connection.end();
