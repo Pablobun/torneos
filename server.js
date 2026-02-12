@@ -3172,8 +3172,14 @@ app.get('/api/horarios/:idTorneo', authMiddleware, async (req, res) => {
         const connection = await mysql.createConnection(connectionConfig);
         
         // Obtener todos los horarios del torneo
-        const [horarios] = await connection.execute(
-            `SELECT id, dia_semana, fecha, hora_inicio, Canchas, lugar, activo, es_playoff 
+        const [rows] = await connection.execute(
+            `SELECT id, dia_semana, 
+                    DATE_FORMAT(fecha, '%Y-%m-%d') as fecha, 
+                    hora_inicio, 
+                    Canchas, 
+                    lugar, 
+                    activo, 
+                    es_playoff 
              FROM horarios 
              WHERE id_torneo_fk = ? AND activo = 1 AND es_playoff = 0
              ORDER BY fecha, hora_inicio`,
@@ -3181,7 +3187,7 @@ app.get('/api/horarios/:idTorneo', authMiddleware, async (req, res) => {
         );
         
         // Verificar si cada horario puede ser eliminado (no está en uso)
-        const horariosConEstado = await Promise.all(horarios.map(async (h) => {
+        const horarios = await Promise.all(rows.map(async (h) => {
             // Verificar si está en inscriptos_horarios
             const [inscriptos] = await connection.execute(
                 'SELECT COUNT(*) as count FROM inscriptos_horarios WHERE id_horario_fk = ?',
@@ -3194,18 +3200,26 @@ app.get('/api/horarios/:idTorneo', authMiddleware, async (req, res) => {
                 [h.id]
             );
             
+            // Construir objeto con todos los campos explícitamente
             return {
-                ...h,
+                id: h.id,
+                dia_semana: h.dia_semana,
+                fecha: h.fecha,
+                hora_inicio: h.hora_inicio,
+                Canchas: h.Canchas,
+                lugar: h.lugar,
+                activo: h.activo,
+                es_playoff: h.es_playoff,
                 puede_eliminar: inscriptos[0].count === 0 && partidos[0].count === 0
             };
         }));
         
         await connection.end();
-        res.status(200).json(horariosConEstado);
+        res.status(200).json(horarios);
         
     } catch (error) {
         console.error('Error al obtener horarios:', error);
-        res.status(500).json({ error: 'Error al obtener horarios' });
+        res.status(500).json({ error: 'Error al obtener horarios: ' + error.message });
     }
 });
 

@@ -457,17 +457,23 @@
             `;
 
             horarios.forEach(h => {
-                // Fix date display - backend sends YYYY-MM-DD
+                // Fix date display - handle both YYYY-MM-DD and ISO formats like 2026-03-09T00:00:00.000Z
                 let fechaFormateada = h.fecha;
-                if (h.fecha && h.fecha.includes('-')) {
-                    const parts = h.fecha.split('-');
+                if (h.fecha) {
+                    // Extract just the date part (YYYY-MM-DD) from ISO format
+                    let fechaLimpia = h.fecha;
+                    if (h.fecha.includes('T')) {
+                        fechaLimpia = h.fecha.split('T')[0];
+                    }
+                    // Now format as DD/MM/YYYY
+                    const parts = fechaLimpia.split('-');
                     if (parts.length === 3) {
                         fechaFormateada = parts[2] + '/' + parts[1] + '/' + parts[0];
                     }
                 }
                 
                 // Fix fields display with proper fallbacks
-                const canchas = h.Canchas !== undefined ? h.Canchas : (h.canchas !== undefined ? h.canchas : '-');
+                const canchas = h.Canchas !== undefined && h.Canchas !== null ? h.Canchas : '-';
                 const lugar = h.lugar || '-';
                 const hora = h.hora_inicio ? h.hora_inicio.substring(0, 5) : '';
                 const puedeEliminar = h.puede_eliminar !== false;
