@@ -24,14 +24,14 @@ body::before {
     background-repeat: no-repeat;
     background-position: center center;
     background-size: 300px;
-    opacity: 0.1; /* Le subimos un poco la opacidad */
+    opacity: 0.1;
     z-index: -1;
 }
 
 .container {
     max-width: 800px;
     margin: 0 auto;
-    background-color: rgba(255, 255, 255, 0.6); /* Fondo semi-transparente */
+    background-color: rgba(255, 255, 255, 0.6);
     padding: 30px;
     border-radius: 10px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
@@ -63,1633 +63,16 @@ header h1 {
     margin-top: 0;
 }
 
-/* ... (el resto de tus estilos del formulario, etc. van aquí. Los pego para asegurar) ... */
-
-h2 { color: #4CAF50; border-left: 4px solid #bab3a8; padding-left: 10px; margin-bottom: 20px; }
-#info-torneo ul { list-style-type: none; padding: 0; }
-#info-torneo li { background-color: #f9f9f9; padding: 10px 15px; border-radius: 5px; margin-bottom: 8px; border-left: 3px solid #4CAF50; }
-.form-group-duo {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-}
-.form-group { margin-bottom: 20px; }
-.form-group label { display: block; margin-bottom: 8px; font-weight: 700; color: #555; }
-.form-group input[type="text"], .form-group input[type="email"], .form-group input[type="tel"], .form-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 1em; }
-.availability-fieldset { border: 1px solid #ccc; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
-.availability-fieldset legend { font-weight: 700; color: #555; padding: 0 10px; }
-.availability-instructions { font-size: 0.9em; color: #7f8c8d; margin-top: 0; margin-bottom: 15px; }
-.availability-grid { display: grid; grid-template-columns: max-content 1fr; gap: 10px 15px; align-items: center; }
-.availability-grid label { font-weight: normal; text-align: right; }
-.availability-grid input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-.checkbox-group { display: flex; align-items: center; margin-top: 25px; }
-.checkbox-group input[type="checkbox"] { margin-right: 10px; width: 20px; height: 20px; }
-button[type="submit"] { width: 100%; padding: 15px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; font-size: 1.2em; font-weight: 700; cursor: pointer; }
-.hidden { display: none; }
-#confirmationMessage { background-color: #e8f5e9; border-left: 5px solid #4CAF50; padding: 20px; border-radius: 5px; text-align: center; }
-input.error, select.error { border-color: #e74c3c; background-color: #fbeae5; }
-footer {
-    margin-top: 40px;
-    padding-top: 20px;
-    border-top: 1px solid #ddd;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 20px;
-}
-
-.footer-texto {
-    color: #555;
-    font-size: 0.9em;
-}
-
-.footer-texto p {
-    margin: 0;
-    line-height: 1.4;
-}
-
-.footer-logos {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.footer-logos span {
-    font-size: 0.9em;
-    color: #777;
-}
-
-.footer-logos img {
-    height: 40px;
-    width: auto;
-    opacity: 0.7;
-    transition: opacity 0.2s ease;
-}
-
-.footer-logos img:hover {
-    opacity: 1;
-}
-
-/* Estilo para el enlace a la lista de inscriptos */
-.view-list-link { text-align: center; margin-bottom: 30px; }
-.view-list-link a { display: inline-block; padding: 10px 20px; background-color: #245c30; color: #fff; font-weight: bold; text-decoration: none; border-radius: 5px; transition: background-color 0.3s ease; }
-.view-list-link a:hover { background-color: #5ca78f; }
-/* ========================================= */
-/* --- ESTILOS página isncriptos --- */
-/* ========================================= */
-/* Estilos para la página de inscriptos */
-#filtros {
-    margin-bottom: 40px;
-    /* Hacemos el fondo blanco pero con 50% de transparencia */
-    background-color: rgba(255, 255, 255, 0.5); 
-    padding: 20px;
-    border-radius: 8px;
-    /* Hacemos el borde también un poco transparente para que no desentone */
-    border: 1px solid rgba(0, 0, 0, 0.1); 
-}
-
-.filtro-container {
-    display: flex;
-    align-items: end;
-    gap: 15px;
-    flex-wrap: wrap;
-}
-
-.filtro-container label {
-    font-weight: 700;
-}
-
-.filtro-container select {
-    padding: 10px;
-    font-size: 1em;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    min-width: 250px;
-}
-
-.filtro-container .btn-primary {
-    white-space: nowrap;
-    align-self: flex-end;
-    height: fit-content;
-}
-
-/* Estilos para la tabla */
-#tabla-inscriptos {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-}
-
-#tabla-inscriptos thead {
-    background-color: #4CAF50;
-    color: white;
-}
-
-#tabla-inscriptos th, #tabla-inscriptos td {
-    padding: 12px 15px;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
-}
-
-#tabla-inscriptos tbody tr:nth-child(even) {
-    background-color: #f2f2f2;
-}
-
-#tabla-inscriptos tbody tr:hover {
-    background-color: #e9e9e9;
-}
-
-#loading-message, .no-results {
-    text-align: center;
-    padding: 20px;
-    font-style: italic;
-    color: #777;
-}
-
-.back-link {
-    margin-top: 30px;
-    text-align: center;
-}
-
-.back-link a {
-    color: #4CAF50;
-    text-decoration: none;
-    font-weight: bold;
-}
-
-.back-link a:hover {
-    text-decoration: underline;
-}
-/* --- Estilos para Horarios Checkbox --- */
-.horarios-container {
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-}
-
-.horarios-container h4 {
-    margin-top: 0;
-    color: #555;
-}
-
-.dia-grupo {
-    margin-bottom: 20px;
-}
-.dia-grupo:last-child {
-    margin-bottom: 0;
-}
-
-.dia-grupo h5 {
-    margin: 0 0 10px 0;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 8px;
-    font-size: 1.1em;
-}
-
-.horarios-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 15px;
-}
-
-.horario-item {
-    display: flex;
-    align-items: center;
-    background-color: #f9f9f9;
-    padding: 8px;
-    border-radius: 5px;
-    border: 1px solid #4CAF50; /* <-- BORDE VERDE AÑADIDO */
-    transition: background-color 0.2s ease; /* Transición suave */
-}
-
-.horario-item input[type="checkbox"] {
-    margin-right: 8px;
-    width: 18px;
-    height: 18px;
-}
-
-.horario-item label {
-    font-weight: normal;
-    margin-bottom: 0;
-}
-
-/* ========================================= */
-/* --- ESTILOS GENERALES PARA ERRORES --- */
-/* ========================================= */
-    
-/* Esta regla se aplicará a TODOS los mensajes de error */
-.error-message {
-    color: #e74c3c;
-    font-size: 0.9em;
-    margin-top: 5px;
-}
-
-/* Y esta regla ADICIONAL solo se aplicará al error genérico de disponibilidad */
-.availability-fieldset .error-message {
-    width: 100%;
-    text-align: center;
-    font-weight: bold;
-    margin-top: 15px;
-}
-/* ================================================= */
-/* --- ESTILOS PARA MODAL DE SPONSORS (VERSIÓN 2) -- */
-/* ================================================= */
-
-/* El fondo oscuro semi-transparente (sigue igual) */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.75);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
-    padding: 15px; /* Añadimos padding para que en móvil no pegue a los bordes */
-}
-
-.modal-overlay.visible {
-    opacity: 1;
-    visibility: visible;
-}
-
-/* El contenedor blanco de la ventana (con cambios importantes) */
-.modal-contenido {
-    background-color: #fff;
-    padding: 25px;
-    border-radius: 10px;
-    max-width: 700px; /* Un poco más ancho para la cuadrícula en PC */
-    width: 100%;
-    text-align: center;
-    position: relative;
-    transform: scale(0.9);
-    transition: transform 0.3s ease;
-    
-    /* ¡LA MAGIA! Hacemos que el contenedor sea scrollable si el contenido es muy alto */
-    max-height: 90vh; /* Máximo 90% de la altura de la pantalla */
-    overflow-y: auto; /* Activa el scroll vertical SOLO si es necesario */
-}
-
-.modal-overlay.visible .modal-contenido {
-    transform: scale(1);
-}
-
-.modal-contenido h2 {
-    margin-top: 0;
-    color: #333;
-}
-
-/* La cuadrícula para los logos de los sponsors */
-.sponsors-grid {
-    display: grid;
-    /* Por defecto (PC), 2 columnas. grid-template-columns lo definimos en el responsive */
-    gap: 20px;
-    margin: 25px 0;
-}
-
-.sponsors-grid img {
-    width: 100%;
-    border-radius: 8px;
-    transition: transform 0.2s ease;
-    border: 1px solid #eee; /* Un borde sutil */
-}
-
-.sponsors-grid img:hover {
-    transform: scale(1.05);
-}
-
-/* NUEVO: Estilos para las leyendas de texto */
-.modal-instruccion {
-    font-weight: bold;
-    color: #4CAF50; /* Verde para que resalte */
-    margin-top: 20px;
-}
-.modal-agradecimiento {
-    font-style: italic;
-    color: #777;
-    margin-bottom: 0;
-}
-
-/* El botón de cierre (X) */
-.cerrar-modal {
-    position: sticky; /* Se queda "pegado" arriba al hacer scroll */
-    top: 0;
-    float: right; /* Lo alineamos a la derecha */
-    font-size: 2.5em;
-    font-weight: bold;
-    color: #aaa;
-    background: none;
-    border: none;
-    cursor: pointer;
-    line-height: 1;
-    z-index: 1001; /* Nos aseguramos que esté por encima de todo */
-    padding: 0 5px; /* Un poco de espacio para que no pegue al borde */
-}
-/* ========================================= */
-/* --- ESTILOS PARA GRUPOS FORMADOS --- */
-/* ========================================= */
-
-.grupos-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 1.5rem;
-    margin: 2rem 0;
-}
-
-.grupo-card {
-    background: rgba(255, 255, 255, 0.95);
-    padding: 2rem;
-    border-radius: 12px;
-    border: 2px solid #4CAF50;
-    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.2);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.grupo-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(76, 175, 80, 0.3);
-}
-
-.grupo-card h3 {
-    margin: 0 0 1rem 0;
-    color: #2c3e50;
-    font-size: 1.3rem;
-    text-align: center;
-    border-bottom: 2px solid #4CAF50;
-    padding-bottom: 0.5rem;
-}
-
-.integrantes-count {
-    color: #4CAF50;
-    font-weight: bold;
-    text-align: center;
-    margin-bottom: 1.5rem;
-    font-size: 1.1rem;
-}
-
-.integrantes-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.integrantes-list li {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    padding: 0.8rem 1rem;
-    margin: 0.5rem 0;
-    border-radius: 8px;
-    font-size: 0.95rem;
-    border-left: 4px solid #4CAF50;
-    transition: all 0.2s ease;
-}
-
-.integrantes-list li:hover {
-    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
-    transform: translateX(5px);
-}
-
-/* ========================================= */
-/* --- ESTILOS PÁGINA GRUPOS (ESCRITORIO) --- */
-/* ========================================= */
-
-/* Grid de categorías */
-.categorias-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin: 1rem 0;
-}
-
-.categoria-card {
-    background: rgba(255, 255, 255, 0.9);
-    padding: 1.5rem;
-    border-radius: 8px;
-    text-align: center;
-    border: 1px solid #4CAF50;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.categoria-card h3 {
-    margin: 0 0 0.5rem 0;
-    color: #2c3e50;
-}
-
-.categoria-card .contador {
-    font-size: 1.2rem;
-    font-weight: bold;
-    color: #4CAF50;
-}
-
-/* Configuración de grupos */
-.categoria-config {
-    background: rgba(255, 255, 255, 0.9);
-    padding: 1.5rem;
-    margin: 1rem 0;
-    border-radius: 8px;
-    border: 1px solid #4CAF50;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.grupos-config-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
-    margin: 1rem 0;
-}
-
-.grupo-input {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.grupo-input input {
-    padding: 0.5rem;
-    border: 1px solid #4CAF50;
-    border-radius: 4px;
-    font-size: 1rem;
-}
-
-.grupo-resumen {
-    grid-column: 1 / -1;
-    display: flex;
-    justify-content: space-between;
-    font-weight: bold;
-    color: #2c3e50;
-}
-
-/* Botones */
-.action-buttons {
-    display: flex;
-    gap: 1rem;
-    margin: 2rem 0;
-    justify-content: center;
-}
-
-.btn-primary {
-    background: #4CAF50;
-    color: white;
-    padding: 1rem 2rem;
-    border: none;
-    border-radius: 5px;
-    font-size: 1.1rem;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-
-.btn-primary:hover {
-    background: #45a049;
-}
-
-.btn-primary:disabled {
-    background: #cccccc;
-    cursor: not-allowed;
-}
-
-.btn-success {
-    background: #27ae60;
-    color: white;
-    padding: 1rem 2rem;
-    border: none;
-    border-radius: 5px;
-    font-size: 1.1rem;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-
-.btn-success:hover {
-    background: #219a52;
-}
-
-.btn-secondary {
-    background: #95a5a6;
-    color: white;
-    padding: 1rem 2rem;
-    border: none;
-    border-radius: 5px;
-    font-size: 1.1rem;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-
-.btn-secondary:hover {
-    background: #7f8c8d;
-}
-
-/* Loading overlay */
-.loading-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.8);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-
-.loading-spinner {
-    text-align: center;
-    color: white;
-}
-
-.spinner {
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #4CAF50;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
-    margin: 1rem auto;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* Notificaciones */
-#notification-container {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 1001;
-}
-
-.notification {
-    padding: 1rem;
-    margin: 0.5rem 0;
-    border-radius: 5px;
-    color: white;
-    font-weight: bold;
-}
-
-.notification-info { background: #3498db; }
-.notification-success { background: #27ae60; }
-.notification-error { background: #e74c3c; }
-.notification-warning { background: #f39c12; }
-
-/* ================================================= */
-/* --- REGLAS RESPONSIVE PARA EL MODAL --- */
-/* ================================================= */
-
-/* Para pantallas de PC, usamos 2 columnas */
-@media (min-width: 601px) {
-    .sponsors-grid {
-        grid-template-columns: 1fr 1fr;
-    }
-}
-
-/* Para pantallas de Móvil, usamos 1 sola columna */
-@media (max-width: 600px) {
-    .sponsors-grid {
-        grid-template-columns: 1fr;
-    }
-}
-/* ========================================= */
-/* --- ESTILOS ESPECÍFICOS GRUPOS INCOMPLETOS --- */
-/* ========================================= */
-
-.grupo-incompleto {
-    border: 3px solid #e74c3c !important;
-    background: rgba(231, 76, 60, 0.15) !important;
-    position: relative;
-}
-
-.grupo-incompleto::before {
-    content: '⚠ INCOMPLETO';
-    position: absolute;
-    top: -12px;
-    right: 10px;
-    background: #e74c3c;
-    color: white;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: bold;
-}
-
-/* ========================================= */
-/* --- ESTILOS PARTIDOS PROGRAMADOS --- */
-/* ========================================= */
-
-.partidos-titulo {
-    margin-top: 3rem;
-    margin-bottom: 1rem;
-    color: #2980b9;
-    border-bottom: 3px solid #2980b9;
-    padding-bottom: 0.5rem;
-    font-size: 1.4rem;
-}
-
-.partidos-list {
-    margin: 1rem 0;
-    background: rgba(255, 255, 255, 0.8);
-    padding: 1.5rem;
-    border-radius: 8px;
-    border: 1px solid #3498db;
-}
-
-.partido-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem;
-    background: #fff;
-    margin: 0.8rem 0;
-    border-radius: 8px;
-    border-left: 4px solid #3498db;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.partido-item.partido-sin-horario {
-    background: #fff8e1;
-    border-left-color: #f39c12;
-}
-
-.partido-info {
-    flex: 1;
-}
-
-.partido-equipos {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex-wrap: nowrap;
-}
-
-.partido-local {
-    text-align: left;
-    font-weight: 600;
-    color: #2c3e50;
-    white-space: nowrap;
-}
-
-.partido-vs {
-    font-weight: bold;
-    color: #e74c3c;
-    font-size: 1.1rem;
-    text-align: center;
-    flex-shrink: 0;
-}
-
-.partido-visitante {
-    text-align: left;
-    font-weight: 600;
-    color: #2c3e50;
-    white-space: nowrap;
-}
-
-.partido-horario-container {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    min-width: 150px;
-}
-
-.horario-asignado {
-    background: #ecf0f1;
-    color: #2c3e50;
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 0.9rem;
-    white-space: nowrap;
-}
-
-.horario-pendiente-badge {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: #fff3cd;
-    color: #856404;
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    border: 1px solid #f39c12;
-    white-space: nowrap;
-}
-
-.icono-reloj {
-    font-size: 1rem;
-}
-
-/* Contenedor de horarios disponibles */
-.horarios-disponibles-container {
-    margin: 0.5rem 0 1rem 1rem;
-    padding: 1rem;
-    background: #fffef0;
-    border: 2px dashed #f39c12;
-    border-radius: 8px;
-}
-
-.horarios-jugador-item {
-    padding: 0.5rem;
-    margin: 0.25rem 0;
-    background: #fff;
-    border-radius: 4px;
-    border-left: 3px solid #3498db;
-    font-size: 0.9rem;
-}
-
-.jugador-nombre {
-    font-weight: 600;
-    color: #2c3e50;
-}
-
-/* ========================================= */
-/* --- ESTILOS INSCRIPTOS SIN GRUPO --- */
-/* ========================================= */
-
-.sin-grupo-section {
-    margin-top: 3rem;
-    padding: 2rem;
-    background: rgba(231, 76, 60, 0.1);
-    border: 3px solid #e74c3c;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.2);
-}
-
-.sin-grupo-titulo {
-    color: #e74c3c;
-    margin-top: 0;
-    margin-bottom: 1.5rem;
-    font-size: 1.3rem;
-    border-bottom: 2px solid #e74c3c;
-    padding-bottom: 0.5rem;
-}
-
-.sin-grupo-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.sin-grupo-list li {
-    padding: 0.8rem 1rem;
-    margin: 0.5rem 0;
-    background: #fff;
-    border-radius: 6px;
-    border-left: 4px solid #e74c3c;
-    font-weight: 500;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.sin-grupo-ayuda {
-    font-size: 0.95rem;
-    color: #7f8c8d;
-    font-style: italic;
-    margin-top: 1.5rem;
-    padding: 1rem;
-    background: rgba(255, 255, 255, 0.7);
-    border-radius: 6px;
-    border-left: 3px solid #f39c12;
-}
-
-/* ========================================= */
-/* --- ESTILOS PARTIDOS SIN HORARIO (LIMPIO) --- */
-/* ========================================= */
-
-
-
-/* ========================================= */
-/* --- ESTILOS ADVERTENCIAS --- */
-/* ========================================= */
-
-.advertencias-section {
-    margin-top: 3rem;
-    padding: 2rem;
-    background: rgba(243, 156, 18, 0.1);
-    border: 3px solid #f39c12;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(243, 156, 18, 0.2);
-}
-
-.advertencias-titulo {
-    color: #d68910;
-    margin-top: 0;
-    margin-bottom: 1.5rem;
-    font-size: 1.3rem;
-    border-bottom: 2px solid #f39c12;
-    padding-bottom: 0.5rem;
-}
-
-.advertencias-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.advertencias-list li {
-    padding: 0.8rem 1rem;
-    margin: 0.5rem 0;
-    background: #fff;
-}
-
-/* ========================================= */
-/* --- ESTILOS HORARIOS DISPONIBLES --- */
-/* ========================================= */
-
-/* ========================================= */
-/* --- ESTILOS HORARIOS DISPONIBLES MEJORADOS --- */
-/* ========================================= */
-
-.horarios-disponibles {
-    background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
-    border: 1px solid #f39c12;
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin: 1rem 0;
-    font-size: 0.95rem;
-    box-shadow: 0 2px 8px rgba(243, 156, 18, 0.15);
-}
-
-.horarios-disponibles .horarios-titulo {
-    font-weight: 700;
-    color: #d68910;
-    font-size: 1rem;
-    margin-bottom: 1rem;
-    border-bottom: 2px solid #f39c12;
-    padding-bottom: 0.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.horarios-disponibles .horarios-titulo::before {
-    content: "📅";
-}
-
-.horarios-disponibles .horarios-jugadores {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-}
-
-.horarios-disponibles .horarios-jugador {
-    background: #fff;
-    border-radius: 8px;
-    padding: 1rem;
-    border: 1px solid #e0e0e0;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-}
-
-.horarios-disponibles .jugador-nombre {
-    font-weight: 600;
-    color: #2c3e50;
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
-    border-bottom: 1px solid #ecf0f1;
-    padding-bottom: 0.3rem;
-}
-
-.horarios-disponibles .horarios-lista {
-    margin: 0;
-    padding-left: 1.2rem;
-    color: #555;
-    font-size: 0.85rem;
-}
-
-.horarios-disponibles .horarios-lista li {
-    margin: 0.3rem 0;
-    line-height: 1.4;
-}
-
-.horarios-disponibles .sin-horarios {
-    color: #e74c3c;
-    font-style: italic;
-    font-size: 0.85rem;
-    padding: 0.5rem;
-    background: #ffeaea;
-    border-radius: 4px;
-    border-left: 3px solid #e74c3c;
-}
-
-.horarios-disponibles .horario-tag {
-    display: inline-block;
-    background: #e8f4f8;
-    color: #2980b9;
-    padding: 3px 8px;
-    margin: 2px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    border: 1px solid #bee5eb;
-}
-
-/* ========================================= */
-/* --- ESTILOS EDICIÓN DE PARTIDOS (SIMPLIFICADO) --- */
-/* ========================================= */
-
-.editar-grupos .partido-item {
-    position: relative;
-    padding-right: 90px;
-}
-
-.editar-grupos .partido-sin-horario {
-    background: #fff8e1 !important;
-    border-left: 4px solid #f39c12 !important;
-}
-
-.editar-grupos .btn-editar-horario {
-    position: absolute;
-    right: 1rem;
-    top: 50%;
-    transform: translateY(-50%);
-    background: #3498db;
-    color: white;
-    border: none;
-    padding: 6px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    white-space: nowrap;
-}
-
-.editar-grupos .btn-editar-horario:hover {
-    background: #2980b9;
-}
-
-.editar-grupos .horarios-disponibles {
-    background: #fff8e1;
-    border: 2px dashed #f39c12;
-    border-radius: 8px;
-    padding: 1rem;
-    margin: 0.5rem 0 1rem 2rem;
-    font-size: 0.9rem;
-}
-
-.editar-grupos .horarios-disponibles .horarios-jugador {
-    margin: 0.5rem 0;
-    padding: 0.5rem;
-    background: #fff;
-    border-radius: 4px;
-    border-left: 3px solid #3498db;
-}
-
-.editar-grupos .selector-horario-modal {
-    position: absolute;
-    right: 1rem;
-    top: 50%;
-    transform: translateY(-50%);
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    background: #fff;
-    border: 2px solid #3498db;
-    border-radius: 6px;
-    padding: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}
-
-.editar-grupos .select-horario {
-    padding: 6px 10px;
-    border: 1px solid #bdc3c7;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    min-width: 200px;
-}
-
-.editar-grupos .btn-guardar-horario {
-    background: #27ae60;
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.85rem;
-}
-
-.editar-grupos .btn-guardar-horario:hover {
-    background: #229954;
-}
-
-.btn-cancelar-horario {
-    background: #e74c3c;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9rem;
-}
-
-.btn-cancelar-horario:hover {
-    background: #c0392b;
-}
-
-/* ========================================= */
-/* --- ESTILOS AGRUPACIÓN POR FECHAS (EDITAR GRUPOS) --- */
-/* ========================================= */
-
-.partidos-por-fecha {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-}
-
-.fecha-grupo {
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    overflow: hidden;
-}
-
-.fecha-grupo.sin-horario {
-    background: #fff8e1;
-    border: 2px solid #f39c12;
-}
-
-.fecha-encabezado {
-    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-    color: white;
-    padding: 1rem 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.sin-horario .fecha-encabezado {
-    background: linear-gradient(135deg, #f39c12 0%, #d68910 100%);
-}
-
-.fecha-dia {
-    font-size: 1.5rem;
-    font-weight: 700;
-    text-transform: uppercase;
-}
-
-.fecha-fecha {
-    font-size: 1.1rem;
-    opacity: 0.95;
-}
-
-.fecha-grupo .partidos-list {
-    padding: 1rem;
-}
-
-.fecha-grupo .partido-item {
-    display: grid;
-    grid-template-columns: 60px 1fr auto 36px;
-    gap: 0.6rem;
-    align-items: center;
-    padding: 0.6rem 0.8rem;
-    margin: 0.4rem 0;
-    background: #f8f9fa;
-    border-radius: 8px;
-    border-left: 4px solid #3498db;
-    min-height: 50px;
-}
-
-.fecha-grupo .partido-sin-horario {
-    background: #fff3cd;
-    border-left-color: #f39c12;
-}
-
-.fecha-grupo .partido-hora {
-    background: #27ae60;
-    color: white;
-    padding: 5px 10px;
-    border-radius: 4px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    text-align: center;
-}
-
-.fecha-grupo .partido-hora.horario-pendiente {
-    background: #e74c3c;
-}
-
-.fecha-grupo .partido-match {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.8rem;
-    flex-wrap: wrap;
-}
-
-.fecha-grupo .partido-local,
-.fecha-grupo .partido-visitante {
-    font-weight: 600;
-    color: #2c3e50;
-    font-size: 0.85rem;
-}
-
-.fecha-grupo .partido-vs {
-    color: #e74c3c;
-    font-weight: bold;
-    font-size: 0.9rem;
-}
-
-.fecha-grupo .partido-categoria {
-    background: #e8f4f8;
-    color: #2980b9;
-    padding: 4px 12px;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    text-align: center;
-    min-width: 80px;
-}
-
-.fecha-grupo .btn-editar-horario {
-    background: #3498db;
-    color: white;
-    border: none;
-    padding: 8px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 1rem;
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.fecha-grupo .btn-editar-horario:hover {
-    background: #2980b9;
-}
-
-.fecha-grupo .selector-horario-modal {
-    grid-column: 1 / -1;
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    justify-content: flex-end;
-    padding: 10px;
-    background: #fff;
-    border: 2px solid #3498db;
-    border-radius: 6px;
-    margin-top: 10px;
-}
-
-.fecha-grupo .select-horario {
-    padding: 6px 10px;
-    border: 1px solid #bdc3c7;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    min-width: 250px;
-}
-
-.fecha-grupo .btn-guardar-horario {
-    background: #27ae60;
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.85rem;
-}
-
-.fecha-grupo .btn-guardar-horario:hover {
-    background: #229954;
-}
-
-.fecha-grupo .btn-cancelar-horario {
-    background: #e74c3c;
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.85rem;
-}
-
-.fecha-grupo .btn-cancelar-horario:hover {
-    background: #c0392b;
-}
-
-/* ========================================= */
-/* --- ESTILOS PARA DISPOSITIVOS MÓVILES --- */
-/* ========================================= */
-/* ========================================= */
-/* --- ESTILOS PÁGINA VISUALIZACIÓN GRUPOS/PARTIDOS --- */
-/* ========================================= */
-
-/* Filtros Avanzados */
-.filtros-avanzados {
-    background: rgba(255, 255, 255, 0.9);
-    padding: 1.5rem;
-    border-radius: 12px;
-    margin: 2rem 0;
-    border: 2px solid #4CAF50;
-    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.2);
-}
-
-.filtros-grid {
-    display: grid;
-    grid-template-columns: 1fr 2fr auto;
-    gap: 1rem;
-    align-items: end;
-}
-
-.filtro-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.filtro-item input, .filtro-item select {
-    padding: 0.75rem;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    font-size: 1rem;
-}
-
-.filtro-item label {
-    font-weight: 700;
-    color: #555;
-}
-
-/* Toggle de Vista */
-.toggle-vista {
-    text-align: center;
-    margin: 2rem 0;
-}
-
-.toggle-buttons {
-    display: flex;
-    justify-content: center;
-    gap: 0.5rem;
-    background: #f8f9fa;
-    padding: 0.5rem;
-    border-radius: 12px;
-    border: 2px solid #e9ecef;
-}
-
-.toggle-btn {
-    padding: 0.75rem 1.5rem;
-    border: 2px solid transparent;
-    background: white;
-    color: #4CAF50;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-weight: 600;
-    font-size: 1rem;
-}
-
-.toggle-btn.active {
-    background: #4CAF50;
-    color: white;
-    border-color: #45a049;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-}
-
-.toggle-btn:hover:not(.active) {
-    background: #e8f5e9;
-    border-color: #4CAF50;
-    transform: translateY(-1px);
-}
-
-/* Estados y Mensajes */
-.loading-estado {
-    text-align: center;
-    padding: 3rem;
-}
-
-.loading-estado .loading-spinner {
-    color: #4CAF50;
-    font-weight: bold;
-}
-
-.hidden {
-    display: none !important;
-}
-
-.mensaje-estado {
-    text-align: center;
-    padding: 1.5rem;
-    margin: 2rem 0;
-    border-radius: 8px;
-    font-weight: 600;
-}
-
-.mensaje-estado.warning {
-    background: #fff3cd;
-    border: 2px solid #f39c12;
-    color: #856404;
-}
-
-.mensaje-estado.error {
-    background: #f8d7da;
-    border: 2px solid #e74c3c;
-    color: #721c24;
-}
-
-.sin-resultados {
-    text-align: center;
-    padding: 2rem;
-    color: #666;
-    font-style: italic;
-    background: rgba(255, 255, 255, 0.8);
-    border-radius: 8px;
-    border: 2px dashed #ccc;
-}
-
-/* Grupos Grid */
-.grupos-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
-    margin: 2rem 0;
-}
-
-.grupo-tarjeta {
-    background: white;
-    border: 2px solid #4CAF50;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.2);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.grupo-tarjeta:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(76, 175, 80, 0.3);
-}
-
-.grupo-header {
-    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-    color: white;
-    padding: 1rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.grupo-header h3 {
-    margin: 0;
-    font-size: 1.2rem;
-}
-
-.categoria-badge {
-    background: rgba(255, 255, 255, 0.2);
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    font-weight: 600;
-}
-
-.grupo-integrantes {
-    padding: 1.5rem;
-}
-
-.integrante-item {
-    background: #f8f9fa;
-    padding: 0.75rem;
-    margin: 0.5rem 0;
-    border-radius: 6px;
-    border-left: 4px solid #4CAF50;
-    font-size: 0.95rem;
-    transition: background-color 0.2s ease;
-}
-
-.integrante-item:hover {
-    background: #e9ecef;
-}
-
-.grupo-footer {
-    background: #f8f9fa;
-    padding: 0.75rem 1.5rem;
-    border-top: 1px solid #e9ecef;
-    text-align: center;
-}
-
-.integrantes-count {
-    color: #4CAF50;
-    font-weight: 600;
-    font-size: 0.9rem;
-}
-
-/* Partidos por Categoría */
-.partidos-por-categoria {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-    margin: 2rem 0;
-}
-
-.categoria-seccion {
-    background: white;
-    border: 2px solid #4CAF50;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.2);
-}
-
-.categoria-header {
-    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-    color: white;
-    padding: 1rem 1.5rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.categoria-header h3 {
-    margin: 0;
-    font-size: 1.3rem;
-}
-
-.partidos-count {
-    background: rgba(255, 255, 255, 0.2);
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.9rem;
-    font-weight: 600;
-}
-
-.fecha-seccion {
-    border-bottom: 1px solid #eee;
-}
-
-.fecha-seccion:last-child {
-    border-bottom: none;
-}
-
-.fecha-header {
-    background: #f8f9fa;
-    padding: 0.75rem 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    border-bottom: 2px solid #4CAF50;
-}
-
-.fecha-dia {
-    font-weight: bold;
-    color: #4CAF50;
-    font-size: 1.1rem;
-}
-
-.fecha-fecha {
-    color: #666;
-    font-weight: 600;
-}
-
-.partidos-list {
-    padding: 1rem;
-}
-
-.partido-item {
-    display: grid;
-    grid-template-columns: 80px 1fr auto;
-    gap: 1rem;
-    align-items: center;
-    padding: 0.75rem;
-    margin: 0.5rem 0;
-    background: #f8f9fa;
-    border-radius: 8px;
-    border-left: 4px solid #4CAF50;
-    transition: all 0.2s ease;
-}
-
-.partido-item:hover {
-    background: #e9ecef;
-    transform: translateX(5px);
-}
-
-.partido-hora {
-    background: #4CAF50;
-    color: white;
-    padding: 0.5rem;
-    border-radius: 4px;
-    text-align: center;
-    font-weight: 600;
-    font-size: 0.9rem;
-}
-
-.partido-match {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-}
-
-.partido-local, .partido-visitante {
-    font-weight: 600;
-    color: #2c3e50;
-    font-size: 0.9rem;
-}
-
-.partido-vs {
-    color: #e74c3c;
-    font-weight: bold;
-    font-size: 0.85rem;
-}
-
-.partido-categoria {
-    background: #e8f4f8;
-    color: #2980b9;
-    padding: 0.25rem 0.75rem;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    text-align: center;
-    min-width: 80px;
-}
-
-/* Partidos sin Horario - Versión corregida */
-.partidos-sin-horario {
-    border-top: 2px dashed #f39c12;
-    margin-top: 1rem;
-    background: #fff8e1;
-    border-left: 4px solid #f39c12;
-}
-
-.partidos-sin-horario .partido-item {
-    background: #fff8e1;
-    border-left-color: #f39c12;
-}
-
-.partidos-sin-horario .partido-hora {
-    background: #f39c12;
-}
-
-.sin-horario-header {
-    background: #fff3cd;
-    color: #856404;
-    padding: 0.75rem 1.5rem;
-    font-weight: 600;
-    border-bottom: 1px solid #ffeaa7;
-}
-
-/* Estilos sin-horario-item ya incluidos en .partidos-sin-horario arriba */
-
-/* Responsive para Visualización Grupos/Partidos */
+/* ESTILOS RESPONSIVE - MÓVIL */
 @media (max-width: 768px) {
-    .filtros-grid {
-        grid-template-columns: 1fr;
-        gap: 1rem;
+    body { 
+        padding: 10px; 
     }
     
-    .toggle-buttons {
-        flex-direction: column;
-        gap: 0.5rem;
+    .container { 
+        padding: 15px; 
     }
     
-    .toggle-btn {
-        width: 100%;
-    }
-    
-    .partido-item {
-        grid-template-columns: 60px 1fr;
-        gap: 0.5rem;
-    }
-    
-    .partido-categoria {
-        grid-column: 1 / -1;
-        text-align: center;
-        margin-top: 0.5rem;
-    }
-    
-    .categoria-header {
-        flex-direction: column;
-        gap: 0.5rem;
-        text-align: center;
-    }
-    
-    .fecha-header {
-        flex-direction: column;
-        gap: 0.25rem;
-        text-align: center;
-    }
-    
-    .grupos-grid {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-    
-    .grupo-header {
-        flex-direction: column;
-        gap: 0.5rem;
-        text-align: center;
-    }
-    
-    .categoria-badge {
-        align-self: center;
-    }
-}
-
-@media (max-width: 600px) {
-    body { padding: 10px; }
-    .container { padding: 15px; }
-    .banner { display: none !important; } /* Oculta los banners laterales de PC en móvil */
-
     header {
         flex-direction: column;
         gap: 15px;
@@ -1698,12 +81,9 @@ footer {
     .header-text {
         text-align: center;
     }
- /* NUEVA REGLA RESPONSIVE PARA LOS CAMPOS DUO */
-    .form-group-duo {
-        grid-template-columns: 1fr;
-    }    
+    
     header h1 {
-        font-size: 1.5em; /* Un poco más pequeño para móviles */
+        font-size: 1.4em;
     }
     
     .header-logo {
@@ -1711,48 +91,7 @@ footer {
         width: 80px;
     }
     
-    .availability-grid {
-        grid-template-columns: 1fr;
-        gap: 5px 10px;
-    }
-
-    .availability-grid label {
-        text-align: left;
-        margin-bottom: -5px;
-    }
-
-    /* Reglas específicas para la página de inscriptos en móvil */
-    .filtro-container {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .filtro-container select {
-        width: 100%;
-    }
-    .banner-movil-slider {
-    display: flex; /* Muestra el carrusel en móviles */
-}
-.banner-movil-slider {
-    display: grid; /* Muestra el carrusel en móviles usando grid */
-}
-.categorias-grid { /* aca medio elcambio*/
-    grid-template-columns: 1fr;
-}
-
-.grupos-config-grid {
-    grid-template-columns: 1fr;
-}
-
-.action-buttons {
-    flex-direction: column;
-}
-
-.action-buttons button {
-        width: 100%;
-    }
-    
-    /* Corrección para alinear títulos de grupos y categorías a la izquierda en mobile */
+    /* Fix para títulos de grupos */
     .grupo-header,
     .categoria-header,
     .grupo-card h3,
@@ -1760,49 +99,143 @@ footer {
         text-align: left !important;
         display: flex !important;
         align-items: center !important;
-        white-space: nowrap !important;
+        white-space: normal !important;
+        flex-wrap: wrap !important;
+        gap: 0.5rem !important;
+        font-size: 0.9rem !important;
     }
     
-    /* Corrección específica para ver-resultados.html */
-    .grupo-header {
-        min-width: 0 !important;
-        justify-content: flex-start !important;
-        padding: 10px !important;
+    /* Fix para nombres en partidos */
+    .partido-local,
+    .partido-visitante {
+        white-space: normal !important;
+        word-break: break-word !important;
+        font-size: 0.85rem !important;
+        line-height: 1.2 !important;
     }
     
-    .tabla-container .tabla-posiciones {
-        min-width: 0 !important;
+    .partido-vs {
+        font-size: 0.8rem !important;
     }
     
-    /* Evitar scrollbar horizontal en contenedores de grupos */
-    .grupos-list {
-        grid-template-columns: 1fr;
-        overflow-x: hidden;
+    /* Fix para filtros */
+    .filtros-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
     }
     
-    .categorias-grid {
-        grid-template-columns: 1fr;
-        overflow-x: hidden;
+    .filtro-container {
+        flex-direction: column !important;
+        align-items: stretch !important;
     }
-/* hasta aca*/
-footer {
-        flex-direction: column;
-        text-align: center;
+    
+    .filtro-container select,
+    .filtro-container input {
+        width: 100% !important;
     }
-}
-.modal-instruccion {
-    cursor: pointer;
-}
-/* --- RESPONSIVE GRUPOS --- */
-.grupos-list {
-    grid-template-columns: 1fr;
-    gap: 1rem;
+    
+    /* Fix para layout de partidos */
+    .partido-item {
+        grid-template-columns: 1fr !important;
+        gap: 0.5rem !important;
+        padding: 1rem !important;
+    }
+    
+    .partido-match {
+        flex-direction: column !important;
+        gap: 0.25rem !important;
+        align-items: flex-start !important;
+    }
+    
+    .partido-categoria {
+        text-align: left !important;
+        margin-top: 0.5rem !important;
+    }
+    
+    /* Fix para toggle buttons */
+    .toggle-buttons {
+        flex-direction: column !important;
+        gap: 0.5rem !important;
+    }
+    
+    .toggle-btn {
+        width: 100% !important;
+        font-size: 0.9rem !important;
+        padding: 0.6rem 1rem !important;
+    }
+    
+    /* Fix para grids */
+    .grupos-list,
+    .categorias-grid,
+    .grupos-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+    
+    /* Fix para cards */
+    .grupo-card {
+        padding: 1rem !important;
+    }
+    
+    .integrantes-list li {
+        font-size: 0.9rem !important;
+        padding: 0.6rem 0.8rem !important;
+    }
+    
+    /* Fix para tablas */
+    .tabla-container {
+        overflow-x: auto !important;
+    }
+    
+    .tabla-posiciones {
+        min-width: auto !important;
+        font-size: 0.85rem !important;
+    }
+    
+    .tabla-posiciones th,
+    .tabla-posiciones td {
+        padding: 6px 4px !important;
+    }
+    
+    /* Fix para nombres de equipos */
+    .tabla-posiciones .equipo {
+        max-width: none !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+        font-size: 0.85rem !important;
+    }
+    
+    /* Fix para horarios */
+    .horario-asignado,
+    .horario-pendiente-badge {
+        white-space: normal !important;
+        font-size: 0.8rem !important;
+    }
 }
 
-.grupo-card {
-    padding: 1.5rem;
-}
-
-.grupo-card h3 {
-    font-size: 1.1rem;
+@media (max-width: 600px) {
+    .banner { 
+        display: none !important; 
+    }
+    
+    .form-group-duo {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .availability-grid {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .action-buttons {
+        flex-direction: column !important;
+    }
+    
+    .action-buttons button {
+        width: 100% !important;
+    }
+    
+    footer {
+        flex-direction: column !important;
+        text-align: center !important;
+    }
 }
