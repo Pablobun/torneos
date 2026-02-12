@@ -227,6 +227,44 @@
             .horarios-table td {
                 padding: 8px;
             }
+            /* Responsive para tabla de horarios */
+            .horarios-list {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .horarios-table {
+                min-width: 600px;
+                font-size: 0.85rem;
+            }
+            
+            .horarios-table th,
+            .horarios-table td {
+                padding: 8px 6px;
+                white-space: nowrap;
+            }
+            
+            .horarios-table td:nth-child(1),
+            .horarios-table th:nth-child(1) {
+                min-width: 80px;
+            }
+            
+            .horarios-table td:nth-child(2),
+            .horarios-table th:nth-child(2) {
+                min-width: 70px;
+            }
+            
+            .horarios-table td:nth-child(3),
+            .horarios-table th:nth-child(3) {
+                min-width: 50px;
+            }
+            
+            .horarios-table td:nth-child(4),
+            .horarios-table th:nth-child(4),
+            .horarios-table td:nth-child(5),
+            .horarios-table th:nth-child(5) {
+                min-width: 70px;
+            }
         }
     </style>
 </head>
@@ -375,7 +413,13 @@
 
         // Mostrar horarios en tabla
         function mostrarHorarios(horarios) {
-            const container = document.getElementById('horarios-container');
+            const container = document.getElementById("horarios-container");
+            // Ordenar por fecha y hora
+            horarios.sort((a, b) => {
+                const fechaA = new Date(a.fecha + "T" + a.hora_inicio);
+                const fechaB = new Date(b.fecha + "T" + b.hora_inicio);
+                return fechaA - fechaB;
+            });
             
             if (horarios.length === 0) {
                 container.innerHTML = '<div class="no-horarios">No hay horarios configurados</div>';
@@ -398,16 +442,17 @@
             `;
 
             horarios.forEach(h => {
-                const fecha = new Date(h.fecha).toLocaleDateString('es-ES');
+                const [year, month, day] = h.fecha.split("-");
+                const fecha = day + "/" + month + "/" + year;
                 const puedeEliminar = h.puede_eliminar !== false;
                 
                 html += `
                     <tr>
                         <td>${h.dia_semana}</td>
                         <td>${fecha}</td>
-                        <td>${h.hora_inicio.substring(0, 5)}</td>
-                        <td>${h.canchas || h.Canchas}</td>
-                        <td>${h.lugar}</td>
+                        <td>${h.hora_inicio ? h.hora_inicio.substring(0, 5) : ""}</td>
+                        <td>${h.Canchas || h.canchas || "-"}</td>
+                        <td>${h.lugar || "-"}</td>
                         <td>
                             <button class="btn-delete" 
                                     onclick="eliminarHorario(${h.id})" 
