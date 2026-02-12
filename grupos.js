@@ -272,6 +272,9 @@ async function inicializar() {
             `;
         }
         
+        // Cerrar el contenedor de grupos (grid) antes de los partidos
+        html += '</div>';
+        
         // Mostrar partidos
         if (partidosGenerados && partidosGenerados.length > 0) {
             html += '<h3 class="partidos-titulo">Partidos Programados</h3>';
@@ -365,7 +368,6 @@ async function inicializar() {
             html += '</div>';
         }
         
-        html += '</div>';
         gruposContainer.innerHTML = html;
         btnGuardarGrupos.disabled = false;
     }
