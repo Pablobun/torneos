@@ -140,9 +140,9 @@ async function inicializar() {
             `;
         }
         html += '</div>';
-        categoriasConfig.innerHTML = html;
+        // Solo actualizar el resumen - la configuracion la maneja mostrarConfiguracionGrupos()
         
-        // Actualizar el contenedor de resumen (Inscriptos por Categoria)
+        // Actualizar el contenedor de resumen (Inscriptos por Categoria) (Inscriptos por Categoria)
         if (categoriasContainer) {
             categoriasContainer.innerHTML = html;
         }
@@ -191,9 +191,9 @@ async function inicializar() {
             `;
         }
         
-        categoriasConfig.innerHTML = html;
+        // Solo actualizar el resumen - la configuracion la maneja mostrarConfiguracionGrupos()
         
-        // Actualizar el contenedor de resumen (Inscriptos por Categoria)
+        // Actualizar el contenedor de resumen (Inscriptos por Categoria) (Inscriptos por Categoria)
         if (categoriasContainer) {
             categoriasContainer.innerHTML = html;
         }
