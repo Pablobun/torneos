@@ -58,7 +58,7 @@ app.get('/api/torneo-activo', async (req, res) => {
 // ==========================================================
 app.get('/api/horarios/:idTorneo', async (req, res) => {
     const { idTorneo } = req.params;
-    const sql = 'SELECT id, dia_semana, fecha, hora_inicio FROM horarios WHERE id_torneo_fk = ? AND activo = 1 AND (es_playoff = FALSE OR es_playoff IS NULL) ORDER BY fecha, hora_inicio';
+    const sql = 'SELECT id, dia_semana, fecha, hora_inicio, Canchas, lugar FROM horarios WHERE id_torneo_fk = ? AND activo = 1 AND (es_playoff = FALSE OR es_playoff IS NULL) ORDER BY fecha, hora_inicio';
     try {
         const connection = await mysql.createConnection(connectionConfig);
         const [rows] = await connection.execute(sql, [idTorneo]);
@@ -3164,8 +3164,9 @@ app.listen(PORT, () => {
 // ENDPOINTS PARA GESTIÓN DE HORARIOS
 // ==========================================================
 
-// GET: Listar horarios de un torneo
-app.get('/api/horarios/:idTorneo', authMiddleware, async (req, res) => {
+
+// GET: Listar horarios de un torneo (versión admin con validaciones)
+app.get("/api/horarios-admin/:idTorneo", authMiddleware, async (req, res) => {
     const { idTorneo } = req.params;
     
     try {

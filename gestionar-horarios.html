@@ -409,7 +409,7 @@
             if (!torneoId) return;
             
             try {
-                const response = await fetch(`${API_URL}/horarios/${torneoId}`, {
+                const response = await fetch(`${API_URL}/horarios-admin/${torneoId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
