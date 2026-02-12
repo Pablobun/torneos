@@ -266,6 +266,21 @@
                 min-width: 70px;
             }
         }
+        
+        /* Responsive fixes for horarios table */
+        @media (max-width: 768px) {
+            .horarios-list {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                margin: 0 -10px;
+                padding: 0 10px;
+            }
+            
+            .horarios-table {
+                min-width: 600px;
+                font-size: 0.9rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -442,17 +457,28 @@
             `;
 
             horarios.forEach(h => {
-                const [year, month, day] = h.fecha.split("-");
-                const fecha = day + "/" + month + "/" + year;
+                // Fix date display - backend sends YYYY-MM-DD
+                let fechaFormateada = h.fecha;
+                if (h.fecha && h.fecha.includes('-')) {
+                    const parts = h.fecha.split('-');
+                    if (parts.length === 3) {
+                        fechaFormateada = parts[2] + '/' + parts[1] + '/' + parts[0];
+                    }
+                }
+                
+                // Fix fields display with proper fallbacks
+                const canchas = h.Canchas !== undefined ? h.Canchas : (h.canchas !== undefined ? h.canchas : '-');
+                const lugar = h.lugar || '-';
+                const hora = h.hora_inicio ? h.hora_inicio.substring(0, 5) : '';
                 const puedeEliminar = h.puede_eliminar !== false;
                 
                 html += `
                     <tr>
-                        <td>${h.dia_semana}</td>
-                        <td>${fecha}</td>
-                        <td>${h.hora_inicio ? h.hora_inicio.substring(0, 5) : ""}</td>
-                        <td>${h.Canchas || h.canchas || "-"}</td>
-                        <td>${h.lugar || "-"}</td>
+                        <td>${h.dia_semana || ''}</td>
+                        <td>${fechaFormateada}</td>
+                        <td>${hora}</td>
+                        <td>${canchas}</td>
+                        <td>${lugar}</td>
                         <td>
                             <button class="btn-delete" 
                                     onclick="eliminarHorario(${h.id})" 
