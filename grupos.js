@@ -15,7 +15,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // Elementos del DOM
     const infoTorneo = document.getElementById('info-torneo');
     const categoriasConfig = document.getElementById('categorias-config');
-    const categoriasContainer = document.getElementById('categorias-container');
     const gruposFormados = document.getElementById('grupos-formados');
     const gruposContainer = document.getElementById('grupos-container');
     const partidosContainer = document.getElementById('partidos-container');
@@ -140,12 +139,7 @@ async function inicializar() {
             `;
         }
         html += '</div>';
-        // Solo actualizar el resumen - la configuracion la maneja mostrarConfiguracionGrupos()
-        
-        // Actualizar el contenedor de resumen (Inscriptos por Categoria) (Inscriptos por Categoria)
-        if (categoriasContainer) {
-            categoriasContainer.innerHTML = html;
-        }
+        categoriasConfig.innerHTML = html;
     }
 
     // Mostrar configuración de grupos
@@ -191,12 +185,7 @@ async function inicializar() {
             `;
         }
         
-        // Solo actualizar el resumen - la configuracion la maneja mostrarConfiguracionGrupos()
-        
-        // Actualizar el contenedor de resumen (Inscriptos por Categoria) (Inscriptos por Categoria)
-        if (categoriasContainer) {
-            categoriasContainer.innerHTML = html;
-        }
+        categoriasConfig.innerHTML = html;
         
         // Agregar event listeners para validar en tiempo real
         for (const categoria of Object.keys(inscriptosPorCategoria)) {
