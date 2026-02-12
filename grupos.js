@@ -140,9 +140,9 @@ async function inicializar() {
             `;
         }
         html += '</div>';
-        categoriasConfig.innerHTML = html;
+        // Actualizar solo el resumen - la configuracion la maneja mostrarConfiguracionGrupos()
         
-        // Tambien actualizar el contenedor de resumen
+        // Actualizar el contenedor de resumen (Inscriptos por Categoria)
         if (categoriasContainer) {
             categoriasContainer.innerHTML = html;
         }
@@ -191,9 +191,9 @@ async function inicializar() {
             `;
         }
         
-        categoriasConfig.innerHTML = html;
+        // Actualizar solo el resumen - la configuracion la maneja mostrarConfiguracionGrupos()
         
-        // Tambien actualizar el contenedor de resumen
+        // Actualizar el contenedor de resumen (Inscriptos por Categoria)
         if (categoriasContainer) {
             categoriasContainer.innerHTML = html;
         }
