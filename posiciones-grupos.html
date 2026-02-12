@@ -419,7 +419,7 @@
                 }
                 
                 renderizarGrupos(gruposConEstadisticas);
-                renderizarResumen(gruposConEstadisticas);
+                await renderizarResumen(gruposConEstadisticas);
                 
                 // Extraer categorías únicas y renderizar botones de llave
                 const categorias = [...new Set(grupos.map(g => g.categoria))];
@@ -529,13 +529,35 @@
             `;
         }
 
-        function renderizarResumen(gruposData) {
+        async function renderizarResumen(gruposData) {
             const container = document.getElementById('resumen-container');
             
             const totalGrupos = gruposData.length;
             const totalEquipos = gruposData.reduce((sum, g) => sum + (g.estadisticas?.length || 0), 0);
-            const totalPartidosJugados = gruposData.reduce((sum, g) => 
-                sum + (g.estadisticas?.reduce((s, e) => s + (e.pj || 0), 0) / 2 || 0), 0);
+            
+            // Cargar partidos reales del torneo para calcular pendientes
+            let partidosPendientes = 0;
+            let totalPartidosJugados = 0;
+            
+            if (torneoId) {
+                try {
+                    const response = await fetch(`${API_URL}/partidos/${torneoId}`);
+                    if (response.ok) {
+                        const partidosData = await response.json();
+                        // Filtrar solo partidos de grupos (ronda IS NULL/undefined)
+                        const partidosGrupos = partidosData.filter(p => !p.ronda);
+                        const totalPartidos = partidosGrupos.length;
+                        const jugados = partidosGrupos.filter(p => p.estado === 'finalizado' || p.ganador_id).length;
+                        partidosPendientes = Math.max(0, totalPartidos - jugados);
+                        totalPartidosJugados = jugados;
+                    }
+                } catch (e) {
+                    console.error('Error al cargar partidos para resumen:', e);
+                    // Fallback: usar cálculo desde estadísticas
+                    totalPartidosJugados = gruposData.reduce((sum, g) => 
+                        sum + (g.estadisticas?.reduce((s, e) => s + (e.pj || 0), 0) / 2 || 0), 0);
+                }
+            }
             
             container.innerHTML = `
                 <div class="resumen-torneo">
@@ -554,8 +576,8 @@
                             <p>Partidos Jugados</p>
                         </div>
                         <div class="stat-card">
-                            <h4>${totalEquipos * 2}</h4>
-                            <p>Clasificados a Playoffs</p>
+                            <h4>${Math.floor(partidosPendientes)}</h4>
+                            <p>Partidos Pendientes</p>
                         </div>
                     </div>
                 </div>

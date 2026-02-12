@@ -429,6 +429,7 @@ app.get('/api/partidos/:idTorneo', async (req, res) => {
         SELECT 
             p.id,
             p.id_horario,
+            p.ronda,
             h.dia_semana,
             h.fecha,
             h.hora_inicio as horario,
