@@ -3159,3 +3159,131 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log(`Servidor escuchando en el puerto ${PORT}`);
 });
+
+// ==========================================================
+// ENDPOINTS PARA GESTIÓN DE HORARIOS
+// ==========================================================
+
+// GET: Listar horarios de un torneo
+app.get('/api/horarios/:idTorneo', authMiddleware, async (req, res) => {
+    const { idTorneo } = req.params;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        // Obtener todos los horarios del torneo
+        const [horarios] = await connection.execute(
+            `SELECT id, dia_semana, fecha, hora_inicio, Canchas, lugar, activo, es_playoff 
+             FROM horarios 
+             WHERE id_torneo_fk = ? AND activo = 1 AND es_playoff = 0
+             ORDER BY fecha, hora_inicio`,
+            [idTorneo]
+        );
+        
+        // Verificar si cada horario puede ser eliminado (no está en uso)
+        const horariosConEstado = await Promise.all(horarios.map(async (h) => {
+            // Verificar si está en inscriptos_horarios
+            const [inscriptos] = await connection.execute(
+                'SELECT COUNT(*) as count FROM inscriptos_horarios WHERE id_horario_fk = ?',
+                [h.id]
+            );
+            
+            // Verificar si está en partido
+            const [partidos] = await connection.execute(
+                'SELECT COUNT(*) as count FROM partido WHERE id_horario = ?',
+                [h.id]
+            );
+            
+            return {
+                ...h,
+                puede_eliminar: inscriptos[0].count === 0 && partidos[0].count === 0
+            };
+        }));
+        
+        await connection.end();
+        res.status(200).json(horariosConEstado);
+        
+    } catch (error) {
+        console.error('Error al obtener horarios:', error);
+        res.status(500).json({ error: 'Error al obtener horarios' });
+    }
+});
+
+// POST: Crear nuevo horario
+app.post('/api/horarios', authMiddleware, async (req, res) => {
+    const { id_torneo_fk, dia_semana, fecha, hora_inicio, Canchas, lugar } = req.body;
+    
+    if (!id_torneo_fk || !fecha || !hora_inicio || !Canchas) {
+        return res.status(400).json({ error: 'Faltan campos requeridos' });
+    }
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        // Insertar nuevo horario
+        const [result] = await connection.execute(
+            `INSERT INTO horarios (id_torneo_fk, dia_semana, fecha, hora_inicio, Canchas, activo, es_playoff, lugar) 
+             VALUES (?, ?, ?, ?, ?, 1, 0, ?)`,
+            [id_torneo_fk, dia_semana, fecha, hora_inicio, Canchas, lugar || 'Aeroclub']
+        );
+        
+        await connection.end();
+        
+        res.status(201).json({ 
+            id: result.insertId, 
+            mensaje: 'Horario creado correctamente' 
+        });
+        
+    } catch (error) {
+        console.error('Error al crear horario:', error);
+        res.status(500).json({ error: 'Error al crear horario: ' + error.message });
+    }
+});
+
+// DELETE: Eliminar horario (solo si no está en uso)
+app.delete('/api/horarios/:id', authMiddleware, async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        // Verificar si está en uso en inscriptos_horarios
+        const [inscriptos] = await connection.execute(
+            'SELECT COUNT(*) as count FROM inscriptos_horarios WHERE id_horario_fk = ?',
+            [id]
+        );
+        
+        if (inscriptos[0].count > 0) {
+            await connection.end();
+            return res.status(400).json({ 
+                error: 'No se puede eliminar: el horario está asignado a inscriptos' 
+            });
+        }
+        
+        // Verificar si está en uso en partido
+        const [partidos] = await connection.execute(
+            'SELECT COUNT(*) as count FROM partido WHERE id_horario = ?',
+            [id]
+        );
+        
+        if (partidos[0].count > 0) {
+            await connection.end();
+            return res.status(400).json({ 
+                error: 'No se puede eliminar: el horario está asignado a partidos' 
+            });
+        }
+        
+        // Eliminar horario (o marcar como inactivo)
+        await connection.execute(
+            'DELETE FROM horarios WHERE id = ?',
+            [id]
+        );
+        
+        await connection.end();
+        res.status(200).json({ mensaje: 'Horario eliminado correctamente' });
+        
+    } catch (error) {
+        console.error('Error al eliminar horario:', error);
+        res.status(500).json({ error: 'Error al eliminar horario' });
+    }
+});

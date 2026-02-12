@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestionar Horarios - Torneo de Tenis</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        
+        .form-section {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .form-section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #555;
+        }
+        
+        .form-group input,
+        .form-group select {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+        
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .btn-primary:hover {
+            background: #45a049;
+        }
+        
+        .btn-primary:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .back-btn {
+            background: #95a5a6;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            display: inline-block;
+            transition: background 0.3s;
+        }
+        
+        .back-btn:hover {
+            background: #7f8c8d;
+        }
+        
+        .horarios-list {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .horarios-list h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        
+        .horarios-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .horarios-table th,
+        .horarios-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .horarios-table th {
+            background: #4CAF50;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .horarios-table tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .btn-delete {
+            background: #e74c3c;
+            color: white;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+        
+        .btn-delete:hover {
+            background: #c0392b;
+        }
+        
+        .btn-delete:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+        
+        .no-horarios {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #4CAF50;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .logout-btn {
+            background: #e74c3c;
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .horarios-table {
+                font-size: 0.9rem;
+            }
+            
+            .horarios-table th,
+            .horarios-table td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Verificación inmediata de autenticación
+        if (!localStorage.getItem("token")) {
+            window.location.href = "login.html";
+        }
+    </script>
+    <div class="container">
+        <div class="header">
+            <h1>📅 Gestionar Horarios</h1>
+            <div class="user-info">
+                <span id="user-name"></span>
+                <a href="editar-grupos.html" class="back-btn">← Volver</a>
+                <button onclick="logout()" class="logout-btn">🚪 Salir</button>
+            </div>
+        </div>
+
+        <div id="error-msg" class="error-message"></div>
+        <div id="success-msg" class="success-message"></div>
+
+        <div class="form-section">
+            <h2>➕ Agregar Nuevo Horario</h2>
+            <form id="horario-form">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="fecha">Fecha *</label>
+                        <input type="date" id="fecha" name="fecha" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="hora_inicio">Hora de Inicio *</label>
+                        <input type="time" id="hora_inicio" name="hora_inicio" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="canchas">Cantidad de Canchas *</label>
+                        <input type="number" id="canchas" name="canchas" min="1" value="4" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lugar">Lugar *</label>
+                        <select id="lugar" name="lugar" required>
+                            <option value="Aeroclub" selected>Aeroclub</option>
+                            <option value="Malon">Malon</option>
+                            <option value="Challenger">Challenger</option>
+                            <option value="Estudiantes">Estudiantes</option>
+                            <option value="Tenis Rio Cuarto">Tenis Rio Cuarto</option>
+                            <option value="Banda Norte">Banda Norte</option>
+                            <option value="Jockey Club">Jockey Club</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary">💾 Guardar Horario</button>
+            </form>
+        </div>
+
+        <div class="horarios-list">
+            <h2>📋 Horarios Configurados</h2>
+            <div id="horarios-container">
+                <div class="loading">Cargando horarios...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://academia-torneos.onrender.com/api';
+        let torneoId = null;
+
+        // Verificar autenticación
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+
+        const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+        
+        if (usuario && usuario.nombre) {
+            document.getElementById('user-name').textContent = `👤 ${usuario.nombre}`;
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('usuario');
+            window.location.href = 'login.html';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error-msg');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => errorDiv.style.display = 'none', 5000);
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('success-msg');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+            setTimeout(() => successDiv.style.display = 'none', 5000);
+        }
+
+        // Obtener día de la semana en español
+        function getDiaSemana(fecha) {
+            const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+            const date = new Date(fecha);
+            return dias[date.getDay()];
+        }
+
+        // Cargar torneo activo
+        async function cargarTorneo() {
+            try {
+                const response = await fetch(`${API_URL}/torneo-activo`);
+                if (response.ok) {
+                    const torneo = await response.json();
+                    torneoId = torneo.id;
+                    cargarHorarios();
+                } else {
+                    showError('No hay torneo activo');
+                }
+            } catch (error) {
+                showError('Error al cargar torneo: ' + error.message);
+            }
+        }
+
+        // Cargar horarios existentes
+        async function cargarHorarios() {
+            if (!torneoId) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/horarios/${torneoId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    const horarios = await response.json();
+                    mostrarHorarios(horarios);
+                } else {
+                    document.getElementById('horarios-container').innerHTML = 
+                        '<div class="no-horarios">Error al cargar horarios</div>';
+                }
+            } catch (error) {
+                document.getElementById('horarios-container').innerHTML = 
+                    `<div class="no-horarios">Error: ${error.message}</div>`;
+            }
+        }
+
+        // Mostrar horarios en tabla
+        function mostrarHorarios(horarios) {
+            const container = document.getElementById('horarios-container');
+            
+            if (horarios.length === 0) {
+                container.innerHTML = '<div class="no-horarios">No hay horarios configurados</div>';
+                return;
+            }
+
+            let html = `
+                <table class="horarios-table">
+                    <thead>
+                        <tr>
+                            <th>Día</th>
+                            <th>Fecha</th>
+                            <th>Hora</th>
+                            <th>Canchas</th>
+                            <th>Lugar</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            horarios.forEach(h => {
+                const fecha = new Date(h.fecha).toLocaleDateString('es-ES');
+                const puedeEliminar = h.puede_eliminar !== false;
+                
+                html += `
+                    <tr>
+                        <td>${h.dia_semana}</td>
+                        <td>${fecha}</td>
+                        <td>${h.hora_inicio.substring(0, 5)}</td>
+                        <td>${h.Canchas}</td>
+                        <td>${h.lugar}</td>
+                        <td>
+                            <button class="btn-delete" 
+                                    onclick="eliminarHorario(${h.id})" 
+                                    ${!puedeEliminar ? 'disabled title="No se puede eliminar: está en uso"' : ''}>
+                                🗑️
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        // Guardar nuevo horario
+        document.getElementById('horario-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!torneoId) {
+                showError('No hay torneo activo');
+                return;
+            }
+
+            const fecha = document.getElementById('fecha').value;
+            const hora_inicio = document.getElementById('hora_inicio').value;
+            const Canchas = document.getElementById('canchas').value;
+            const lugar = document.getElementById('lugar').value;
+            const dia_semana = getDiaSemana(fecha);
+
+            try {
+                const response = await fetch(`${API_URL}/horarios`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        id_torneo_fk: torneoId,
+                        dia_semana,
+                        fecha,
+                        hora_inicio,
+                        Canchas,
+                        lugar
+                    })
+                });
+
+                if (response.ok) {
+                    showSuccess('✅ Horario guardado correctamente');
+                    document.getElementById('horario-form').reset();
+                    cargarHorarios();
+                } else {
+                    const error = await response.json();
+                    showError('Error: ' + (error.error || 'No se pudo guardar'));
+                }
+            } catch (error) {
+                showError('Error de conexión: ' + error.message);
+            }
+        });
+
+        // Eliminar horario
+        async function eliminarHorario(id) {
+            if (!confirm('¿Estás seguro de eliminar este horario?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}/horarios/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    showSuccess('✅ Horario eliminado');
+                    cargarHorarios();
+                } else {
+                    const error = await response.json();
+                    showError('Error: ' + (error.error || 'No se pudo eliminar'));
+                }
+            } catch (error) {
+                showError('Error de conexión: ' + error.message);
+            }
+        }
+
+        // Inicializar
+        cargarTorneo();
+    </script>
+</body>
+</html>
