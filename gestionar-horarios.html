@@ -330,7 +330,8 @@
         // Obtener día de la semana en español
         function getDiaSemana(fecha) {
             const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-            const date = new Date(fecha);
+            const [year, month, day] = fecha.split("-").map(Number);
+            const date = new Date(year, month - 1, day);
             return dias[date.getDay()];
         }
 
@@ -405,7 +406,7 @@
                         <td>${h.dia_semana}</td>
                         <td>${fecha}</td>
                         <td>${h.hora_inicio.substring(0, 5)}</td>
-                        <td>${h.Canchas}</td>
+                        <td>${h.canchas || h.Canchas}</td>
                         <td>${h.lugar}</td>
                         <td>
                             <button class="btn-delete" 
