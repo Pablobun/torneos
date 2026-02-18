@@ -166,19 +166,33 @@
  <script>
     document.querySelectorAll('.insta-link').forEach(link => {
     link.addEventListener('click', function(e) {
-        // Solo aplicamos esto en dispositivos móviles
-        if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-            e.preventDefault();
+        // Detectamos si es Android o iPhone
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const isiOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        
+        if (isAndroid || isiOS) {
+            e.preventDefault(); // Frenamos la apertura normal
+            
             const username = this.getAttribute('data-user');
-            const appUrl = `instagram://user?username=${username}`;
             const webUrl = this.href;
+            let appUrl;
 
-            // Intento abrir la app
+            if (isAndroid) {
+                // Este es el formato "Intent" específico para que Android abra el perfil exacto
+                appUrl = `intent://www.instagram.com/_u/${username}/#Intent;package=com.instagram.android;scheme=https;end`;
+            } else {
+                // Formato para iPhone/iOS
+                appUrl = `instagram://user?username=${username}`;
+            }
+
+            // Intentamos abrir la aplicación
             window.location.href = appUrl;
 
-            // Si en 1 segundo no salió de la página, es que no tiene la app o falló, entonces abre la web
+            // Si después de 1 segundo el navegador sigue visible, es que falló o no tiene la app
             setTimeout(() => {
-                window.location.href = webUrl;
+                if (!document.hidden) {
+                    window.location.href = webUrl;
+                }
             }, 1000);
         }
     });
