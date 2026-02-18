@@ -164,35 +164,28 @@
             <img src="banners/rumipalbanner.jpg" alt="Publicidad Rumipal Rio cuarto">
                 </a>
  <script>
-document.querySelectorAll('.insta-link').forEach(link => {
-    link.addEventListener('click', function(e) {
-        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-        const username = this.getAttribute('data-user');
-
-        // Detectar si es Android
-        if (/android/i.test(userAgent)) {
-            e.preventDefault();
-            // URL Mágica de Android (Intent Scheme)
-            // Esto le dice al sistema: "Busca la app de Instagram. Si no está, usa el navegador".
-            // Todo en un solo paso, sin timeouts.
-            const url = `intent://instagram.com/_u/${username}/#Intent;package=com.instagram.android;scheme=https;end`;
-            window.location.href = url;
-        }
-        
-        // Detectar si es iOS (iPhone/iPad)
-        else if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
-            // En iOS, el truco es NO usar target="_blank" y dejar que el sistema operativo
-            // intercepte el enlace normal de https.
-            this.removeAttribute('target'); 
-            // No hacemos preventDefault(), dejamos que el enlace corra, 
-            // pero al quitar el target, no abre pestaña nueva vacía.
-        }
-        
-        // Si es PC, no entra en los if y funciona el target="_blank" original.
-    });
-});
-</script>              
+    document.querySelectorAll('.insta-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            const esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+            
+            if (esMovil) {
+                // 1. Detenemos el comportamiento normal (especialmente el target="_blank")
+                e.preventDefault();
                 
+                const username = this.getAttribute('data-user');
+                
+                // 2. Usamos la URL con el sufijo "_u"
+                // Este sufijo es una señal para móviles de que es un enlace de usuario
+                const url = `https://www.instagram.com/_u/${username}/`;
+
+                // 3. Forzamos la navegación en la MISMA ventana.
+                // Esto dispara el "Universal Link" de Android/iOS.
+                window.location.href = url;
+            }
+            // Si es PC, el script no hace nada y el enlace abre en pestaña nueva normal.
+        });
+    });
+</script>                
                 
                 <!--<a href="https://www.instagram.com/piedralibrepolirubro/" target="_blank">
             <img src="banners/piedralibrebanner.jpg" alt="Publicidad Piedra Libre Rio Cuarto">
