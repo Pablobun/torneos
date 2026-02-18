@@ -164,27 +164,28 @@
             <img src="banners/rumipalbanner.jpg" alt="Publicidad Rumipal Rio cuarto">
                 </a>
  <script>
-    document.querySelectorAll('.insta-link').forEach(link => {
-        link.addEventListener('click', function(e) {
-            const esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-            
-            if (esMovil) {
-                // 1. Detenemos el comportamiento normal (especialmente el target="_blank")
-                e.preventDefault();
-                
-                const username = this.getAttribute('data-user');
-                
-                // 2. Usamos la URL con el sufijo "_u"
-                // Este sufijo es una señal para móviles de que es un enlace de usuario
-                const url = `https://www.instagram.com/_u/${username}/`;
+   document.addEventListener("DOMContentLoaded", function() {
+    // Detectamos si es un dispositivo móvil (Android o iOS)
+    const esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-                // 3. Forzamos la navegación en la MISMA ventana.
-                // Esto dispara el "Universal Link" de Android/iOS.
-                window.location.href = url;
-            }
-            // Si es PC, el script no hace nada y el enlace abre en pestaña nueva normal.
+    if (esMovil) {
+        const links = document.querySelectorAll('.insta-link');
+        
+        links.forEach(link => {
+            const username = link.getAttribute('data-user');
+            
+            // 1. CAMBIO RADICAL: Cambiamos el destino del enlace DIRECTAMENTE
+            // Usamos el esquema nativo. Al estar en el href, el clic envía
+            // la orden "cruda" al sistema operativo sin intermediarios de JS.
+            link.href = `instagram://user?username=${username}`;
+            
+            // 2. ELIMINAMOS target="_blank"
+            // Esto evita que el navegador abra una pestaña nueva vacía 
+            // antes de lanzar la aplicación.
+            link.removeAttribute('target');
         });
-    });
+    }
+});
 </script>                
                 
                 <!--<a href="https://www.instagram.com/piedralibrepolirubro/" target="_blank">
