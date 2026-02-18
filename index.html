@@ -164,37 +164,34 @@
             <img src="banners/rumipalbanner.jpg" alt="Publicidad Rumipal Rio cuarto">
                 </a>
  <script>
-    document.querySelectorAll('.insta-link').forEach(link => {
-        link.addEventListener('click', function(e) {
-            // Detectamos si es un dispositivo móvil
-            const esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-            
-            if (esMovil) {
-                e.preventDefault(); // Evitamos que el navegador abra el enlace inmediatamente
-                const username = this.getAttribute('data-user');
-                
-                // 1. URL ESPECÍFICA DE LA APP (Esta es la corrección clave)
-                // Esto le grita al celular: "¡Abre la app de Instagram en este perfil!"
-                const appUrl = `instagram://user?username=${username}`;
-                
-                // 2. URL DE RESPALDO (Web)
-                const webUrl = `https://www.instagram.com/${username}/`;
+document.querySelectorAll('.insta-link').forEach(link => {
+    link.addEventListener('click', function(e) {
+        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+        const username = this.getAttribute('data-user');
 
-                // Intentamos abrir la app
-                window.location.href = appUrl;
-
-                // Lógica de "Plan B":
-                // Si el celular no entiende "instagram://", no hará nada.
-                // Entonces, esperamos 1 segundo y si seguimos aquí, forzamos la web.
-                setTimeout(function() {
-                    window.location.href = webUrl;
-                }, 1000);
-            }
-            // Si es PC, no hacemos nada y dejamos que funcione el target="_blank" original
-        });
+        // Detectar si es Android
+        if (/android/i.test(userAgent)) {
+            e.preventDefault();
+            // URL Mágica de Android (Intent Scheme)
+            // Esto le dice al sistema: "Busca la app de Instagram. Si no está, usa el navegador".
+            // Todo en un solo paso, sin timeouts.
+            const url = `intent://instagram.com/_u/${username}/#Intent;package=com.instagram.android;scheme=https;end`;
+            window.location.href = url;
+        }
+        
+        // Detectar si es iOS (iPhone/iPad)
+        else if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
+            // En iOS, el truco es NO usar target="_blank" y dejar que el sistema operativo
+            // intercepte el enlace normal de https.
+            this.removeAttribute('target'); 
+            // No hacemos preventDefault(), dejamos que el enlace corra, 
+            // pero al quitar el target, no abre pestaña nueva vacía.
+        }
+        
+        // Si es PC, no entra en los if y funciona el target="_blank" original.
     });
-</script>
-               
+});
+</script>              
                 
                 
                 <!--<a href="https://www.instagram.com/piedralibrepolirubro/" target="_blank">
