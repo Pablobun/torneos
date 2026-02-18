@@ -164,29 +164,31 @@
             <img src="banners/rumipalbanner.jpg" alt="Publicidad Rumipal Rio cuarto">
                 </a>
  <script>
-   document.addEventListener("DOMContentLoaded", function() {
-    // Detectamos si es un dispositivo móvil (Android o iOS)
+document.addEventListener("DOMContentLoaded", function() {
     const esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
+    
     if (esMovil) {
-        const links = document.querySelectorAll('.insta-link');
-        
-        links.forEach(link => {
+        document.querySelectorAll('.insta-link').forEach(link => {
             const username = link.getAttribute('data-user');
+            const isAndroid = /Android/i.test(navigator.userAgent);
             
-            // 1. CAMBIO RADICAL: Cambiamos el destino del enlace DIRECTAMENTE
-            // Usamos el esquema nativo. Al estar en el href, el clic envía
-            // la orden "cruda" al sistema operativo sin intermediarios de JS.
-            link.href = `instagram://user?username=${username}`;
+            const appUrl = isAndroid 
+                ? `intent://user?username=${username}#Intent;package=com.instagram.android;scheme=https;end`
+                : `instagram://user?username=${username}`;
+            const webUrl = `https://www.instagram.com/${username}/`;
             
-            // 2. ELIMINAMOS target="_blank"
-            // Esto evita que el navegador abra una pestaña nueva vacía 
-            // antes de lanzar la aplicación.
             link.removeAttribute('target');
+            
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                window.location.href = appUrl;
+                setTimeout(() => window.open(webUrl, '_blank'), 2000);
+            });
         });
     }
 });
-</script>                
+</script>
+                
                 
                 <!--<a href="https://www.instagram.com/piedralibrepolirubro/" target="_blank">
             <img src="banners/piedralibrebanner.jpg" alt="Publicidad Piedra Libre Rio Cuarto">
