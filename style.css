@@ -650,10 +650,10 @@ footer {
     }
 }*/ 
 
-/* Para pantallas de Móvil, usamos 1 sola columna */
+/* Para pantallas de Móvil, usamos 2 sola columna */
 @media (max-width: 600px) {
     .sponsors-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr;
     }
 }
 /* ========================================= */
