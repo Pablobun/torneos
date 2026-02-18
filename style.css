@@ -350,7 +350,8 @@ footer {
 .sponsors-grid {
     display: grid;
     /* Por defecto (PC), 2 columnas. grid-template-columns lo definimos en el responsive */
-    gap: 20px;
+    grid-template-columns: repeat(4, 1fr); /* <-- AÑADE ESTA LÍNEA */
+    gap: 10px; /* estaba en 20*/
     margin: 25px 0;
 }
 
