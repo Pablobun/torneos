@@ -170,24 +170,15 @@ document.addEventListener("DOMContentLoaded", function() {
     if (esMovil) {
         document.querySelectorAll('.insta-link').forEach(link => {
             const username = link.getAttribute('data-user');
-            const isAndroid = /Android/i.test(navigator.userAgent);
-            
-            const appUrl = isAndroid 
-                ? `intent://user?username=${username}#Intent;package=com.instagram.android;scheme=https;end`
-                : `instagram://user?username=${username}`;
             const webUrl = `https://www.instagram.com/${username}/`;
             
             link.removeAttribute('target');
-            
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-                window.location.href = appUrl;
-                setTimeout(() => window.open(webUrl, '_blank'), 2000);
-            });
+            link.href = webUrl;
         });
     }
 });
 </script>
+
                 
                 
                 <!--<a href="https://www.instagram.com/piedralibrepolirubro/" target="_blank">
