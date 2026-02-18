@@ -165,26 +165,34 @@
                 </a>
  <script>
     document.querySelectorAll('.insta-link').forEach(link => {
-    link.addEventListener('click', function(e) {
-        const esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-        
-        if (esMovil) {
-            e.preventDefault();
-            const username = this.getAttribute('data-user');
+        link.addEventListener('click', function(e) {
+            // Detectamos si es un dispositivo móvil
+            const esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
             
-            // Esta URL es mágica: Instagram la intercepta y abre el perfil directo
-            const deepLink = `https://www.instagram.com/_u/${username}/`;
-            
-            // Intentamos abrir esa URL especial
-            window.location.href = deepLink;
+            if (esMovil) {
+                e.preventDefault(); // Evitamos que el navegador abra el enlace inmediatamente
+                const username = this.getAttribute('data-user');
+                
+                // 1. URL ESPECÍFICA DE LA APP (Esta es la corrección clave)
+                // Esto le grita al celular: "¡Abre la app de Instagram en este perfil!"
+                const appUrl = `instagram://user?username=${username}`;
+                
+                // 2. URL DE RESPALDO (Web)
+                const webUrl = `https://www.instagram.com/${username}/`;
 
-            // Si falla, a los 2 segundos lo mandamos a la web normal
-            setTimeout(() => {
-                window.location.href = `https://www.instagram.com/${username}/`;
-            }, 2000);
-        }
+                // Intentamos abrir la app
+                window.location.href = appUrl;
+
+                // Lógica de "Plan B":
+                // Si el celular no entiende "instagram://", no hará nada.
+                // Entonces, esperamos 1 segundo y si seguimos aquí, forzamos la web.
+                setTimeout(function() {
+                    window.location.href = webUrl;
+                }, 1000);
+            }
+            // Si es PC, no hacemos nada y dejamos que funcione el target="_blank" original
+        });
     });
-});
 </script>
                
                 
