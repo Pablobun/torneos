@@ -644,11 +644,11 @@ footer {
 /* ================================================= */
 
 /* Para pantallas de PC, usamos 2 columnas */
-@media (min-width: 601px) {
+/*@media (min-width: 601px) {
     .sponsors-grid {
         grid-template-columns: 1fr 1fr;
     }
-}
+}*/ 
 
 /* Para pantallas de Móvil, usamos 1 sola columna */
 @media (max-width: 600px) {
