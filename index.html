@@ -166,34 +166,22 @@
  <script>
     document.querySelectorAll('.insta-link').forEach(link => {
     link.addEventListener('click', function(e) {
-        // Detectamos si es Android o iPhone
-        const isAndroid = /Android/i.test(navigator.userAgent);
-        const isiOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         
-        if (isAndroid || isiOS) {
-            e.preventDefault(); // Frenamos la apertura normal
-            
+        if (esMovil) {
+            e.preventDefault();
             const username = this.getAttribute('data-user');
-            const webUrl = this.href;
-            let appUrl;
+            
+            // Esta URL es mágica: Instagram la intercepta y abre el perfil directo
+            const deepLink = `https://www.instagram.com/_u/${username}/`;
+            
+            // Intentamos abrir esa URL especial
+            window.location.href = deepLink;
 
-            if (isAndroid) {
-                // Este es el formato "Intent" específico para que Android abra el perfil exacto
-                appUrl = `intent://www.instagram.com/_u/${username}/#Intent;package=com.instagram.android;scheme=https;end`;
-            } else {
-                // Formato para iPhone/iOS
-                appUrl = `instagram://user?username=${username}`;
-            }
-
-            // Intentamos abrir la aplicación
-            window.location.href = appUrl;
-
-            // Si después de 1 segundo el navegador sigue visible, es que falló o no tiene la app
+            // Si falla, a los 2 segundos lo mandamos a la web normal
             setTimeout(() => {
-                if (!document.hidden) {
-                    window.location.href = webUrl;
-                }
-            }, 1000);
+                window.location.href = `https://www.instagram.com/${username}/`;
+            }, 2000);
         }
     });
 });
