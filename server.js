@@ -3319,6 +3319,35 @@ app.get('/api/admin/torneos', authMiddleware, async (req, res) => {
     }
 });
 
+// GET: Listar todos los inscriptos con todos los campos
+app.get('/api/admin/inscriptos', authMiddleware, async (req, res) => {
+    const { id_torneo, categoria } = req.query;
+    
+    if (!id_torneo) {
+        return res.status(400).json({ error: 'Se requiere el ID del torneo.' });
+    }
+    
+    let sql = 'SELECT id, integrantes, correo, telefono, categoria, id_torneo_fk FROM inscriptos WHERE id_torneo_fk = ?';
+    const params = [id_torneo];
+    
+    if (categoria) {
+        sql += ' AND categoria = ?';
+        params.push(categoria);
+    }
+    
+    sql += ' ORDER BY id DESC';
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        const [rows] = await connection.execute(sql, params);
+        await connection.end();
+        res.status(200).json(rows);
+    } catch (error) {
+        console.error('Error al obtener inscriptos:', error);
+        res.status(500).json({ error: 'Error al obtener inscriptos.' });
+    }
+});
+
 // GET: Obtener un inscripto con todos los datos
 app.get('/api/admin/inscriptos/:id', authMiddleware, async (req, res) => {
     const { id } = req.params;

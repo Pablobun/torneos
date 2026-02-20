@@ -398,7 +398,9 @@
             const categoria = document.getElementById('selector-categoria').value;
             
             try {
-                const response = await fetch(`${API_URL}/inscriptos?id_torneo_fk=${idTorneo}`);
+                const response = await fetch(`${API_URL}/admin/inscriptos?id_torneo=${idTorneo}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 let data = await response.json();
                 
                 if (categoria) {
@@ -902,9 +904,11 @@
                 if (!Array.isArray(data)) {
                     partidosData = [];
                 } else {
-                    // Filtrar por categoría de los participantes
+                    // Filtrar por categoría de los participantes usando inscriptosData
                     data = data.filter(p => {
-                        return p.categoria_local === categoria || p.categoria_visitante === categoria;
+                        const catLocal = inscriptosData.find(i => i.id === p.local_id)?.categoria;
+                        const catVisitante = inscriptosData.find(i => i.id === p.visitante_id)?.categoria;
+                        return catLocal === categoria || catVisitante === categoria;
                     });
                     partidosData = data;
                 }
