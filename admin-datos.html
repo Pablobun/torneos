@@ -451,17 +451,24 @@
             container.innerHTML = html;
         }
 
-        function abrirEditarInscripto(id) {
-            const inscripto = inscriptosData.find(i => i.id === id);
-            if (!inscripto) return;
-            
-            document.getElementById('edit-inscripto-id').value = id;
-            document.getElementById('edit-integrantes').value = inscripto.integrantes || '';
-            document.getElementById('edit-correo').value = inscripto.correo || '';
-            document.getElementById('edit-telefono').value = inscripto.telefono || '';
-            document.getElementById('edit-categoria').value = inscripto.categoria || '';
-            
-            document.getElementById('modal-editar-inscripto').classList.add('active');
+        async function abrirEditarInscripto(id) {
+            try {
+                const response = await fetch(`${API_URL}/admin/inscriptos/${id}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const inscripto = await response.json();
+                
+                document.getElementById('edit-inscripto-id').value = id;
+                document.getElementById('edit-integrantes').value = inscripto.integrantes || '';
+                document.getElementById('edit-correo').value = inscripto.correo || '';
+                document.getElementById('edit-telefono').value = inscripto.telefono || '';
+                document.getElementById('edit-categoria').value = inscripto.categoria || '';
+                
+                document.getElementById('modal-editar-inscripto').classList.add('active');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al cargar datos del inscripto');
+            }
         }
 
         document.getElementById('form-editar-inscripto').addEventListener('submit', async (e) => {
@@ -613,6 +620,7 @@
                         <div>
                             <button class="btn-warning" onclick="abrirEditarGrupo(${g.id})">✏️</button>
                             <button class="btn-warning" onclick="abrirGestionarIntegrantes(${g.id})">👥</button>
+                            <button class="btn-danger" onclick="eliminarGrupo(${g.id})">🗑️</button>
                         </div>
                     </div>
                     <div>Integrantes: ${cantidadActual} / ${g.cantidad_integrantes}</div>
@@ -624,6 +632,28 @@
             });
             
             container.innerHTML = html;
+        }
+
+        async function eliminarGrupo(idGrupo) {
+            if (!confirm('¿Estás seguro de eliminar este grupo?')) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/admin/grupos/${idGrupo}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    alert('Grupo eliminado correctamente');
+                    cargarGrupos();
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Error al eliminar grupo');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error de conexión');
+            }
         }
 
         function abrirModalCrearGrupo() {
@@ -862,17 +892,27 @@
             
             try {
                 const response = await fetch(`${API_URL}/partidos/${idTorneo}`);
+                if (!response.ok) {
+                    partidosData = [];
+                    renderPartidos();
+                    return;
+                }
                 let data = await response.json();
                 
-                // Filtrar por categoría de los participantes
-                data = data.filter(p => {
-                    return p.categoria_local === categoria || p.categoria_visitante === categoria;
-                });
-                
-                partidosData = data;
+                if (!Array.isArray(data)) {
+                    partidosData = [];
+                } else {
+                    // Filtrar por categoría de los participantes
+                    data = data.filter(p => {
+                        return p.categoria_local === categoria || p.categoria_visitante === categoria;
+                    });
+                    partidosData = data;
+                }
                 renderPartidos();
             } catch (error) {
                 console.error('Error:', error);
+                partidosData = [];
+                renderPartidos();
             }
         }
 

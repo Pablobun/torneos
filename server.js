@@ -3319,6 +3319,29 @@ app.get('/api/admin/torneos', authMiddleware, async (req, res) => {
     }
 });
 
+// GET: Obtener un inscripto con todos los datos
+app.get('/api/admin/inscriptos/:id', authMiddleware, async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        const [rows] = await connection.execute(
+            'SELECT id, integrantes, correo, telefono, categoria FROM inscriptos WHERE id = ?',
+            [id]
+        );
+        await connection.end();
+        
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Inscripto no encontrado' });
+        }
+        
+        res.json(rows[0]);
+    } catch (error) {
+        console.error('Error al obtener inscripto:', error);
+        res.status(500).json({ error: 'Error al obtener inscripto' });
+    }
+});
+
 // PUT: Editar inscripto
 app.put('/api/admin/inscriptos/:id', authMiddleware, async (req, res) => {
     const { id } = req.params;
@@ -3455,6 +3478,34 @@ app.put('/api/admin/grupos/:id', authMiddleware, async (req, res) => {
     } catch (error) {
         console.error('Error al actualizar grupo:', error);
         res.status(500).json({ error: 'Error al actualizar grupo' });
+    }
+});
+
+// DELETE: Eliminar grupo
+app.delete('/api/admin/grupos/:id', authMiddleware, async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        // Verificar si tiene integrantes
+        const [integrantes] = await connection.execute(
+            'SELECT COUNT(*) as count FROM grupo_integrantes WHERE id_grupo = ?',
+            [id]
+        );
+        
+        if (integrantes[0].count > 0) {
+            await connection.end();
+            return res.status(400).json({ error: 'No se puede eliminar: el grupo tiene integrantes. Quítelos primero.' });
+        }
+        
+        await connection.execute('DELETE FROM grupos WHERE id = ?', [id]);
+        
+        await connection.end();
+        res.status(200).json({ mensaje: 'Grupo eliminado correctamente' });
+    } catch (error) {
+        console.error('Error al eliminar grupo:', error);
+        res.status(500).json({ error: 'Error al eliminar grupo' });
     }
 });
 
