@@ -600,7 +600,13 @@
 
             let html = '';
             gruposData.forEach(g => {
-                const incompletos = g.cantidad_integrantes > (g.integrantes?.length || 0);
+                // Manejar tanto string como array
+                const esString = typeof g.integrantes === 'string';
+                const listaIntegrantes = esString ? g.integrantes : (g.integrantes?.map ? g.integrantes.map(i => i.integrantes) : []);
+                const cantidadActual = esString ? (g.integrantes ? g.integrantes.split(' | ').length : 0) : listaIntegrantes.length;
+                const integrantesDisplay = esString ? g.integrantes : listaIntegrantes.join(', ');
+                
+                const incompletos = g.cantidad_integrantes > cantidadActual;
                 html += `<div class="card" style="${incompletos ? 'border-left-color:#f39c12' : ''}">
                     <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
                         <span>Grupo ${g.numero_grupo} - ${g.categoria}</span>
@@ -609,10 +615,10 @@
                             <button class="btn-warning" onclick="abrirGestionarIntegrantes(${g.id})">👥</button>
                         </div>
                     </div>
-                    <div>Integrantes: ${g.integrantes?.length || 0} / ${g.cantidad_integrantes}</div>
+                    <div>Integrantes: ${cantidadActual} / ${g.cantidad_integrantes}</div>
                     ${incompletos ? '<div class="alert alert-warning" style="margin-top:10px;padding:8px">⚠️ Faltan jugadores en este grupo</div>' : ''}
                     <div style="margin-top:10px;font-size:0.9em;color:#666">
-                        ${g.integrantes?.map(i => i.integrantes).join(', ') || 'Sin integrantes'}
+                        ${integrantesDisplay || 'Sin integrantes'}
                     </div>
                 </div>`;
             });
@@ -1068,13 +1074,24 @@
             
             try {
                 const response = await fetch(`${API_URL}/torneo/${idTorneo}/llave`);
+                if (!response.ok) {
+                    llavesData = [];
+                    renderLlaves();
+                    return;
+                }
                 let data = await response.json();
                 
-                data = data.filter(l => l.categoria === categoria);
-                llavesData = data;
+                if (!Array.isArray(data)) {
+                    llavesData = [];
+                } else {
+                    data = data.filter(l => l.categoria === categoria);
+                    llavesData = data;
+                }
                 renderLlaves();
             } catch (error) {
                 console.error('Error:', error);
+                llavesData = [];
+                renderLlaves();
             }
         }
 
