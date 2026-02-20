@@ -483,28 +483,40 @@
             }
         });
 
+        function formatearFecha(fechaStr) {
+            if (!fechaStr) return '';
+            const fechaLimpia = fechaStr.split('T')[0];
+            const [year, month, day] = fechaLimpia.split('-');
+            return `${day}/${month}/${year}`;
+        }
+
         async function abrirEditarHorarios(idInscripto) {
             const idTorneo = document.getElementById('selector-torneo').value;
             
             try {
-                const [inscriptoRes, horariosRes] = await Promise.all([
+                const [horariosRes, todosHorariosRes] = await Promise.all([
                     fetch(`${API_URL}/inscriptos/${idInscripto}/horarios`),
                     fetch(`${API_URL}/horarios/${idTorneo}`)
                 ]);
                 
-                const inscripto = await inscriptoRes.json();
-                const todosHorarios = await horariosRes.json();
-                const horariosAsignados = inscripto.horarios || [];
+                const horariosAsignados = await horariosRes.json();
+                const todosHorarios = await todosHorariosRes.json();
+                
+                // Obtener nombre del inscripto desde inscriptosData
+                const inscripto = inscriptosData.find(i => i.id === idInscripto);
+                const nombreInscripto = inscripto ? inscripto.integrantes : 'Inscripto #' + idInscripto;
+                
                 const idsAsignados = horariosAsignados.map(h => h.id);
                 
-                let html = `<p><strong>${inscripto.integrantes}</strong></p>
+                let html = `<p><strong>${nombreInscripto}</strong></p>
                     <div class="checkbox-list">`;
                 
                 todosHorarios.forEach(h => {
                     const checked = idsAsignados.includes(h.id) ? 'checked' : '';
+                    const fechaFormateada = formatearFecha(h.fecha);
                     html += `<div class="checkbox-item">
                         <input type="checkbox" id="horario-${h.id}" value="${h.id}" ${checked}>
-                        <label for="horario-${h.id}">${h.dia_semana} ${h.fecha} ${h.hora_inicio} - ${h.lugar}</label>
+                        <label for="horario-${h.id}">${h.dia_semana} ${fechaFormateada} ${h.hora_inicio} - ${h.lugar}</label>
                     </div>`;
                 });
                 
