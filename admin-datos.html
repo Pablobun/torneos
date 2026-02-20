@@ -332,7 +332,7 @@
             }
 
             try {
-                const response = await fetch(`${API_URL}/inscriptos?idTorneo=${idTorneo}`);
+                const response = await fetch(`${API_URL}/inscriptos?id_torneo_fk=${idTorneo}`);
                 const data = await response.json();
                 
                 const categorias = [...new Set(data.map(i => i.categoria).filter(c => c))];
@@ -383,7 +383,7 @@
             const categoria = document.getElementById('selector-categoria').value;
             
             try {
-                const response = await fetch(`${API_URL}/inscriptos?idTorneo=${idTorneo}`);
+                const response = await fetch(`${API_URL}/inscriptos?id_torneo_fk=${idTorneo}`);
                 let data = await response.json();
                 
                 if (categoria) {
@@ -691,7 +691,7 @@
             
             try {
                 // Obtener inscriptos de la categoría
-                const insRes = await fetch(`${API_URL}/inscriptos?idTorneo=${idTorneo}`);
+                const insRes = await fetch(`${API_URL}/inscriptos?id_torneo_fk=${idTorneo}`);
                 const allInscriptos = await insRes.json();
                 const categoriaInscriptos = allInscriptos.filter(i => i.categoria === categoria);
                 
@@ -824,7 +824,7 @@
             const categoria = document.getElementById('selector-categoria').value;
             
             // Cargar inscriptos de la categoría
-            fetch(`${API_URL}/inscriptos?idTorneo=${idTorneo}`)
+            fetch(`${API_URL}/inscriptos?id_torneo_fk=${idTorneo}`)
                 .then(res => res.json())
                 .then(data => {
                     const filtered = data.filter(i => i.categoria === categoria);
@@ -893,7 +893,7 @@
             
             document.getElementById('edit-partido-id').value = id;
             
-            fetch(`${API_URL}/inscriptos?idTorneo=${idTorneo}`)
+            fetch(`${API_URL}/inscriptos?id_torneo_fk=${idTorneo}`)
                 .then(res => res.json())
                 .then(data => {
                     const filtered = data.filter(i => i.categoria === categoria);
@@ -1032,7 +1032,7 @@
             
             document.getElementById('edit-llave-id').value = id;
             
-            fetch(`${API_URL}/inscriptos?idTorneo=${idTorneo}`)
+            fetch(`${API_URL}/inscriptos?id_torneo_fk=${idTorneo}`)
                 .then(res => res.json())
                 .then(data => {
                     const filtered = data.filter(i => i.categoria === categoria);
