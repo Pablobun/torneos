@@ -374,11 +374,11 @@
             }
         }
 
-        function cargarDatosTab() {
+        async function cargarDatosTab() {
             const categoria = document.getElementById('selector-categoria').value;
             if (!categoria) return;
             
-            cargarInscriptos();
+            await cargarInscriptos();
             cargarGrupos();
             cargarPartidos();
             cargarLlaves();
