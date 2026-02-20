@@ -52,6 +52,23 @@
         .checkbox-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
         .actions-cell { display: flex; gap: 5px; }
         .loading { text-align: center; padding: 40px; color: #7f8c8d; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .admin-container { padding: 10px; }
+            .admin-header { flex-direction: column; text-align: center; }
+            .selector-row { flex-direction: column; width: 100%; }
+            .selector-row select { width: 100%; min-width: unset; }
+            .btn-cerrar { width: 100%; text-align: center; }
+            .tabs { overflow-x: auto; white-space: nowrap; padding-bottom: 10px; }
+            .tab-btn { padding: 10px 15px; font-size: 0.9rem; }
+            .data-table { display: block; overflow-x: auto; }
+            .data-table th, .data-table td { padding: 8px; font-size: 0.9rem; }
+            .form-grid { grid-template-columns: 1fr; }
+            .modal-content { width: 95%; padding: 15px; }
+            .card { padding: 10px; }
+            .checkbox-list { max-height: 150px; }
+        }
     </style>
 </head>
 <body>
