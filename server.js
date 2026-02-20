@@ -3542,24 +3542,14 @@ app.delete('/api/admin/grupos/:id/integrante/:idInscripto', authMiddleware, asyn
 
 // POST: Crear partido
 app.post('/api/admin/partidos/crear', authMiddleware, async (req, res) => {
-    const { id_torneo, id_inscriptoL, id_inscriptov, hora, cancha } = req.body;
+    const { id_torneo, id_inscriptoL, id_inscriptov, id_horario } = req.body;
     
     try {
         const connection = await mysql.createConnection(connectionConfig);
         
-        // Crear horario si no existe
-        let idHorario = null;
-        if (hora &&cancha) {
-            const [newHorario] = await connection.execute(
-                'INSERT INTO horarios (id_torneo_fk, dia_semana, fecha, hora_inicio, canchas, activo) VALUES (?, ?, CURDATE(), ?, ?, 1)',
-                [id_torneo, 'Administrativo', hora,cancha]
-            );
-            idHorario = newHorario.insertId;
-        }
-        
         await connection.execute(
             'INSERT INTO partido (id_horario, id_inscriptoL, id_inscriptov, estado) VALUES (?, ?, ?, ?)',
-            [idHorario, id_inscriptoL, id_inscriptov, 'pendiente']
+            [id_horario || null, id_inscriptoL, id_inscriptov, 'pendiente']
         );
         
         await connection.end();
