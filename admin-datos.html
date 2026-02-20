@@ -488,7 +488,7 @@
             
             try {
                 const [inscriptoRes, horariosRes] = await Promise.all([
-                    fetch(`${API_URL}/inscriptos/${idInscripto}`),
+                    fetch(`${API_URL}/inscriptos/${idInscripto}/horarios`),
                     fetch(`${API_URL}/horarios/${idTorneo}`)
                 ]);
                 
