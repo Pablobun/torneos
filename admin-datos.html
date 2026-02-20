@@ -303,7 +303,9 @@
 
         async function cargarTorneos() {
             try {
-                const response = await fetch(`${API_URL}/torneos`);
+                const response = await fetch(`${API_URL}/admin/torneos`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 const data = await response.json();
                 const select = document.getElementById('selector-torneo');
                 select.innerHTML = '<option value="">Seleccionar Torneo...</option>';

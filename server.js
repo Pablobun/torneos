@@ -3305,6 +3305,20 @@ app.delete('/api/horarios/:id', authMiddleware, async (req, res) => {
 
 // ==================== ENDPOINTS DE ADMINISTRACIÓN ====================
 
+// GET: Listar todos los torneos
+app.get('/api/admin/torneos', authMiddleware, async (req, res) => {
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        const [torneos] = await connection.execute(
+            'SELECT id, codigo_torneo, nombre, fecha_inicio, fecha_fin, activo_inscripcion FROM torneos ORDER BY id DESC'
+        );
+        await connection.end();
+        res.json(torneos);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // PUT: Editar inscripto
 app.put('/api/admin/inscriptos/:id', authMiddleware, async (req, res) => {
     const { id } = req.params;
