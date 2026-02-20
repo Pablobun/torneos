@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Datos - Torneo de Tenis</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .admin-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .admin-header { background: linear-gradient(135deg, #2c3e50, #34495e); color: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .admin-header h1 { margin: 0; font-size: 1.5rem; }
+        .selector-row { display: flex; gap: 15px; flex-wrap: wrap; align-items: center; }
+        .selector-row select { padding: 10px; border-radius: 5px; border: 2px solid #ddd; font-size: 1rem; min-width: 200px; }
+        .btn-cerrar { background: #e74c3c; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; }
+        .tabs { display: flex; gap: 5px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab-btn { padding: 12px 24px; background: #ecf0f1; border: none; cursor: pointer; font-size: 1rem; border-radius: 5px 5px 0 0; transition: all 0.3s; }
+        .tab-btn.active { background: #4CAF50; color: white; }
+        .tab-btn:hover:not(.active) { background: #bdc3c7; }
+        .tab-content { display: none; background: white; padding: 20px; border-radius: 0 5px 5px 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .tab-content.active { display: block; }
+        .section-title { color: #2c3e50; border-bottom: 2px solid #4CAF50; padding-bottom: 10px; margin-bottom: 20px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-weight: 600; margin-bottom: 5px; color: #555; }
+        .form-group input, .form-group select { padding: 10px; border: 2px solid #ddd; border-radius: 5px; }
+        .btn-primary { background: #4CAF50; color: white; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; }
+        .btn-primary:hover { background: #45a049; }
+        .btn-warning { background: #f39c12; color: white; padding: 8px 16px; border: none; border-radius: 5px; cursor: pointer; }
+        .btn-danger { background: #e74c3c; color: white; padding: 8px 16px; border: none; border-radius: 5px; cursor: pointer; }
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .data-table th, .data-table td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        .data-table th { background: #2c3e50; color: white; }
+        .data-table tr:hover { background: #f5f5f5; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; }
+        .badge-pendiente { background: #f39c12; color: white; }
+        .badge-jugado { background: #27ae60; color: white; }
+        .badge-wo { background: #e74c3c; color: white; }
+        .alert { padding: 15px; border-radius: 5px; margin-bottom: 15px; }
+        .alert-warning { background: #fff3cd; border-left: 4px solid #ffc107; color: #856404; }
+        .alert-error { background: #f8d7da; border-left: 4px solid #dc3545; color: #721c24; }
+        .alert-success { background: #d4edda; border-left: 4px solid #28a745; color: #155724; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
+        .modal.active { display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 25px; border-radius: 10px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-header h3 { margin: 0; color: #2c3e50; }
+        .cerrar-modal { background: none; border: none; font-size: 1.5rem; cursor: pointer; }
+        .empty-state { text-align: center; padding: 40px; color: #7f8c8d; }
+        .card { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #4CAF50; }
+        .card-header { font-weight: 600; color: #2c3e50; margin-bottom: 10px; }
+        .checkbox-list { max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 5px; }
+        .checkbox-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
+        .actions-cell { display: flex; gap: 5px; }
+        .loading { text-align: center; padding: 40px; color: #7f8c8d; }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1>🛠️ Administración de Datos</h1>
+            <div class="selector-row">
+                <select id="selector-torneo" onchange="cargarCategorias()">
+                    <option value="">Seleccionar Torneo...</option>
+                </select>
+                <select id="selector-categoria" onchange="cargarDatosTab()" disabled>
+                    <option value="">Seleccionar Categoría...</option>
+                </select>
+                <a href="editar-grupos.html" class="btn-cerrar">← Volver</a>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="cambiarTab('inscriptos')">👥 Inscriptos</button>
+            <button class="tab-btn" onclick="cambiarTab('grupos')">🏆 Grupos</button>
+            <button class="tab-btn" onclick="cambiarTab('partidos')">🎾 Partidos</button>
+            <button class="tab-btn" onclick="cambiarTab('llaves')">🔗 Llaves</button>
+        </div>
+
+        <!-- TAB 1: INSCRIPTOS -->
+        <div id="tab-inscriptos" class="tab-content active">
+            <h2 class="section-title">Gestión de Inscriptos</h2>
+            <div id="inscriptos-list"></div>
+        </div>
+
+        <!-- TAB 2: GRUPOS -->
+        <div id="tab-grupos" class="tab-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 class="section-title" style="margin-bottom: 0;">Gestión de Grupos</h2>
+                <button class="btn-primary" onclick="abrirModalCrearGrupo()">+ Crear Grupo</button>
+            </div>
+            <div id="grupos-list"></div>
+        </div>
+
+        <!-- TAB 3: PARTIDOS -->
+        <div id="tab-partidos" class="tab-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 class="section-title" style="margin-bottom: 0;">Gestión de Partidos</h2>
+                <button class="btn-primary" onclick="abrirModalCrearPartido()">+ Crear Partido</button>
+            </div>
+            <div id="partidos-list"></div>
+        </div>
+
+        <!-- TAB 4: LLAVES -->
+        <div id="tab-llaves" class="tab-content">
+            <h2 class="section-title">Gestión de Llaves</h2>
+            <div id="llaves-list"></div>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR INSCRIPTO -->
+    <div id="modal-editar-inscripto" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Editar Inscripto</h3>
+                <button class="cerrar-modal" onclick="cerrarModal('modal-editar-inscripto')">&times;</button>
+            </div>
+            <form id="form-editar-inscripto">
+                <input type="hidden" id="edit-inscripto-id">
+                <div class="form-group">
+                    <label>Integrantes</label>
+                    <input type="text" id="edit-integrantes" required>
+                </div>
+                <div class="form-group">
+                    <label>Correo</label>
+                    <input type="email" id="edit-correo">
+                </div>
+                <div class="form-group">
+                    <label>Teléfono</label>
+                    <input type="tel" id="edit-telefono">
+                </div>
+                <div class="form-group">
+                    <label>Categoría</label>
+                    <select id="edit-categoria" required></select>
+                </div>
+                <button type="submit" class="btn-primary" style="margin-top: 15px;">Guardar Cambios</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR HORARIOS INSCRIPTO -->
+    <div id="modal-editar-horarios" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Editar Disponibilidad Horaria</h3>
+                <button class="cerrar-modal" onclick="cerrarModal('modal-editar-horarios')">&times;</button>
+            </div>
+            <div id="horarios-inscripto-list"></div>
+        </div>
+    </div>
+
+    <!-- MODAL CREAR GRUPO -->
+    <div id="modal-crear-grupo" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Crear Grupo</h3>
+                <button class="cerrar-modal" onclick="cerrarModal('modal-crear-grupo')">&times;</button>
+            </div>
+            <form id="form-crear-grupo">
+                <div class="form-group">
+                    <label>Número de Grupo</label>
+                    <input type="number" id="create-numero-grupo" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label>Cantidad de Integrantes</label>
+                    <input type="number" id="create-cantidad-integrantes" min="2" max="6" required>
+                </div>
+                <div class="form-group">
+                    <label>Categoría</label>
+                    <select id="create-categoria-grupo" required></select>
+                </div>
+                <button type="submit" class="btn-primary" style="margin-top: 15px;">Crear Grupo</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR GRUPO -->
+    <div id="modal-editar-grupo" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Editar Grupo</h3>
+                <button class="cerrar-modal" onclick="cerrarModal('modal-editar-grupo')">&times;</button>
+            </div>
+            <form id="form-editar-grupo">
+                <input type="hidden" id="edit-grupo-id">
+                <div class="form-group">
+                    <label>Número de Grupo</label>
+                    <input type="number" id="edit-numero-grupo" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label>Cantidad de Integrantes</label>
+                    <input type="number" id="edit-cantidad-integrantes" min="2" max="6" required>
+                </div>
+                <button type="submit" class="btn-primary" style="margin-top: 15px;">Guardar Cambios</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL GESTIONAR INTEGRANTES -->
+    <div id="modal-integrantes" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Gestionar Integrantes del Grupo</h3>
+                <button class="cerrar-modal" onclick="cerrarModal('modal-integrantes')">&times;</button>
+            </div>
+            <input type="hidden" id="gest-grupo-id">
+            <div id="integrantes-disponibles"></div>
+            <div id="integrantes-actuales"></div>
+        </div>
+    </div>
+
+    <!-- MODAL CREAR PARTIDO -->
+    <div id="modal-crear-partido" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Crear Partido</h3>
+                <button class="cerrar-modal" onclick="cerrarModal('modal-crear-partido')">&times;</button>
+            </div>
+            <form id="form-crear-partido">
+                <div class="form-group">
+                    <label>Equipo Local</label>
+                    <select id="create-par-local" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Equipo Visitante</label>
+                    <select id="create-par-visitante" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Hora</label>
+                    <input type="time" id="create-par-hora" required>
+                </div>
+                <div class="form-group">
+                    <label>Cancha</label>
+                    <input type="number" id="create-par-cancha" min="1" required>
+                </div>
+                <button type="submit" class="btn-primary" style="margin-top: 15px;">Crear Partido</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR PARTIDO -->
+    <div id="modal-editar-partido" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Editar Partido</h3>
+                <button class="cerrar-modal" onclick="cerrarModal('modal-editar-partido')">&times;</button>
+            </div>
+            <form id="form-editar-partido">
+                <input type="hidden" id="edit-partido-id">
+                <div class="form-group">
+                    <label>Equipo Local</label>
+                    <select id="edit-par-local" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Equipo Visitante</label>
+                    <select id="edit-par-visitante" required></select>
+                </div>
+                <button type="submit" class="btn-primary" style="margin-top: 15px;">Guardar Cambios</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR LLAVE -->
+    <div id="modal-editar-llave" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Editar Participantes de Llave</h3>
+                <button class="cerrar-modal" onclick="cerrarModal('modal-editar-llave')">&times;</button>
+            </div>
+            <form id="form-editar-llave">
+                <input type="hidden" id="edit-llave-id">
+                <div class="form-group">
+                    <label>Participante 1</label>
+                    <select id="edit-llave-p1"></select>
+                </div>
+                <div class="form-group">
+                    <label>Participante 2</label>
+                    <select id="edit-llave-p2"></select>
+                </div>
+                <button type="submit" class="btn-primary" style="margin-top: 15px;">Guardar Cambios</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://academia-torneos.onrender.com/api';
+        const token = localStorage.getItem('token');
+        
+        if (!token) {
+            alert('No has iniciado sesión');
+            window.location.href = 'login.html';
+        }
+
+        let inscriptosData = [];
+        let gruposData = [];
+        let partidosData = [];
+        let llavesData = [];
+        let categoriasTorneo = [];
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', async () => {
+            await cargarTorneos();
+        });
+
+        async function cargarTorneos() {
+            try {
+                const response = await fetch(`${API_URL}/torneos`);
+                const data = await response.json();
+                const select = document.getElementById('selector-torneo');
+                select.innerHTML = '<option value="">Seleccionar Torneo...</option>';
+                data.forEach(t => {
+                    const option = document.createElement('option');
+                    option.value = t.id;
+                    option.textContent = t.nombre;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al cargar torneos');
+            }
+        }
+
+        async function cargarCategorias() {
+            const idTorneo = document.getElementById('selector-torneo').value;
+            const catSelect = document.getElementById('selector-categoria');
+            
+            if (!idTorneo) {
+                catSelect.innerHTML = '<option value="">Seleccionar Categoría...</option>';
+                catSelect.disabled = true;
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/inscriptos?idTorneo=${idTorneo}`);
+                const data = await response.json();
+                
+                const categorias = [...new Set(data.map(i => i.categoria).filter(c => c))];
+                categoriasTorneo = categorias.sort();
+                
+                catSelect.innerHTML = '<option value="">Seleccionar Categoría...</option>';
+                categoriasTorneo.forEach(c => {
+                    const option = document.createElement('option');
+                    option.value = c;
+                    option.textContent = c;
+                    catSelect.appendChild(option);
+                });
+                catSelect.disabled = false;
+                
+                // Actualizar selects de categoría en modales
+                document.getElementById('edit-categoria').innerHTML = '';
+                document.getElementById('create-categoria-grupo').innerHTML = '';
+                categoriasTorneo.forEach(c => {
+                    document.getElementById('edit-categoria').innerHTML += `<option value="${c}">${c}</option>`;
+                    document.getElementById('create-categoria-grupo').innerHTML += `<option value="${c}">${c}</option>`;
+                });
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function cargarDatosTab() {
+            const categoria = document.getElementById('selector-categoria').value;
+            if (!categoria) return;
+            
+            cargarInscriptos();
+            cargarGrupos();
+            cargarPartidos();
+            cargarLlaves();
+        }
+
+        function cambiarTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            document.querySelector(`[onclick="cambiarTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+        }
+
+        // ==================== INSCRIPTOS ====================
+        async function cargarInscriptos() {
+            const idTorneo = document.getElementById('selector-torneo').value;
+            const categoria = document.getElementById('selector-categoria').value;
+            
+            try {
+                const response = await fetch(`${API_URL}/inscriptos?idTorneo=${idTorneo}`);
+                let data = await response.json();
+                
+                if (categoria) {
+                    data = data.filter(i => i.categoria === categoria);
+                }
+                
+                inscriptosData = data;
+                renderInscriptos();
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function renderInscriptos() {
+            const container = document.getElementById('inscriptos-list');
+            
+            if (inscriptosData.length === 0) {
+                container.innerHTML = '<div class="empty-state">No hay inscriptos en esta categoría</div>';
+                return;
+            }
+
+            let html = `<table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Integrantes</th>
+                        <th>Correo</th>
+                        <th>Teléfono</th>
+                        <th>Categoría</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+            
+            inscriptosData.forEach(i => {
+                html += `<tr>
+                    <td>${i.id}</td>
+                    <td>${i.integrantes || '-'}</td>
+                    <td>${i.correo || '-'}</td>
+                    <td>${i.telefono || '-'}</td>
+                    <td>${i.categoria || '-'}</td>
+                    <td class="actions-cell">
+                        <button class="btn-warning" onclick="abrirEditarInscripto(${i.id})">✏️</button>
+                        <button class="btn-warning" onclick="abrirEditarHorarios(${i.id})">🕐</button>
+                    </td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function abrirEditarInscripto(id) {
+            const inscripto = inscriptosData.find(i => i.id === id);
+            if (!inscripto) return;
+            
+            document.getElementById('edit-inscripto-id').value = id;
+            document.getElementById('edit-integrantes').value = inscripto.integrantes || '';
+            document.getElementById('edit-correo').value = inscripto.correo || '';
+            document.getElementById('edit-telefono').value = inscripto.telefono || '';
+            document.getElementById('edit-categoria').value = inscripto.categoria || '';
+            
+            document.getElementById('modal-editar-inscripto').classList.add('active');
+        }
+
+        document.getElementById('form-editar-inscripto').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('edit-inscripto-id').value;
+            
+            const data = {
+                integrantes: document.getElementById('edit-integrantes').value,
+                correo: document.getElementById('edit-correo').value,
+                telefono: document.getElementById('edit-telefono').value,
+                categoria: document.getElementById('edit-categoria').value
+            };
+            
+            try {
+                const response = await fetch(`${API_URL}/admin/inscriptos/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    alert('Datos actualizados correctamente');
+                    cerrarModal('modal-editar-inscripto');
+                    cargarInscriptos();
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Error al actualizar');
+                }
+            } catch (err) {
+                alert('Error de conexión');
+            }
+        });
+
+        async function abrirEditarHorarios(idInscripto) {
+            const idTorneo = document.getElementById('selector-torneo').value;
+            
+            try {
+                const [inscriptoRes, horariosRes] = await Promise.all([
+                    fetch(`${API_URL}/inscriptos/${idInscripto}`),
+                    fetch(`${API_URL}/horarios/${idTorneo}`)
+                ]);
+                
+                const inscripto = await inscriptoRes.json();
+                const todosHorarios = await horariosRes.json();
+                const horariosAsignados = inscripto.horarios || [];
+                const idsAsignados = horariosAsignados.map(h => h.id);
+                
+                let html = `<p><strong>${inscripto.integrantes}</strong></p>
+                    <div class="checkbox-list">`;
+                
+                todosHorarios.forEach(h => {
+                    const checked = idsAsignados.includes(h.id) ? 'checked' : '';
+                    html += `<div class="checkbox-item">
+                        <input type="checkbox" id="horario-${h.id}" value="${h.id}" ${checked}>
+                        <label for="horario-${h.id}">${h.dia_semana} ${h.fecha} ${h.hora_inicio} - ${h.lugar}</label>
+                    </div>`;
+                });
+                
+                html += '</div><button class="btn-primary" style="margin-top:15px" onclick="guardarHorariosInscripto(' + idInscripto + ')">Guardar Horarios</button>';
+                
+                document.getElementById('horarios-inscripto-list').innerHTML = html;
+                document.getElementById('modal-editar-horarios').classList.add('active');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al cargar horarios');
+            }
+        }
+
+        async function guardarHorariosInscripto(idInscripto) {
+            const checkboxes = document.querySelectorAll('#horarios-inscripto-list input[type="checkbox"]:checked');
+            const idsHorarios = Array.from(checkboxes).map(cb => parseInt(cb.value));
+            
+            try {
+                const response = await fetch(`${API_URL}/admin/inscriptos/${idInscripto}/horarios`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ horarios: idsHorarios })
+                });
+                
+                if (response.ok) {
+                    alert('Horarios actualizados correctamente');
+                    cerrarModal('modal-editar-horarios');
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Error al guardar horarios');
+                }
+            } catch (err) {
+                alert('Error de conexión');
+            }
+        }
+
+        // ==================== GRUPOS ====================
+        async function cargarGrupos() {
+            const idTorneo = document.getElementById('selector-torneo').value;
+            const categoria = document.getElementById('selector-categoria').value;
+            
+            if (!idTorneo || !categoria) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/grupos/${idTorneo}`);
+                let data = await response.json();
+                
+                data = data.filter(g => g.categoria === categoria);
+                gruposData = data;
+                renderGrupos();
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function renderGrupos() {
+            const container = document.getElementById('grupos-list');
+            
+            if (gruposData.length === 0) {
+                container.innerHTML = '<div class="empty-state">No hay grupos en esta categoría</div>';
+                return;
+            }
+
+            let html = '';
+            gruposData.forEach(g => {
+                const incompletos = g.cantidad_integrantes > (g.integrantes?.length || 0);
+                html += `<div class="card" style="${incompletos ? 'border-left-color:#f39c12' : ''}">
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+                        <span>Grupo ${g.numero_grupo} - ${g.categoria}</span>
+                        <div>
+                            <button class="btn-warning" onclick="abrirEditarGrupo(${g.id})">✏️</button>
+                            <button class="btn-warning" onclick="abrirGestionarIntegrantes(${g.id})">👥</button>
+                        </div>
+                    </div>
+                    <div>Integrantes: ${g.integrantes?.length || 0} / ${g.cantidad_integrantes}</div>
+                    ${incompletos ? '<div class="alert alert-warning" style="margin-top:10px;padding:8px">⚠️ Faltan jugadores en este grupo</div>' : ''}
+                    <div style="margin-top:10px;font-size:0.9em;color:#666">
+                        ${g.integrantes?.map(i => i.integrantes).join(', ') || 'Sin integrantes'}
+                    </div>
+                </div>`;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        function abrirModalCrearGrupo() {
+            const idTorneo = document.getElementById('selector-torneo').value;
+            const categoria = document.getElementById('selector-categoria').value;
+            
+            // Calcular siguiente número de grupo
+            const maxNum = gruposData.length > 0 ? Math.max(...gruposData.map(g => g.numero_grupo)) : 0;
+            document.getElementById('create-numero-grupo').value = maxNum + 1;
+            document.getElementById('create-cantidad-integrantes').value = 3;
+            document.getElementById('create-categoria-grupo').value = categoria;
+            
+            document.getElementById('modal-crear-grupo').classList.add('active');
+        }
+
+        document.getElementById('form-crear-grupo').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const idTorneo = document.getElementById('selector-torneo').value;
+            
+            const data = {
+                id_torneo: parseInt(idTorneo),
+                numero_grupo: parseInt(document.getElementById('create-numero-grupo').value),
+                cantidad_integrantes: parseInt(document.getElementById('create-cantidad-integrantes').value),
+                categoria: document.getElementById('create-categoria-grupo').value
+            };
+            
+            try {
+                const response = await fetch(`${API_URL}/admin/grupos/crear`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    alert('Grupo creado correctamente');
+                    cerrarModal('modal-crear-grupo');
+                    cargarGrupos();
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Error al crear grupo');
+                }
+            } catch (err) {
+                alert('Error de conexión');
+            }
+        });
+
+        function abrirEditarGrupo(id) {
+            const grupo = gruposData.find(g => g.id === id);
+            if (!grupo) return;
+            
+            document.getElementById('edit-grupo-id').value = id;
+            document.getElementById('edit-numero-grupo').value = grupo.numero_grupo;
+            document.getElementById('edit-cantidad-integrantes').value = grupo.cantidad_integrantes;
+            
+            document.getElementById('modal-editar-grupo').classList.add('active');
+        }
+
+        document.getElementById('form-editar-grupo').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('edit-grupo-id').value;
+            
+            const data = {
+                numero_grupo: parseInt(document.getElementById('edit-numero-grupo').value),
+                cantidad_integrantes: parseInt(document.getElementById('edit-cantidad-integrantes').value)
+            };
+            
+            try {
+                const response = await fetch(`${API_URL}/admin/grupos/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    alert('Grupo actualizado correctamente');
+                    cerrarModal('modal-editar-grupo');
+                    cargarGrupos();
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Error al actualizar grupo');
+                }
+            } catch (err) {
+                alert('Error de conexión');
+            }
+        });
+
+        async function abrirGestionarIntegrantes(idGrupo) {
+            const idTorneo = document.getElementById('selector-torneo').value;
+            const categoria = document.getElementById('selector-categoria').value;
+            
+            document.getElementById('gest-grupo-id').value = idGrupo;
+            
+            try {
+                // Obtener inscriptos de la categoría
+                const insRes = await fetch(`${API_URL}/inscriptos?idTorneo=${idTorneo}`);
+                const allInscriptos = await insRes.json();
+                const categoriaInscriptos = allInscriptos.filter(i => i.categoria === categoria);
+                
+                // Obtener integrantes actuales del grupo
+                const grupo = gruposData.find(g => g.id === idGrupo);
+                const actualesIds = grupo?.integrantes?.map(i => i.id) || [];
+                
+                // Obtener participantes que ya tienen partidos jugados en OTRO grupo
+                const conPartidosJugados = await obtenerInscriptosConPartidosJugados(idTorneo, categoria);
+                
+                // Dividir en disponibles y actuales
+                let htmlDisponibles = '<h4>Disponibles para agregar</h4><div class="checkbox-list">';
+                let htmlActuales = '<h4 style="margin-top:20px">Integrantes actuales</h4><div class="checkbox-list">';
+                
+                categoriaInscriptos.forEach(i => {
+                    const tienePartidos = conPartidosJugados.includes(i.id);
+                    const enEsteGrupo = actualesIds.includes(i.id);
+                    
+                    if (enEsteGrupo) {
+                        const puedeQuitar = !tienePartidos;
+                        htmlActuales += `<div class="checkbox-item">
+                            <input type="checkbox" id="act-${i.id}" value="${i.id}" ${puedeQuitar ? '' : 'disabled'} ${puedeQuitar ? 'checked' : ''}>
+                            <label for="act-${i.id}">${i.integrantes} ${tienePartidos ? '(No puede quitarse - tiene partidos jugados)' : ''}</label>
+                        </div>`;
+                    } else {
+                        htmlDisponibles += `<div class="checkbox-item">
+                            <input type="checkbox" id="disp-${i.id}" value="${i.id}">
+                            <label for="disp-${i.id}">${i.integrantes}</label>
+                        </div>`;
+                    }
+                });
+                
+                htmlDisponibles += '</div>';
+                htmlActuales += '</div>';
+                
+                document.getElementById('integrantes-disponibles').innerHTML = htmlDisponibles;
+                document.getElementById('integrantes-actuales').innerHTML = htmlActuales;
+                
+                document.getElementById('modal-integrantes').classList.add('active');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al cargar integrantes');
+            }
+        }
+
+        async function obtenerInscriptosConPartidosJugados(idTorneo, categoria) {
+            try {
+                const response = await fetch(`${API_URL}/partidos/${idTorneo}`);
+                const partidos = await response.json();
+                
+                const ids = new Set();
+                partidos.forEach(p => {
+                    if (p.estado !== 'pendiente') {
+                        ids.add(p.id_inscriptoL);
+                        ids.add(p.id_inscriptov);
+                    }
+                });
+                return Array.from(ids);
+            } catch (error) {
+                return [];
+            }
+        }
+
+        // ==================== PARTIDOS ====================
+        async function cargarPartidos() {
+            const idTorneo = document.getElementById('selector-torneo').value;
+            const categoria = document.getElementById('selector-categoria').value;
+            
+            if (!idTorneo || !categoria) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/partidos/${idTorneo}`);
+                let data = await response.json();
+                
+                // Filtrar por categoría de los participantes
+                data = data.filter(p => {
+                    return p.categoria_local === categoria || p.categoria_visitante === categoria;
+                });
+                
+                partidosData = data;
+                renderPartidos();
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function renderPartidos() {
+            const container = document.getElementById('partidos-list');
+            
+            if (partidosData.length === 0) {
+                container.innerHTML = '<div class="empty-state">No hay partidos en esta categoría</div>';
+                return;
+            }
+
+            let html = `<table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Local</th>
+                        <th>Visitante</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+            
+            partidosData.forEach(p => {
+                const badgeClass = p.estado === 'pendiente' ? 'badge-pendiente' : (p.estado === 'jugado' ? 'badge-jugado' : 'badge-wo');
+                const puedeEditar = p.estado === 'pendiente';
+                const tieneAmbos = p.id_inscriptoL && p.id_inscriptov;
+                
+                html += `<tr>
+                    <td>${p.id}</td>
+                    <td>${p.local || '-'}</td>
+                    <td>${p.visitante || '-'}</td>
+                    <td><span class="badge ${badgeClass}">${p.estado}</span></td>
+                    <td class="actions-cell">
+                        ${!tieneAmbos ? '<span class="alert alert-warning" style="padding:4px;margin-right:5px">⚠️ Falta rival</span>' : ''}
+                        <button class="btn-warning" onclick="abrirEditarPartido(${p.id})" ${!puedeEditar ? 'disabled' : ''}>✏️</button>
+                    </td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function abrirModalCrearPartido() {
+            const idTorneo = document.getElementById('selector-torneo').value;
+            const categoria = document.getElementById('selector-categoria').value;
+            
+            // Cargar inscriptos de la categoría
+            fetch(`${API_URL}/inscriptos?idTorneo=${idTorneo}`)
+                .then(res => res.json())
+                .then(data => {
+                    const filtered = data.filter(i => i.categoria === categoria);
+                    
+                    const populate = (id) => {
+                        const select = document.getElementById(id);
+                        select.innerHTML = '<option value="">Seleccionar...</option>';
+                        filtered.forEach(i => {
+                            select.innerHTML += `<option value="${i.id}">${i.integrantes}</option>`;
+                        });
+                    };
+                    
+                    populate('create-par-local');
+                    populate('create-par-visitante');
+                });
+            
+            document.getElementById('modal-crear-partido').classList.add('active');
+        }
+
+        document.getElementById('form-crear-partido').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const idTorneo = document.getElementById('selector-torneo').value;
+            
+            const data = {
+                id_torneo: parseInt(idTorneo),
+                id_inscriptoL: parseInt(document.getElementById('create-par-local').value),
+                id_inscriptov: parseInt(document.getElementById('create-par-visitante').value),
+                hora: document.getElementById('create-par-hora').value,
+                cancha: parseInt(document.getElementById('create-par-cancha').value)
+            };
+            
+            if (data.id_inscriptoL === data.id_inscriptov) {
+                alert('Los participantes deben ser diferentes');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/admin/partidos/crear`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    alert('Partido creado correctamente');
+                    cerrarModal('modal-crear-partido');
+                    cargarPartidos();
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Error al crear partido');
+                }
+            } catch (err) {
+                alert('Error de conexión');
+            }
+        });
+
+        function abrirEditarPartido(id) {
+            const partido = partidosData.find(p => p.id === id);
+            if (!partido) return;
+            
+            const idTorneo = document.getElementById('selector-torneo').value;
+            const categoria = document.getElementById('selector-categoria').value;
+            
+            document.getElementById('edit-partido-id').value = id;
+            
+            fetch(`${API_URL}/inscriptos?idTorneo=${idTorneo}`)
+                .then(res => res.json())
+                .then(data => {
+                    const filtered = data.filter(i => i.categoria === categoria);
+                    
+                    const populate = (id, selectedId) => {
+                        const select = document.getElementById(id);
+                        select.innerHTML = '<option value="">Seleccionar...</option>';
+                        filtered.forEach(i => {
+                            select.innerHTML += `<option value="${i.id}" ${i.id === selectedId ? 'selected' : ''}>${i.integrantes}</option>`;
+                        });
+                    };
+                    
+                    populate('edit-par-local', partido.id_inscriptoL);
+                    populate('edit-par-visitante', partido.id_inscriptov);
+                });
+            
+            document.getElementById('modal-editar-partido').classList.add('active');
+        }
+
+        document.getElementById('form-editar-partido').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('edit-partido-id').value;
+            
+            const localId = parseInt(document.getElementById('edit-par-local').value);
+            const visitanteId = parseInt(document.getElementById('edit-par-visitante').value);
+            
+            if (!localId || !visitanteId) {
+                alert('Debe completar ambos participantes');
+                return;
+            }
+            
+            if (localId === visitanteId) {
+                alert('Los participantes deben ser diferentes');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/admin/partidos/${id}/rivales`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        id_inscriptoL: localId,
+                        id_inscriptov: visitanteId
+                    })
+                });
+                
+                if (response.ok) {
+                    alert('Partido actualizado correctamente');
+                    cerrarModal('modal-editar-partido');
+                    cargarPartidos();
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Error al actualizar partido');
+                }
+            } catch (err) {
+                alert('Error de conexión');
+            }
+        });
+
+        // ==================== LLAVES ====================
+        async function cargarLlaves() {
+            const idTorneo = document.getElementById('selector-torneo').value;
+            const categoria = document.getElementById('selector-categoria').value;
+            
+            if (!idTorneo || !categoria) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/torneo/${idTorneo}/llave`);
+                let data = await response.json();
+                
+                data = data.filter(l => l.categoria === categoria);
+                llavesData = data;
+                renderLlaves();
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function renderLlaves() {
+            const container = document.getElementById('llaves-list');
+            
+            if (llavesData.length === 0) {
+                container.innerHTML = '<div class="empty-state">No hay llaves generadas en esta categoría</div>';
+                return;
+            }
+
+            // Agrupar por ronda
+            const rondas = {};
+            llavesData.forEach(l => {
+                if (!rondas[l.ronda]) rondas[l.ronda] = [];
+                rondas[l.ronda].push(l);
+            });
+
+            let html = '';
+            const ordenRondas = ['dieciseisavos', 'octavos', 'cuartos', 'semifinal', 'final'];
+            
+            ordenRondas.forEach(ronda => {
+                if (!rondas[ronda]) return;
+                
+                html += `<h3 style="text-transform:capitalize;margin-top:30px">${ronda}</h3>`;
+                html += `<table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Pos</th>
+                            <th>Participante 1</th>
+                            <th>Participante 2</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+                
+                llavesData.filter(l => l.ronda === ronda).sort((a,b) => a.posicion - b.posicion).forEach(l => {
+                    html += `<tr>
+                        <td>${l.posicion}</td>
+                        <td>${l.inscripto_1 || '-'}</td>
+                        <td>${l.inscripto_2 || '-'}</td>
+                        <td><button class="btn-warning" onclick="abrirEditarLlave(${l.id})">✏️</button></td>
+                    </tr>`;
+                });
+                
+                html += '</tbody></table>';
+            });
+            
+            container.innerHTML = html;
+        }
+
+        function abrirEditarLlave(id) {
+            const llave = llavesData.find(l => l.id === id);
+            if (!llave) return;
+            
+            const idTorneo = document.getElementById('selector-torneo').value;
+            const categoria = document.getElementById('selector-categoria').value;
+            
+            document.getElementById('edit-llave-id').value = id;
+            
+            fetch(`${API_URL}/inscriptos?idTorneo=${idTorneo}`)
+                .then(res => res.json())
+                .then(data => {
+                    const filtered = data.filter(i => i.categoria === categoria);
+                    
+                    const populate = (id, selectedId) => {
+                        const select = document.getElementById(id);
+                        select.innerHTML = '<option value="">Seleccionar...</option>';
+                        select.innerHTML += '<option value="">BYE</option>';
+                        filtered.forEach(i => {
+                            select.innerHTML += `<option value="${i.id}" ${i.id === selectedId ? 'selected' : ''}>${i.integrantes}</option>`;
+                        });
+                    };
+                    
+                    populate('edit-llave-p1', llave.id_inscripto_1);
+                    populate('edit-llave-p2', llave.id_inscripto_2);
+                });
+            
+            document.getElementById('modal-editar-llave').classList.add('active');
+        }
+
+        document.getElementById('form-editar-llave').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('edit-llave-id').value;
+            
+            const p1 = document.getElementById('edit-llave-p1').value;
+            const p2 = document.getElementById('edit-llave-p2').value;
+            
+            try {
+                const response = await fetch(`${API_URL}/admin/llave/${id}/rivales`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        id_inscripto_1: p1 ? parseInt(p1) : null,
+                        id_inscripto_2: p2 ? parseInt(p2) : null
+                    })
+                });
+                
+                if (response.ok) {
+                    alert('Llave actualizada correctamente');
+                    cerrarModal('modal-editar-llave');
+                    cargarLlaves();
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Error al actualizar llave');
+                }
+            } catch (err) {
+                alert('Error de conexión');
+            }
+        });
+
+        // Utilitarios
+        function cerrarModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        // Cerrar modal al hacer click fuera
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

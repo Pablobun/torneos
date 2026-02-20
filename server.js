@@ -3302,3 +3302,274 @@ app.delete('/api/horarios/:id', authMiddleware, async (req, res) => {
         res.status(500).json({ error: 'Error al eliminar horario' });
     }
 });
+
+// ==================== ENDPOINTS DE ADMINISTRACIÓN ====================
+
+// PUT: Editar inscripto
+app.put('/api/admin/inscriptos/:id', authMiddleware, async (req, res) => {
+    const { id } = req.params;
+    const { integrantes, correo, telefono, categoria } = req.body;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        await connection.execute(
+            'UPDATE inscriptos SET integrantes = ?, correo = ?, telefono = ?, categoria = ? WHERE id = ?',
+            [integrantes, correo, telefono, categoria, id]
+        );
+        
+        await connection.end();
+        res.status(200).json({ mensaje: 'Inscripto actualizado correctamente' });
+    } catch (error) {
+        console.error('Error al actualizar inscripto:', error);
+        res.status(500).json({ error: 'Error al actualizar inscripto' });
+    }
+});
+
+// PUT: Actualizar horarios de inscripto
+app.put('/api/admin/inscriptos/:id/horarios', authMiddleware, async (req, res) => {
+    const { id } = req.params;
+    const { horarios } = req.body;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        // Eliminar horarios actuales
+        await connection.execute('DELETE FROM inscriptos_horarios WHERE id_inscripto_fk = ?', [id]);
+        
+        // Insertar nuevos horarios
+        if (horarios && horarios.length > 0) {
+            for (const idHorario of horarios) {
+                await connection.execute(
+                    'INSERT INTO inscriptos_horarios (id_inscripto_fk, id_horario_fk) VALUES (?, ?)',
+                    [id, idHorario]
+                );
+            }
+        }
+        
+        await connection.end();
+        res.status(200).json({ mensaje: 'Horarios actualizados correctamente' });
+    } catch (error) {
+        console.error('Error al actualizar horarios:', error);
+        res.status(500).json({ error: 'Error al actualizar horarios' });
+    }
+});
+
+// POST: Crear grupo
+app.post('/api/admin/grupos/crear', authMiddleware, async (req, res) => {
+    const { id_torneo, numero_grupo, cantidad_integrantes, categoria } = req.body;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        // Verificar si ya existe un grupo con mismo número y categoría
+        const [existente] = await connection.execute(
+            'SELECT id FROM grupos WHERE id_torneo_fk = ? AND numero_grupo = ? AND categoria = ?',
+            [id_torneo, numero_grupo, categoria]
+        );
+        
+        if (existente.length > 0) {
+            await connection.end();
+            return res.status(400).json({ error: 'Ya existe un grupo con ese número en esta categoría' });
+        }
+        
+        await connection.execute(
+            'INSERT INTO grupos (id_torneo_fk, numero_grupo, cantidad_integrantes, categoria, estado) VALUES (?, ?, ?, ?, ?)',
+            [id_torneo, numero_grupo, cantidad_integrantes, categoria, 'pendiente']
+        );
+        
+        await connection.end();
+        res.status(201).json({ mensaje: 'Grupo creado correctamente' });
+    } catch (error) {
+        console.error('Error al crear grupo:', error);
+        res.status(500).json({ error: 'Error al crear grupo' });
+    }
+});
+
+// PUT: Editar grupo
+app.put('/api/admin/grupos/:id', authMiddleware, async (req, res) => {
+    const { id } = req.params;
+    const { numero_grupo, cantidad_integrantes } = req.body;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        await connection.execute(
+            'UPDATE grupos SET numero_grupo = ?, cantidad_integrantes = ? WHERE id = ?',
+            [numero_grupo, cantidad_integrantes, id]
+        );
+        
+        await connection.end();
+        res.status(200).json({ mensaje: 'Grupo actualizado correctamente' });
+    } catch (error) {
+        console.error('Error al actualizar grupo:', error);
+        res.status(500).json({ error: 'Error al actualizar grupo' });
+    }
+});
+
+// POST: Agregar integrante a grupo
+app.post('/api/admin/grupos/:id/integrante', authMiddleware, async (req, res) => {
+    const { id } = req.params;
+    const { id_inscripto } = req.body;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        // Verificar si ya está en el grupo
+        const [existente] = await connection.execute(
+            'SELECT id FROM grupo_integrantes WHERE id_grupo = ? AND id_inscripto = ?',
+            [id, id_inscripto]
+        );
+        
+        if (existente.length > 0) {
+            await connection.end();
+            return res.status(400).json({ error: 'El participante ya está en este grupo' });
+        }
+        
+        // Verificar si está en otro grupo del mismo torneo y categoría
+        const [grupo] = await connection.execute('SELECT id_torneo_fk, categoria FROM grupos WHERE id = ?', [id]);
+        if (grupo.length === 0) {
+            await connection.end();
+            return res.status(404).json({ error: 'Grupo no encontrado' });
+        }
+        
+        const [enOtro] = await connection.execute(`
+            SELECT gi.id FROM grupo_integrantes gi
+            JOIN grupos g ON gi.id_grupo = g.id
+            WHERE gi.id_inscripto = ? AND g.id_torneo_fk = ? AND g.categoria = ? AND g.id != ?
+        `, [id_inscripto, grupo[0].id_torneo_fk, grupo[0].categoria, id]);
+        
+        if (enOtro.length > 0) {
+            await connection.end();
+            return res.status(400).json({ error: 'El participante ya está en otro grupo de esta categoría' });
+        }
+        
+        await connection.execute(
+            'INSERT INTO grupo_integrantes (id_grupo, id_inscripto) VALUES (?, ?)',
+            [id, id_inscripto]
+        );
+        
+        await connection.end();
+        res.status(201).json({ mensaje: 'Integrante agregado correctamente' });
+    } catch (error) {
+        console.error('Error al agregar integrante:', error);
+        res.status(500).json({ error: 'Error al agregar integrante' });
+    }
+});
+
+// DELETE: Quitar integrante de grupo
+app.delete('/api/admin/grupos/:id/integrante/:idInscripto', authMiddleware, async (req, res) => {
+    const { id, idInscripto } = req.params;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        // Verificar si tiene partidos jugados
+        const [partidos] = await connection.execute(`
+            SELECT id FROM partido 
+            WHERE (id_inscriptoL = ? OR id_inscriptov = ?) 
+            AND estado != 'pendiente'
+        `, [idInscripto, idInscripto]);
+        
+        if (partidos.length > 0) {
+            await connection.end();
+            return res.status(400).json({ error: 'No puede quitarse: el participante tiene partidos jugados' });
+        }
+        
+        await connection.execute(
+            'DELETE FROM grupo_integrantes WHERE id_grupo = ? AND id_inscripto = ?',
+            [id, idInscripto]
+        );
+        
+        await connection.end();
+        res.status(200).json({ mensaje: 'Integrante eliminado del grupo' });
+    } catch (error) {
+        console.error('Error al quitar integrante:', error);
+        res.status(500).json({ error: 'Error al quitar integrante' });
+    }
+});
+
+// POST: Crear partido
+app.post('/api/admin/partidos/crear', authMiddleware, async (req, res) => {
+    const { id_torneo, id_inscriptoL, id_inscriptov, hora, cancha } = req.body;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        // Crear horario si no existe
+        let idHorario = null;
+        if (hora &&cancha) {
+            const [newHorario] = await connection.execute(
+                'INSERT INTO horarios (id_torneo_fk, dia_semana, fecha, hora_inicio, canchas, activo) VALUES (?, ?, CURDATE(), ?, ?, 1)',
+                [id_torneo, 'Administrativo', hora,cancha]
+            );
+            idHorario = newHorario.insertId;
+        }
+        
+        await connection.execute(
+            'INSERT INTO partido (id_horario, id_inscriptoL, id_inscriptov, estado) VALUES (?, ?, ?, ?)',
+            [idHorario, id_inscriptoL, id_inscriptov, 'pendiente']
+        );
+        
+        await connection.end();
+        res.status(201).json({ mensaje: 'Partido creado correctamente' });
+    } catch (error) {
+        console.error('Error al crear partido:', error);
+        res.status(500).json({ error: 'Error al crear partido' });
+    }
+});
+
+// PUT: Modificar rivales de partido
+app.put('/api/admin/partidos/:id/rivales', authMiddleware, async (req, res) => {
+    const { id } = req.params;
+    const { id_inscriptoL, id_inscriptov } = req.body;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        // Verificar que el partido esté pendiente
+        const [partido] = await connection.execute('SELECT estado FROM partido WHERE id = ?', [id]);
+        
+        if (partido.length === 0) {
+            await connection.end();
+            return res.status(404).json({ error: 'Partido no encontrado' });
+        }
+        
+        if (partido[0].estado !== 'pendiente') {
+            await connection.end();
+            return res.status(400).json({ error: 'Solo se pueden editar partidos pendientes' });
+        }
+        
+        await connection.execute(
+            'UPDATE partido SET id_inscriptoL = ?, id_inscriptov = ? WHERE id = ?',
+            [id_inscriptoL, id_inscriptov, id]
+        );
+        
+        await connection.end();
+        res.status(200).json({ mensaje: 'Partido actualizado correctamente' });
+    } catch (error) {
+        console.error('Error al actualizar partido:', error);
+        res.status(500).json({ error: 'Error al actualizar partido' });
+    }
+});
+
+// PUT: Modificar rivales en llave
+app.put('/api/admin/llave/:id/rivales', authMiddleware, async (req, res) => {
+    const { id } = req.params;
+    const { id_inscripto_1, id_inscripto_2 } = req.body;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        await connection.execute(
+            'UPDATE llave_eliminacion SET id_inscripto_1 = ?, id_inscripto_2 = ? WHERE id = ?',
+            [id_inscripto_1, id_inscripto_2, id]
+        );
+        
+        await connection.end();
+        res.status(200).json({ mensaje: 'Llave actualizada correctamente' });
+    } catch (error) {
+        console.error('Error al actualizar llave:', error);
+        res.status(500).json({ error: 'Error al actualizar llave' });
+    }
+});
