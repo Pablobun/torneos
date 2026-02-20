@@ -943,12 +943,12 @@
             partidosData.forEach(p => {
                 const badgeClass = p.estado === 'pendiente' ? 'badge-pendiente' : (p.estado === 'jugado' ? 'badge-jugado' : 'badge-wo');
                 const puedeEditar = p.estado === 'pendiente';
-                const tieneAmbos = p.id_inscriptoL && p.id_inscriptov;
+                const tieneAmbos = p.local_id && p.visitante_id;
                 
                 html += `<tr>
                     <td>${p.id}</td>
-                    <td>${p.local || '-'}</td>
-                    <td>${p.visitante || '-'}</td>
+                    <td>${p.local_nombre || '-'}</td>
+                    <td>${p.visitante_nombre || '-'}</td>
                     <td><span class="badge ${badgeClass}">${p.estado}</span></td>
                     <td class="actions-cell">
                         ${!tieneAmbos ? '<span class="alert alert-warning" style="padding:4px;margin-right:5px">⚠️ Falta rival</span>' : ''}
