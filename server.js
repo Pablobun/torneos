@@ -3674,6 +3674,36 @@ app.put('/api/admin/partidos/:id/rivales', authMiddleware, async (req, res) => {
     }
 });
 
+// DELETE: Eliminar partido
+app.delete('/api/admin/partidos/:id', authMiddleware, async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        // Verificar que el partido esté pendiente
+        const [partido] = await connection.execute('SELECT estado FROM partido WHERE id = ?', [id]);
+        
+        if (partido.length === 0) {
+            await connection.end();
+            return res.status(404).json({ error: 'Partido no encontrado' });
+        }
+        
+        if (partido[0].estado !== 'pendiente') {
+            await connection.end();
+            return res.status(400).json({ error: 'Solo se pueden eliminar partidos pendientes' });
+        }
+        
+        await connection.execute('DELETE FROM partido WHERE id = ?', [id]);
+        
+        await connection.end();
+        res.status(200).json({ mensaje: 'Partido eliminado correctamente' });
+    } catch (error) {
+        console.error('Error al eliminar partido:', error);
+        res.status(500).json({ error: 'Error al eliminar partido' });
+    }
+});
+
 // PUT: Modificar rivales en llave
 app.put('/api/admin/llave/:id/rivales', authMiddleware, async (req, res) => {
     const { id } = req.params;

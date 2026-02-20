@@ -953,12 +953,35 @@
                     <td class="actions-cell">
                         ${!tieneAmbos ? '<span class="alert alert-warning" style="padding:4px;margin-right:5px">⚠️ Falta rival</span>' : ''}
                         <button class="btn-warning" onclick="abrirEditarPartido(${p.id})" ${!puedeEditar ? 'disabled' : ''}>✏️</button>
+                        <button class="btn-danger" onclick="eliminarPartido(${p.id})" ${!puedeEditar ? 'disabled' : ''}>🗑️</button>
                     </td>
                 </tr>`;
             });
             
             html += '</tbody></table>';
             container.innerHTML = html;
+        }
+
+        async function eliminarPartido(idPartido) {
+            if (!confirm('¿Estás seguro de eliminar este partido?')) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/admin/partidos/${idPartido}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    alert('Partido eliminado correctamente');
+                    cargarPartidos();
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Error al eliminar partido');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error de conexión');
+            }
         }
 
         function abrirModalCrearPartido() {
