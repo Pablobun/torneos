@@ -724,9 +724,12 @@
                 const allInscriptos = await insRes.json();
                 const categoriaInscriptos = allInscriptos.filter(i => i.categoria === categoria);
                 
-                // Obtener integrantes actuales del grupo
-                const grupo = gruposData.find(g => g.id === idGrupo);
-                const actualesIds = grupo?.integrantes?.map(i => i.id) || [];
+                // Obtener integrantes actuales del grupo usando el nuevo endpoint
+                const grupoRes = await fetch(`${API_URL}/admin/grupos/${idGrupo}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const grupoData = await grupoRes.json();
+                const actualesIds = grupoData.integrantes ? grupoData.integrantes.map(i => i.id_inscripto) : [];
                 
                 // Obtener participantes que ya tienen partidos jugados en OTRO grupo
                 const conPartidosJugados = await obtenerInscriptosConPartidosJugados(idTorneo, categoria);
@@ -754,7 +757,7 @@
                 });
                 
                 htmlDisponibles += '</div>';
-                htmlActuales += '</div>';
+                htmlActuales += '</div><button class="btn-primary" style="margin-top:15px;width:100%" onclick="guardarIntegrantes(' + idGrupo + ')">Guardar Cambios</button>';
                 
                 document.getElementById('integrantes-disponibles').innerHTML = htmlDisponibles;
                 document.getElementById('integrantes-actuales').innerHTML = htmlActuales;
@@ -782,6 +785,68 @@
             } catch (error) {
                 return [];
             }
+        }
+
+        async function guardarIntegrantes(idGrupo) {
+            // Obtener checkboxes marcados para agregar
+            const checkboxesAgregar = document.querySelectorAll('#integrantes-disponibles input[type="checkbox"]:checked');
+            const idsAgregar = Array.from(checkboxesAgregar).map(cb => parseInt(cb.value));
+            
+            // Obtener checkboxes desmarcados para quitar (los que estaban marcados antes)
+            const checkboxesActuales = document.querySelectorAll('#integrantes-actuales input[type="checkbox"]');
+            const checkboxesActualesMarcados = document.querySelectorAll('#integrantes-actuales input[type="checkbox"]:checked');
+            
+            // Los que estaban marcados pero ahora no lo están = quitar
+            const idsActuales = Array.from(checkboxesActuales).map(cb => parseInt(cb.value));
+            const idsMarcados = Array.from(checkboxesActualesMarcados).map(cb => parseInt(cb.value));
+            const idsQuitar = idsActuales.filter(id => !idsMarcados.includes(id));
+            
+            let errores = [];
+            
+            // Agregar nuevos integrantes
+            for (const idInscripto of idsAgregar) {
+                try {
+                    const res = await fetch(`${API_URL}/admin/grupos/${idGrupo}/integrante`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ id_inscripto: idInscripto })
+                    });
+                    if (!res.ok) {
+                        const err = await res.json();
+                        errores.push(err.error);
+                    }
+                } catch (e) {
+                    errores.push('Error al agregar participante');
+                }
+            }
+            
+            // Quitar integrantes
+            for (const idInscripto of idsQuitar) {
+                try {
+                    const res = await fetch(`${API_URL}/admin/grupos/${idGrupo}/integrante/${idInscripto}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (!res.ok) {
+                        const err = await res.json();
+                        errores.push(err.error);
+                    }
+                } catch (e) {
+                    errores.push('Error al quitar participante');
+                }
+            }
+            
+            if (errores.length > 0) {
+                alert('Algunos cambios no se pudieron realizar:\n' + errores.join('\n'));
+            } else {
+                alert('Cambios guardados correctamente');
+            }
+            
+            cerrarModal('modal-integrantes');
+            cargarGrupos();
         }
 
         // ==================== PARTIDOS ====================

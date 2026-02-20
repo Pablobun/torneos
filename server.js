@@ -3400,6 +3400,43 @@ app.post('/api/admin/grupos/crear', authMiddleware, async (req, res) => {
     }
 });
 
+// GET: Obtener detalles de un grupo con integrantes (con IDs)
+app.get('/api/admin/grupos/:id', authMiddleware, async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        const [grupo] = await connection.execute(
+            'SELECT id, numero_grupo, cantidad_integrantes, categoria, estado FROM grupos WHERE id = ?',
+            [id]
+        );
+        
+        if (grupo.length === 0) {
+            await connection.end();
+            return res.status(404).json({ error: 'Grupo no encontrado' });
+        }
+        
+        const [integrantes] = await connection.execute(
+            `SELECT gi.id_inscripto, i.integrantes 
+             FROM grupo_integrantes gi 
+             JOIN inscriptos i ON gi.id_inscripto = i.id 
+             WHERE gi.id_grupo = ?`,
+            [id]
+        );
+        
+        await connection.end();
+        
+        res.json({
+            ...grupo[0],
+            integrantes: integrantes
+        });
+    } catch (error) {
+        console.error('Error al obtener grupo:', error);
+        res.status(500).json({ error: 'Error al obtener grupo' });
+    }
+});
+
 // PUT: Editar grupo
 app.put('/api/admin/grupos/:id', authMiddleware, async (req, res) => {
     const { id } = req.params;
