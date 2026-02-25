@@ -321,6 +321,15 @@
                 const response = await fetch(`${API_URL}/admin/torneos`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
+                
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('usuario');
+                    alert('Tu sesión ha expirado. Por favor, iniciá sesión nuevamente.');
+                    window.location.href = 'login.html';
+                    return;
+                }
+                
                 const data = await response.json();
                 const select = document.getElementById('selector-torneo');
                 select.innerHTML = '<option value="">Seleccionar Torneo...</option>';
