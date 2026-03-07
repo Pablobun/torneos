@@ -443,3 +443,34 @@ document.addEventListener('DOMContentLoaded', function () {
     // 11. Iniciar la aplicación
     inicializar();
 });
+// ==========================================
+// --- LÓGICA PARA EL MODAL DE SPONSORS ---
+// ==========================================
+document.addEventListener("DOMContentLoaded", function() {
+    const modal = document.getElementById('modal-sponsors');
+    const cerrarBoton = document.getElementById('cerrar-modal');
+    const leyendaCerrar = document.querySelector('.modal-instruccion');
+
+    if (modal && cerrarBoton) {
+        const mostrarModal = () => modal.classList.add('visible');
+        const ocultarModal = () => modal.classList.remove('visible');
+
+        // Mostrar el modal al 1.5 segundos
+        setTimeout(mostrarModal, 1500);
+
+        // Eventos para cerrar
+        cerrarBoton.addEventListener('click', ocultarModal);
+        
+        if (leyendaCerrar) {
+            leyendaCerrar.addEventListener('click', ocultarModal);
+        }
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) ocultarModal();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal.classList.contains('visible')) ocultarModal();
+        });
+    }
+});
