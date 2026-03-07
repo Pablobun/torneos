@@ -1117,6 +1117,10 @@ footer {
     display: flex;
     align-items: center;
     gap: 1rem;
+   
+}
+.fecha-encabezado .fecha-dia {
+    color: #ffffff; 
 }
 
 .sin-horario .fecha-encabezado {
