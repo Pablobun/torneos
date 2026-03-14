@@ -1736,6 +1736,9 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         const jugadoresAHacerJugar = jugadoresAEliminar * 2;
         const jugadoresConBye = totalClasificados - jugadoresAHacerJugar;
         
+        // Slots de equipos en la primera ronda de playoffs
+        const numSlotsPrimeraRonda = potenciaDe2;
+        
         // 4. Aplicar criterios de desempate del reglamento
         function aplicarCriteriosDesempate(a, b) {
             if (a.posicion !== b.posicion) return a.posicion - b.posicion;
@@ -1793,22 +1796,65 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         bracket.push(...prePlayoffs);
         
         // PASO 2: Crear primera ronda de playoffs con BYE
-        const numPartidosPrimeraRonda = potenciaDe2 / 2;
+        // numSlotsPrimeraRonda = cantidad de equipos en la primera ronda (potenciaDe2)
         const primeraRondaPartidos = [];
         const byeJugadores = [...jugadoresConByeArray];
         const posicionesAsignadas = new Set();
         
-        // Distribuir BYE en posiciones alternadas
-        for (let i = 0; i < byeJugadores.length; i++) {
-            let posicion;
-            if (i % 2 === 0) {
-                posicion = Math.floor(i / 2);
-            } else {
-                posicion = numPartidosPrimeraRonda - 1 - Math.floor(i / 2);
+        // Obtener grupos únicos para distribución por mitades
+        const gruposUnicos = [...new Set(clasificados.map(c => c.id_grupo))];
+        
+        // Función para obtener primera posición libre
+        function obtenerPrimeraPosicionLibre() {
+            for (let pos = 0; pos < numSlotsPrimeraRonda; pos++) {
+                if (!posicionesAsignadas.has(pos)) {
+                    return pos;
+                }
             }
+            return -1;
+        }
+        
+        // Función para obtener posición libre en la mitad correcta
+        function obtenerPosicionLibreEnMitad(esMitadIzquierda) {
+            const inicio = esMitadIzquierda ? 0 : numSlotsPrimeraRonda / 2;
+            const fin = esMitadIzquierda ? numSlotsPrimeraRonda / 2 : numSlotsPrimeraRonda;
             
-            if (!posicionesAsignadas.has(posicion)) {
-                const jugador = byeJugadores[i];
+            for (let pos = inicio; pos < fin; pos++) {
+                if (!posicionesAsignadas.has(pos)) {
+                    return pos;
+                }
+            }
+            return obtenerPrimeraPosicionLibre();
+        }
+        
+        // Función para determinar mitad según grupo
+        function getMitadIzquierda(idGrupo) {
+            const indice = gruposUnicos.indexOf(idGrupo);
+            return indice % 2 === 0;
+        }
+        
+        // Calcular cuántos BYEs van solos (esperando rival) y cuántos se enfrentan
+        const numPartidosPrimeraRonda = potenciaDe2 / 2;
+        const maxByesSolos = numPartidosPrimeraRonda; // Un BYE solo por partido
+        const byesSolos = Math.min(jugadoresConBye, maxByesSolos);
+        const byesEnfrentados = Math.floor((jugadoresConBye - byesSolos) / 2) * 2;
+        
+        // Agrupar BYEs por grupo para distribución
+        const byePorGrupo = {};
+        for (const jugador of byeJugadores) {
+            if (!byePorGrupo[jugador.id_grupo]) {
+                byePorGrupo[jugador.id_grupo] = [];
+            }
+            byePorGrupo[jugador.id_grupo].push(jugador);
+        }
+        
+        // Primera fase: Asignar BYEs solos (primeros del ranking)
+        let byeIdx = 0;
+        for (let i = 0; i < byesSolos && byeIdx < byeJugadores.length; i++) {
+            const jugador = byeJugadores[byeIdx];
+            const posicion = obtenerPosicionLibreEnMitad(getMitadIzquierda(jugador.id_grupo));
+            
+            if (posicion >= 0) {
                 primeraRondaPartidos.push({
                     ronda: primeraRonda,
                     posicion: posicion + 1,
@@ -1817,25 +1863,56 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                     id_grupo_1: jugador.id_grupo,
                     id_grupo_2: null,
                     es_bye: true,
-                    ganador_id: null, // CAMBIO: No setear ganador_id para BYE
+                    es_bye_solo: true,
+                    ganador_id: null,
                     es_pre_playoff: false
                 });
                 posicionesAsignadas.add(posicion);
+                byeIdx++;
             }
         }
         
-        // Slots vacíos para ganadores de pre-playoffs
+        // Segunda fase: Asignar BYEs que se enfrentan entre sí
+        let posicionIdx = 0;
+        while (byeIdx + 1 < byeJugadores.length && byesEnfrentados > 0) {
+            const jugador1 = byeJugadores[byeIdx];
+            const jugador2 = byeJugadores[byeIdx + 1];
+            
+            // Buscar posición libre
+            let posicion = -1;
+            for (let p = 0; p < numSlotsPrimeraRonda; p++) {
+                if (!posicionesAsignadas.has(p)) {
+                    posicion = p;
+                    break;
+                }
+            }
+            
+            if (posicion >= 0) {
+                primeraRondaPartidos.push({
+                    ronda: primeraRonda,
+                    posicion: posicion + 1,
+                    id_inscripto_1: jugador1.id_inscripto,
+                    id_inscripto_2: jugador2.id_inscripto,
+                    id_grupo_1: jugador1.id_grupo,
+                    id_grupo_2: jugador2.id_grupo,
+                    es_bye: true,
+                    es_bye_solo: false,
+                    winner_id: null,
+                    es_pre_playoff: false
+                });
+                posicionesAsignadas.add(posicion);
+                byeIdx += 2;
+            } else {
+                break;
+            }
+        }
+        
+        // Tercera fase: Espacios para ganadores de pre-playoffs
         const numGanadoresPrePlayoffs = prePlayoffs.length;
-        let posicionesLibres = [];
-        for (let i = 0; i < numPartidosPrimeraRonda; i++) {
-            if (!posicionesAsignadas.has(i)) {
-                posicionesLibres.push(i);
-            }
-        }
-        
         for (let i = 0; i < numGanadoresPrePlayoffs; i++) {
-            if (i < posicionesLibres.length) {
-                const posicion = posicionesLibres[i];
+            const posicion = obtenerPrimeraPosicionLibre();
+            
+            if (posicion >= 0) {
                 primeraRondaPartidos.push({
                     ronda: primeraRonda,
                     posicion: posicion + 1,
@@ -1844,7 +1921,8 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                     id_grupo_1: null,
                     id_grupo_2: null,
                     es_bye: false,
-                    ganador_id: null,
+                    es_bye_solo: false,
+                    winner_id: null,
                     es_pre_playoff: false
                 });
                 posicionesAsignadas.add(posicion);
