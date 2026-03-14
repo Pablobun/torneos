@@ -1897,7 +1897,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                     id_grupo_2: jugador2.id_grupo,
                     es_bye: true,
                     es_bye_solo: false,
-                    winner_id: null,
+                    ganador_id: null,
                     es_pre_playoff: false
                 });
                 posicionesAsignadas.add(posicion);
@@ -1922,12 +1922,17 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                     id_grupo_2: null,
                     es_bye: false,
                     es_bye_solo: false,
-                    winner_id: null,
+                   ganador_id: null,
                     es_pre_playoff: false
                 });
                 posicionesAsignadas.add(posicion);
             }
         }
+        
+        // Eliminar campo es_bye_solo ya que no existe en la BD
+        primeraRondaPartidos.forEach(p => {
+            delete p.es_bye_solo;
+        });
         
         primeraRondaPartidos.sort((a, b) => a.posicion - b.posicion);
         bracket.push(...primeraRondaPartidos);
