@@ -1736,6 +1736,9 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         const jugadoresAHacerJugar = jugadoresAEliminar * 2;
         const jugadoresConBye = totalClasificados - jugadoresAHacerJugar;
         
+        // Slots en la primera ronda de playoffs (equipos, no partidos)
+        const numSlotsPrimeraRonda = potenciaDe2;
+        
         // 4. Aplicar criterios de desempate del reglamento
         function aplicarCriteriosDesempate(a, b) {
             if (a.posicion !== b.posicion) return a.posicion - b.posicion;
@@ -1793,41 +1796,66 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         bracket.push(...prePlayoffs);
         
         // PASO 2: Crear primera ronda de playoffs con BYE
-        const numPartidosPrimeraRonda = potenciaDe2 / 2;
         const primeraRondaPartidos = [];
         const byeJugadores = [...jugadoresConByeArray];
         const posicionesAsignadas = new Set();
         
-        // Distribuir BYE en posiciones alternadas
-        for (let i = 0; i < byeJugadores.length; i++) {
-            let posicion;
-            if (i % 2 === 0) {
-                posicion = Math.floor(i / 2);
-            } else {
-                posicion = numPartidosPrimeraRonda - 1 - Math.floor(i / 2);
+        // Obtener grupos únicos para distribución por mitades
+        const gruposUnicos = [...new Set(clasificados.map(c => c.id_grupo))];
+        
+        // Función para obtener primera posición libre
+        function obtenerPrimeraPosicionLibre() {
+            for (let pos = 0; pos < numSlotsPrimeraRonda; pos++) {
+                if (!posicionesAsignadas.has(pos)) {
+                    return pos;
+                }
             }
-            
-            if (!posicionesAsignadas.has(posicion)) {
-                const jugador = byeJugadores[i];
-                primeraRondaPartidos.push({
-                    ronda: primeraRonda,
-                    posicion: posicion + 1,
-                    id_inscripto_1: jugador.id_inscripto,
-                    id_inscripto_2: null,
-                    id_grupo_1: jugador.id_grupo,
-                    id_grupo_2: null,
-                    es_bye: true,
-                    ganador_id: null, // CAMBIO: No setear ganador_id para BYE
-                    es_pre_playoff: false
-                });
-                posicionesAsignadas.add(posicion);
+            return -1;
+        }
+        
+        // Función para determinar mitad según grupo
+        function getMitadPorGrupo(idGrupo) {
+            const indice = gruposUnicos.indexOf(idGrupo);
+            return indice % 2 === 0; // true = izquierda, false = derecha
+        }
+        
+        // Agrupar BYEs por grupo paramitades opuestas
+        const byePorGrupo = {};
+        for (const jugador of byeJugadores) {
+            if (!byePorGrupo[jugador.id_grupo]) {
+                byePorGrupo[jugador.id_grupo] = [];
+            }
+            byePorGrupo[jugador.id_grupo].push(jugador);
+        }
+        
+        // Asignar BYEs: primer clasificado de cada grupo a su mitad, segundo a la otra mitad
+        for (const idGrupo of gruposUnicos) {
+            const byesDelGrupo = byePorGrupo[idGrupo] || [];
+            for (let i = 0; i < byesDelGrupo.length; i++) {
+                const jugador = byesDelGrupo[i];
+                const posicion = obtenerPrimeraPosicionLibre();
+                
+                if (posicion >= 0) {
+                    primeraRondaPartidos.push({
+                        ronda: primeraRonda,
+                        posicion: posicion + 1,
+                        id_inscripto_1: jugador.id_inscripto,
+                        id_inscripto_2: null,
+                        id_grupo_1: jugador.id_grupo,
+                        id_grupo_2: null,
+                        es_bye: true,
+                        ganador_id: null,
+                        es_pre_playoff: false
+                    });
+                    posicionesAsignadas.add(posicion);
+                }
             }
         }
         
         // Slots vacíos para ganadores de pre-playoffs
         const numGanadoresPrePlayoffs = prePlayoffs.length;
         let posicionesLibres = [];
-        for (let i = 0; i < numPartidosPrimeraRonda; i++) {
+        for (let i = 0; i < numSlotsPrimeraRonda; i++) {
             if (!posicionesAsignadas.has(i)) {
                 posicionesLibres.push(i);
             }
