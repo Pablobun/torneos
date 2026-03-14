@@ -1793,7 +1793,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         bracket.push(...prePlayoffs);
         
         // PASO 2: Crear primera ronda de playoffs con BYE
-        const numPartidosPrimeraRonda = potenciaDe2 / 2;
+        const numSlotsPrimeraRonda = potenciaDe2;
         const primeraRondaPartidos = [];
         
         // Obtener grupos únicos de los clasificados para distribuir BYEs por mitades
@@ -1803,8 +1803,8 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         // Función para obtener las posiciones libres en una mitad del bracket
         function obtenerPosicionesLibresMitad(posicionesAsignadas, esMitadIzquierda) {
             const posicionesLibres = [];
-            const inicio = esMitadIzquierda ? 0 : numPartidosPrimeraRonda / 2;
-            const fin = esMitadIzquierda ? numPartidosPrimeraRonda / 2 : numPartidosPrimeraRonda;
+            const inicio = esMitadIzquierda ? 0 : numSlotsPrimeraRonda / 2;
+            const fin = esMitadIzquierda ? numSlotsPrimeraRonda / 2 : numSlotsPrimeraRonda;
             
             for (let pos = inicio; pos < fin; pos++) {
                 if (!posicionesAsignadas.has(pos)) {
@@ -1829,7 +1829,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                 return posicionesLibres[0];
             }
             // Si no hay espacio en la mitad asignada, buscar en cualquier posición libre
-            for (let pos = 0; pos < numPartidosPrimeraRonda; pos++) {
+            for (let pos = 0; pos < numSlotsPrimeraRonda; pos++) {
                 if (!posicionesAsignadas.has(pos)) {
                     return pos;
                 }
@@ -1875,7 +1875,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         // Slots vacíos para ganadores de pre-playoffs (ya están en orden de peor ranking)
         const numGanadoresPrePlayoffs = prePlayoffs.length;
         let posicionesLibres = [];
-        for (let i = 0; i < numPartidosPrimeraRonda; i++) {
+        for (let i = 0; i < numSlotsPrimeraRonda; i++) {
             if (!posicionesAsignadas.has(i)) {
                 posicionesLibres.push(i);
             }
