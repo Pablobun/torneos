@@ -1793,96 +1793,46 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         bracket.push(...prePlayoffs);
         
         // PASO 2: Crear primera ronda de playoffs con BYE
-        const numSlotsPrimeraRonda = potenciaDe2;
+        const numPartidosPrimeraRonda = potenciaDe2 / 2;
         const primeraRondaPartidos = [];
-        
-        // Obtener grupos únicos de los clasificados para distribuir BYEs por mitades
-        const gruposUnicos = [...new Set(clasificados.map(c => c.id_grupo))];
-        const numGrupos = gruposUnicos.length;
-        
-        // Función para obtener las posiciones libres en una mitad del bracket
-        function obtenerPosicionesLibresMitad(posicionesAsignadas, esMitadIzquierda) {
-            const posicionesLibres = [];
-            const inicio = esMitadIzquierda ? 0 : numSlotsPrimeraRonda / 2;
-            const fin = esMitadIzquierda ? numSlotsPrimeraRonda / 2 : numSlotsPrimeraRonda;
-            
-            for (let pos = inicio; pos < fin; pos++) {
-                if (!posicionesAsignadas.has(pos)) {
-                    posicionesLibres.push(pos);
-                }
-            }
-            return posicionesLibres;
-        }
-        
-        // Función para determinar la mitad según el grupo
-        function getMitadaPorGrupo(idGrupo) {
-            const indiceGrupo = gruposUnicos.indexOf(idGrupo);
-            return indiceGrupo % 2 === 0; // true = izquierda, false = derecha
-        }
-        
-        // Función para obtener primera posición libre en la mitad correcta
-        function obtenerPosicionParaBye(jugador, posicionesAsignadas, esPrimeraDelGrupo) {
-            const esMitadIzquierda = esPrimeraDelGrupo ? getMitadaPorGrupo(jugador.id_grupo) : !getMitadaPorGrupo(jugador.id_grupo);
-            const posicionesLibres = obtenerPosicionesLibresMitad(posicionesAsignadas, esMitadIzquierda);
-            
-            if (posicionesLibres.length > 0) {
-                return posicionesLibres[0];
-            }
-            // Si no hay espacio en la mitad asignada, buscar en cualquier posición libre
-            for (let pos = 0; pos < numSlotsPrimeraRonda; pos++) {
-                if (!posicionesAsignadas.has(pos)) {
-                    return pos;
-                }
-            }
-            return -1;
-        }
-        
+        const byeJugadores = [...jugadoresConByeArray];
         const posicionesAsignadas = new Set();
         
-        // Agrupar BYEs por grupo para asignar mitades opuestas
-        const byePorGrupo = {};
-        for (const jugador of jugadoresConByeArray) {
-            if (!byePorGrupo[jugador.id_grupo]) {
-                byePorGrupo[jugador.id_grupo] = [];
+        // Distribuir BYE en posiciones alternadas
+        for (let i = 0; i < byeJugadores.length; i++) {
+            let posicion;
+            if (i % 2 === 0) {
+                posicion = Math.floor(i / 2);
+            } else {
+                posicion = numPartidosPrimeraRonda - 1 - Math.floor(i / 2);
             }
-            byePorGrupo[jugador.id_grupo].push(jugador);
-        }
-        
-        // Asignar BYEs a posiciones
-        for (const idGrupo of gruposUnicos) {
-            const byesDelGrupo = byePorGrupo[idGrupo] || [];
-            for (let i = 0; i < byesDelGrupo.length; i++) {
-                const jugador = byesDelGrupo[i];
-                const posicion = obtenerPosicionParaBye(jugador, posicionesAsignadas, i === 0);
-                
-                if (posicion >= 0) {
-                    primeraRondaPartidos.push({
-                        ronda: primeraRonda,
-                        posicion: posicion + 1,
-                        id_inscripto_1: jugador.id_inscripto,
-                        id_inscripto_2: null,
-                        id_grupo_1: jugador.id_grupo,
-                        id_grupo_2: null,
-                        es_bye: true,
-                        ganador_id: null,
-                        es_pre_playoff: false
-                    });
-                    posicionesAsignadas.add(posicion);
-                }
+            
+            if (!posicionesAsignadas.has(posicion)) {
+                const jugador = byeJugadores[i];
+                primeraRondaPartidos.push({
+                    ronda: primeraRonda,
+                    posicion: posicion + 1,
+                    id_inscripto_1: jugador.id_inscripto,
+                    id_inscripto_2: null,
+                    id_grupo_1: jugador.id_grupo,
+                    id_grupo_2: null,
+                    es_bye: true,
+                    ganador_id: null, // CAMBIO: No setear ganador_id para BYE
+                    es_pre_playoff: false
+                });
+                posicionesAsignadas.add(posicion);
             }
         }
         
-        // Slots vacíos para ganadores de pre-playoffs (ya están en orden de peor ranking)
+        // Slots vacíos para ganadores de pre-playoffs
         const numGanadoresPrePlayoffs = prePlayoffs.length;
         let posicionesLibres = [];
-        for (let i = 0; i < numSlotsPrimeraRonda; i++) {
+        for (let i = 0; i < numPartidosPrimeraRonda; i++) {
             if (!posicionesAsignadas.has(i)) {
                 posicionesLibres.push(i);
             }
         }
         
-        // Los ganadores de pre-playoffs van a las posiciones restantes
-        // Asegurar que no crucen con equipos del mismo grupo en la siguiente ronda
         for (let i = 0; i < numGanadoresPrePlayoffs; i++) {
             if (i < posicionesLibres.length) {
                 const posicion = posicionesLibres[i];
