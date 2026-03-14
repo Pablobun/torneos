@@ -2749,7 +2749,7 @@ async function revertirGanadorEnLlave(connection, idTorneo, categoria, rondaActu
 async function avanzarGanadorEnLlave(connection, idTorneo, categoria, rondaActual, posicionActual, ganadorId) {
     // Mapeo de rondas para cualquier estructura
     const progresionRondas = {
-        'pre-playoff': { siguiente: 'semifinal' },
+        'pre-playoff': { siguiente: 'cuartos' },
         'dieciseisavos': { siguiente: 'octavos' },
         'octavos': { siguiente: 'cuartos' },
         'cuartos': { siguiente: 'semifinal' },
