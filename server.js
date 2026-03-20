@@ -1764,6 +1764,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         };
         const rondas = rondasMap[potenciaDe2] || ['final'];
         const primeraRonda = rondas[0];
+        const modoEstricto1822 = totalClasificados === 18 || totalClasificados === 22;
         
         // 8. Crear bracket completo
         const bracket = [];
@@ -1962,7 +1963,11 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             let candidatos = pool.filter(s => !s.usado);
             if (mitadPreferida) {
                 const filtrados = candidatos.filter(s => s.mitad === mitadPreferida);
-                if (filtrados.length > 0) candidatos = filtrados;
+                if (filtrados.length > 0) {
+                    candidatos = filtrados;
+                } else if (modoEstricto1822) {
+                    return null;
+                }
             }
 
             for (const c of candidatos) {
@@ -1974,6 +1979,9 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                 }
             }
 
+            if (modoEstricto1822) {
+                return null;
+            }
             return pool.find(s => !s.usado) || null;
         }
 
@@ -2110,10 +2118,20 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             for (let i = 0; i < slotsVacios.length; i++) {
                 const slot = slotsVacios[i];
                 let score = slot.mitad === pre._mitad_objetivo ? 0 : 10;
+                if (modoEstricto1822 && score > 0) {
+                    continue;
+                }
                 if (score < mejorScore) {
                     mejorScore = score;
                     mejorIdx = i;
                 }
+            }
+
+            if (modoEstricto1822 && mejorScore === Number.POSITIVE_INFINITY) {
+                await connection.rollback();
+                return res.status(500).json({
+                    error: 'Error de estructura: no se encontró destino de mitad correcta para pre-playoff'
+                });
             }
 
             const destino = slotsVacios.splice(mejorIdx, 1)[0];

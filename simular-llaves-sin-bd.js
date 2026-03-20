@@ -1,0 +1,394 @@
+/*
+  Simulador offline de armado de llaves (sin BD)
+  - No toca server.js ni MySQL
+  - Ejecuta casos: 4..32 (pares)
+  - Verifica estructura y cruces por grupo
+*/
+
+function potencia2Inferior(n) {
+  return Math.pow(2, Math.floor(Math.log2(n)));
+}
+
+function ordenarRankingGlobal(clasificados) {
+  return [...clasificados].sort((a, b) => {
+    if (a.posicion !== b.posicion) return a.posicion - b.posicion;
+    if (b.puntos !== a.puntos) return b.puntos - a.puntos;
+    if (b.dif_sets !== a.dif_sets) return b.dif_sets - a.dif_sets;
+    if (b.dif_games !== a.dif_games) return b.dif_games - a.dif_games;
+    return a.id_inscripto - b.id_inscripto;
+  });
+}
+
+function armarLlaveOffline(clasificados) {
+  const totalClasificados = clasificados.length;
+  const modoEstricto1822 = totalClasificados === 18 || totalClasificados === 22;
+  const p = potencia2Inferior(totalClasificados);
+  const jugadoresAEliminar = totalClasificados - p;
+  const jugadoresAHacerJugar = jugadoresAEliminar * 2;
+  const jugadoresConBye = totalClasificados - jugadoresAHacerJugar;
+
+  const rankingGlobal = ordenarRankingGlobal(clasificados);
+  const directos = rankingGlobal.slice(0, jugadoresConBye);
+  const preJugadores = jugadoresAHacerJugar > 0 ? rankingGlobal.slice(-jugadoresAHacerJugar) : [];
+
+  const numPartidosPrimeraRonda = p / 2;
+  const partidosPrePlayoff = jugadoresAEliminar;
+
+  const partidosDD = Math.max(0, jugadoresConBye - numPartidosPrimeraRonda);
+  const partidosDS = jugadoresConBye - partidosDD * 2;
+  const partidosSS = numPartidosPrimeraRonda - partidosDD - partidosDS;
+
+  const espaciosGanadoresEsperados = partidosDS + partidosSS * 2;
+
+  const posicionesDS = [];
+  let izq = 1;
+  let der = numPartidosPrimeraRonda;
+  while (posicionesDS.length < partidosDS && izq <= der) {
+    posicionesDS.push(izq);
+    if (posicionesDS.length < partidosDS && izq !== der) posicionesDS.push(der);
+    izq++;
+    der--;
+  }
+
+  const posicionesRestantes = [];
+  for (let i = 1; i <= numPartidosPrimeraRonda; i++) {
+    if (!posicionesDS.includes(i)) posicionesRestantes.push(i);
+  }
+  const posicionesDD = posicionesRestantes.slice(0, partidosDD);
+
+  const plantilla = {};
+  for (let pos = 1; pos <= numPartidosPrimeraRonda; pos++) {
+    const mitad = pos <= numPartidosPrimeraRonda / 2 ? "superior" : "inferior";
+    if (posicionesDD.includes(pos)) {
+      plantilla[pos] = { tipo: "DD", mitad, slotDirecto: [1, 2], slotVacios: [] };
+    } else if (posicionesDS.includes(pos)) {
+      const slotDirecto = mitad === "superior" ? 1 : 2;
+      plantilla[pos] = { tipo: "DS", mitad, slotDirecto: [slotDirecto], slotVacios: [slotDirecto === 1 ? 2 : 1] };
+    } else {
+      plantilla[pos] = { tipo: "SS", mitad, slotDirecto: [], slotVacios: [1, 2] };
+    }
+  }
+
+  const gruposMap = new Map();
+  for (const c of clasificados) {
+    if (!gruposMap.has(c.id_grupo)) gruposMap.set(c.id_grupo, {});
+    const entry = gruposMap.get(c.id_grupo);
+    if (c.posicion === 1) entry.primero = c;
+    if (c.posicion === 2) entry.segundo = c;
+  }
+
+  const directSet = new Set(directos.map((x) => x.id_inscripto));
+  const preSet = new Set(preJugadores.map((x) => x.id_inscripto));
+  const gruposCompletos = [];
+  for (const [idGrupo, v] of gruposMap.entries()) {
+    if (v.primero && v.segundo) {
+      gruposCompletos.push({
+        idGrupo,
+        primero: v.primero,
+        segundo: v.segundo,
+        p1d: directSet.has(v.primero.id_inscripto) ? 1 : 0,
+        p2d: directSet.has(v.segundo.id_inscripto) ? 1 : 0,
+        p1p: preSet.has(v.primero.id_inscripto) ? 1 : 0,
+        p2p: preSet.has(v.segundo.id_inscripto) ? 1 : 0,
+      });
+    }
+  }
+
+  const directTop = Object.values(plantilla)
+    .filter((x) => x.mitad === "superior")
+    .reduce((acc, x) => acc + x.slotDirecto.length, 0);
+  const directBottom = Object.values(plantilla)
+    .filter((x) => x.mitad === "inferior")
+    .reduce((acc, x) => acc + x.slotDirecto.length, 0);
+  const preTop = Object.values(plantilla)
+    .filter((x) => x.mitad === "superior")
+    .reduce((acc, x) => acc + x.slotVacios.length, 0) * 2;
+  const preBottom = Object.values(plantilla)
+    .filter((x) => x.mitad === "inferior")
+    .reduce((acc, x) => acc + x.slotVacios.length, 0) * 2;
+
+  let bestMask = 0;
+  let bestScore = Number.POSITIVE_INFINITY;
+  const totalMasks = Math.pow(2, gruposCompletos.length);
+  for (let mask = 0; mask < totalMasks; mask++) {
+    let dTop = 0;
+    let dBottom = 0;
+    let pTop = 0;
+    let pBottom = 0;
+    for (let i = 0; i < gruposCompletos.length; i++) {
+      const g = gruposCompletos[i];
+      const inv = ((mask >> i) & 1) === 1;
+      if (!inv) {
+        dTop += g.p1d;
+        dBottom += g.p2d;
+        pTop += g.p1p;
+        pBottom += g.p2p;
+      } else {
+        dTop += g.p2d;
+        dBottom += g.p1d;
+        pTop += g.p2p;
+        pBottom += g.p1p;
+      }
+    }
+    const score = Math.abs(dTop - directTop) + Math.abs(dBottom - directBottom) + Math.abs(pTop - preTop) + Math.abs(pBottom - preBottom);
+    if (score < bestScore) {
+      bestScore = score;
+      bestMask = mask;
+      if (score === 0) break;
+    }
+  }
+
+  const mitadRequerida = new Map();
+  for (let i = 0; i < gruposCompletos.length; i++) {
+    const g = gruposCompletos[i];
+    const inv = ((bestMask >> i) & 1) === 1;
+    if (!inv) {
+      mitadRequerida.set(g.primero.id_inscripto, "superior");
+      mitadRequerida.set(g.segundo.id_inscripto, "inferior");
+    } else {
+      mitadRequerida.set(g.primero.id_inscripto, "inferior");
+      mitadRequerida.set(g.segundo.id_inscripto, "superior");
+    }
+  }
+
+  const primeraRonda = [];
+  for (let pos = 1; pos <= numPartidosPrimeraRonda; pos++) {
+    primeraRonda.push({ posicion: pos, id1: null, id2: null, g1: null, g2: null, tipo: plantilla[pos].tipo, mitad: plantilla[pos].mitad });
+  }
+
+  const dsSlots = [];
+  const ddSlots = [];
+  for (let pos = 1; pos <= numPartidosPrimeraRonda; pos++) {
+    for (const slot of plantilla[pos].slotDirecto) {
+      const s = { pos, slot, mitad: plantilla[pos].mitad, used: false };
+      if (plantilla[pos].tipo === "DS") dsSlots.push(s);
+      else ddSlots.push(s);
+    }
+  }
+
+  function buscarSlot(pool, jugador, mitadPreferida) {
+    let cands = pool.filter((x) => !x.used);
+    if (mitadPreferida) {
+      const filtered = cands.filter((x) => x.mitad === mitadPreferida);
+      if (filtered.length > 0) {
+        cands = filtered;
+      } else if (modoEstricto1822) {
+        return null;
+      }
+    }
+    for (const c of cands) {
+      const partido = primeraRonda[c.pos - 1];
+      if (partido.g1 !== jugador.id_grupo && partido.g2 !== jugador.id_grupo) return c;
+    }
+    if (modoEstricto1822) return null;
+    return pool.find((x) => !x.used) || null;
+  }
+
+  const directosProtegidos = directos.slice(0, partidosDS);
+  const directosResto = directos.slice(partidosDS);
+
+  for (let i = 0; i < dsSlots.length && i < directosProtegidos.length; i++) {
+    const j = directosProtegidos[i];
+    const slot = buscarSlot(dsSlots, j, mitadRequerida.get(j.id_inscripto) || dsSlots[i].mitad);
+    if (!slot) throw new Error("Sin slot DS");
+    const pMatch = primeraRonda[slot.pos - 1];
+    if (slot.slot === 1) {
+      pMatch.id1 = j.id_inscripto;
+      pMatch.g1 = j.id_grupo;
+    } else {
+      pMatch.id2 = j.id_inscripto;
+      pMatch.g2 = j.id_grupo;
+    }
+    slot.used = true;
+  }
+
+  for (const j of directosResto) {
+    const slot = buscarSlot(ddSlots, j, mitadRequerida.get(j.id_inscripto) || null);
+    if (!slot) throw new Error("Sin slot DD");
+    const pMatch = primeraRonda[slot.pos - 1];
+    if (slot.slot === 1) {
+      pMatch.id1 = j.id_inscripto;
+      pMatch.g1 = j.id_grupo;
+    } else {
+      pMatch.id2 = j.id_inscripto;
+      pMatch.g2 = j.id_grupo;
+    }
+    slot.used = true;
+  }
+
+  const vacios = [];
+  for (let pos = 1; pos <= numPartidosPrimeraRonda; pos++) {
+    for (const slot of plantilla[pos].slotVacios) {
+      vacios.push({ pos, slot, mitad: plantilla[pos].mitad });
+    }
+  }
+
+  const preTopList = [];
+  const preBottomList = [];
+  for (const j of preJugadores) {
+    const mitad = mitadRequerida.get(j.id_inscripto) || (preTopList.length <= preBottomList.length ? "superior" : "inferior");
+    if (mitad === "superior") preTopList.push(j);
+    else preBottomList.push(j);
+  }
+  if (preTopList.length % 2 !== 0 && preBottomList.length % 2 !== 0) {
+    preBottomList.push(preTopList.pop());
+  }
+
+  function armarPares(lista) {
+    const src = [...lista];
+    const pares = [];
+    while (src.length >= 2) {
+      const j1 = src.shift();
+      let idx = src.findIndex((x) => x.id_grupo !== j1.id_grupo);
+      if (idx === -1) idx = 0;
+      const j2 = src.splice(idx, 1)[0];
+      pares.push([j1, j2]);
+    }
+    return pares;
+  }
+
+  const prePares = [...armarPares(preTopList), ...armarPares(preBottomList)];
+  const prePlayoff = [];
+  const destinosPre = [];
+
+  let prePos = 1;
+  for (const [j1, j2] of prePares) {
+    prePlayoff.push({ posicion: prePos, id1: j1.id_inscripto, id2: j2.id_inscripto, g1: j1.id_grupo, g2: j2.id_grupo, mitadObjetivo: mitadRequerida.get(j1.id_inscripto) || mitadRequerida.get(j2.id_inscripto) || "superior" });
+    prePos++;
+  }
+
+  for (const pre of prePlayoff) {
+    let bestIdx = 0;
+    let bestScore2 = Number.POSITIVE_INFINITY;
+    for (let i = 0; i < vacios.length; i++) {
+      const v = vacios[i];
+      const score = v.mitad === pre.mitadObjetivo ? 0 : 10;
+      if (modoEstricto1822 && score > 0) continue;
+      if (score < bestScore2) {
+        bestScore2 = score;
+        bestIdx = i;
+      }
+    }
+    if (modoEstricto1822 && bestScore2 === Number.POSITIVE_INFINITY) {
+      throw new Error("Sin destino de mitad correcta para pre-playoff");
+    }
+    const dest = vacios.splice(bestIdx, 1)[0];
+    destinosPre.push({ prePos: pre.posicion, pos: dest.pos, slot: dest.slot });
+  }
+
+  return {
+    N: totalClasificados,
+    P: p,
+    jugadoresAEliminar,
+    jugadoresAHacerJugar,
+    jugadoresConBye,
+    partidosDD,
+    partidosDS,
+    partidosSS,
+    espaciosGanadoresEsperados,
+    partidosPrePlayoff,
+    prePlayoff,
+    primeraRonda,
+    destinosPre,
+    mitadRequerida,
+    gruposMap,
+  };
+}
+
+function generarFixture(N) {
+  const grupos = N / 2;
+  const out = [];
+  let id = 100;
+  for (let g = 1; g <= grupos; g++) {
+    out.push({ id_inscripto: id++, id_grupo: g, posicion: 1, puntos: 100 - g, dif_sets: 30 - g, dif_games: 50 - g });
+    out.push({ id_inscripto: id++, id_grupo: g, posicion: 2, puntos: 60 - g, dif_sets: 10 - g, dif_games: 20 - g });
+  }
+  return out;
+}
+
+function validarNoCruceAntesFinal(resultado) {
+  const { P, gruposMap, primeraRonda, destinosPre } = resultado;
+
+  const entradaLeaf = new Map();
+  for (const p of primeraRonda) {
+    if (p.id1 != null) entradaLeaf.set(p.id1, (p.posicion - 1) * 2 + 1);
+    if (p.id2 != null) entradaLeaf.set(p.id2, (p.posicion - 1) * 2 + 2);
+  }
+
+  for (const d of destinosPre) {
+    const pre = resultado.prePlayoff.find((x) => x.posicion === d.prePos);
+    if (!pre) continue;
+    const leaf = (d.pos - 1) * 2 + d.slot;
+    entradaLeaf.set(pre.id1, leaf);
+    entradaLeaf.set(pre.id2, leaf);
+  }
+
+  const conflictos = [];
+  for (const [, group] of gruposMap.entries()) {
+    if (!group.primero || !group.segundo) continue;
+    const id1 = group.primero.id_inscripto;
+    const id2 = group.segundo.id_inscripto;
+    const l1 = entradaLeaf.get(id1);
+    const l2 = entradaLeaf.get(id2);
+    if (!l1 || !l2) {
+      conflictos.push(`Grupo ${group.primero.id_grupo}: falta leaf para ${id1}/${id2}`);
+      continue;
+    }
+    const mitad1 = l1 <= P / 2 ? "sup" : "inf";
+    const mitad2 = l2 <= P / 2 ? "sup" : "inf";
+    if (mitad1 === mitad2) {
+      conflictos.push(`Grupo ${group.primero.id_grupo}: mismo camino (${mitad1}) ids ${id1}-${id2}`);
+    }
+  }
+
+  return conflictos;
+}
+
+function validarConteos(resultado) {
+  const errores = [];
+  if (resultado.partidosPrePlayoff !== resultado.jugadoresAEliminar) {
+    errores.push(`prePartidos esperado ${resultado.jugadoresAEliminar} real ${resultado.partidosPrePlayoff}`);
+  }
+  if (resultado.espaciosGanadoresEsperados !== resultado.partidosPrePlayoff) {
+    errores.push(`espaciosGanadores ${resultado.espaciosGanadoresEsperados} != prePartidos ${resultado.partidosPrePlayoff}`);
+  }
+  if (resultado.prePlayoff.length !== resultado.partidosPrePlayoff) {
+    errores.push(`prePlayoff.length ${resultado.prePlayoff.length} != ${resultado.partidosPrePlayoff}`);
+  }
+  return errores;
+}
+
+function ejecutar() {
+  const casos = [4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32];
+  let fallos = 0;
+  console.log("=== Test de emparejamientos sin BD ===");
+
+  for (const n of casos) {
+    const fixture = generarFixture(n);
+    const res = armarLlaveOffline(fixture);
+    const errConteo = validarConteos(res);
+    const errGrupo = validarNoCruceAntesFinal(res);
+
+    const ok = errConteo.length === 0 && errGrupo.length === 0;
+    if (!ok) fallos++;
+
+    console.log(`\nCaso N=${n}: ${ok ? "OK" : "FAIL"}`);
+    console.log(`  pre=${res.prePlayoff.length}, directos=${res.jugadoresConBye}, DD=${res.partidosDD}, DS=${res.partidosDS}, SS=${res.partidosSS}`);
+
+    if (!ok) {
+      for (const e of errConteo) console.log(`  - ${e}`);
+      for (const e of errGrupo) console.log(`  - ${e}`);
+    }
+  }
+
+  console.log("\n===============================");
+  if (fallos === 0) {
+    console.log("Resultado: TODOS LOS CASOS OK");
+    process.exit(0);
+  } else {
+    console.log(`Resultado: ${fallos} caso(s) con fallo`);
+    process.exit(1);
+  }
+}
+
+ejecutar();
