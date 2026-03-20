@@ -1768,37 +1768,11 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         // 8. Crear bracket completo
         const bracket = [];
 
-        // PASO 1: Crear pre-playoffs
-        const prePlayoffs = [];
-        const prePlayoffJugadores = [...jugadoresParaPrePlayoffs];
-        let posicionPrePlayoff = 1;
-
-        while (prePlayoffJugadores.length >= 2) {
-            const jugador1 = prePlayoffJugadores.shift();
-            let idxOponente = prePlayoffJugadores.findIndex(j => j.id_grupo !== jugador1.id_grupo);
-            if (idxOponente === -1) idxOponente = 0;
-            const jugador2 = prePlayoffJugadores.splice(idxOponente, 1)[0];
-
-            prePlayoffs.push({
-                ronda: 'pre-playoff',
-                posicion: posicionPrePlayoff++,
-                id_inscripto_1: jugador1.id_inscripto,
-                id_inscripto_2: jugador2.id_inscripto,
-                id_grupo_1: jugador1.id_grupo,
-                id_grupo_2: jugador2.id_grupo,
-                es_bye: false,
-                ganador_id: null,
-                es_pre_playoff: true
-            });
-        }
-
-        bracket.push(...prePlayoffs);
-
-        // PASO 2: Crear ronda principal (partidos) con directos y espacios para ganadores de pre-playoff
+        // PASO 1: Crear ronda principal (partidos) con directos y espacios para ganadores de pre-playoff
         const numPartidosPrimeraRonda = potenciaDe2 / 2;
         const primeraRondaPartidos = [];
 
-        const partidosPrePlayoff = prePlayoffs.length;
+        const partidosPrePlayoff = jugadoresAEliminar;
         const directos = jugadoresConBye;
         const partidosDD = Math.max(0, directos - numPartidosPrimeraRonda); // directo vs directo
         const partidosDS = directos - (partidosDD * 2); // directo vs ganador previo
@@ -1864,6 +1838,106 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             });
         }
 
+        // 1.1 Resolver orientación por grupo (1ro y 2do en mitades opuestas)
+        const directosSet = new Set(jugadoresConByeArray.map(j => j.id_inscripto));
+        const preSet = new Set(jugadoresParaPrePlayoffs.map(j => j.id_inscripto));
+
+        const gruposMap = new Map();
+        for (const c of clasificados) {
+            if (!gruposMap.has(c.id_grupo)) gruposMap.set(c.id_grupo, {});
+            const entry = gruposMap.get(c.id_grupo);
+            if (c.posicion === 1) entry.primero = c;
+            if (c.posicion === 2) entry.segundo = c;
+        }
+
+        const gruposCompletos = [];
+        for (const [idGrupo, val] of gruposMap.entries()) {
+            if (val.primero && val.segundo) {
+                gruposCompletos.push({
+                    idGrupo,
+                    primero: val.primero,
+                    segundo: val.segundo,
+                    p1d: directosSet.has(val.primero.id_inscripto) ? 1 : 0,
+                    p2d: directosSet.has(val.segundo.id_inscripto) ? 1 : 0,
+                    p1p: preSet.has(val.primero.id_inscripto) ? 1 : 0,
+                    p2p: preSet.has(val.segundo.id_inscripto) ? 1 : 0
+                });
+            }
+        }
+
+        const directSlotsTop = Object.values(plantillaPartidos)
+            .filter(p => p.mitad === 'superior')
+            .reduce((acc, p) => acc + p.slotDirecto.length, 0);
+        const directSlotsBottom = Object.values(plantillaPartidos)
+            .filter(p => p.mitad === 'inferior')
+            .reduce((acc, p) => acc + p.slotDirecto.length, 0);
+        const preSlotsTop = Object.values(plantillaPartidos)
+            .filter(p => p.mitad === 'superior')
+            .reduce((acc, p) => acc + p.slotVacios.length, 0);
+        const preSlotsBottom = Object.values(plantillaPartidos)
+            .filter(p => p.mitad === 'inferior')
+            .reduce((acc, p) => acc + p.slotVacios.length, 0);
+
+        const objetivo = {
+            directTop: directSlotsTop,
+            directBottom: directSlotsBottom,
+            preTop: preSlotsTop * 2,
+            preBottom: preSlotsBottom * 2
+        };
+
+        let mejorMask = 0;
+        let mejorScore = Number.POSITIVE_INFINITY;
+        const totalMasks = Math.pow(2, gruposCompletos.length);
+
+        for (let mask = 0; mask < totalMasks; mask++) {
+            let directTop = 0;
+            let directBottom = 0;
+            let preTop = 0;
+            let preBottom = 0;
+
+            for (let i = 0; i < gruposCompletos.length; i++) {
+                const g = gruposCompletos[i];
+                const invertido = ((mask >> i) & 1) === 1;
+
+                if (!invertido) {
+                    directTop += g.p1d;
+                    directBottom += g.p2d;
+                    preTop += g.p1p;
+                    preBottom += g.p2p;
+                } else {
+                    directTop += g.p2d;
+                    directBottom += g.p1d;
+                    preTop += g.p2p;
+                    preBottom += g.p1p;
+                }
+            }
+
+            const score =
+                Math.abs(objetivo.directTop - directTop) +
+                Math.abs(objetivo.directBottom - directBottom) +
+                Math.abs(objetivo.preTop - preTop) +
+                Math.abs(objetivo.preBottom - preBottom);
+
+            if (score < mejorScore) {
+                mejorScore = score;
+                mejorMask = mask;
+                if (score === 0) break;
+            }
+        }
+
+        const mitadRequerida = new Map();
+        for (let i = 0; i < gruposCompletos.length; i++) {
+            const g = gruposCompletos[i];
+            const invertido = ((mejorMask >> i) & 1) === 1;
+            if (!invertido) {
+                mitadRequerida.set(g.primero.id_inscripto, 'superior');
+                mitadRequerida.set(g.segundo.id_inscripto, 'inferior');
+            } else {
+                mitadRequerida.set(g.primero.id_inscripto, 'inferior');
+                mitadRequerida.set(g.segundo.id_inscripto, 'superior');
+            }
+        }
+
         const dsSlots = [];
         const ddSlots = [];
         for (let p = 1; p <= numPartidosPrimeraRonda; p++) {
@@ -1903,19 +1977,15 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             return pool.find(s => !s.usado) || null;
         }
 
-        // 1) Ubicar primero a los protegidos en los partidos DS (esperan ganador previo)
+        // 1.2 Ubicar primero a los protegidos en los partidos DS (esperan ganador previo)
         const directosProtegidos = directosOrdenados.slice(0, partidosDS);
         const directosResto = directosOrdenados.slice(partidosDS);
 
-        for (let i = 0; i < directosProtegidos.length; i++) {
+        for (let i = 0; i < dsSlots.length; i++) {
+            if (i >= directosProtegidos.length) break;
             const jugador = directosProtegidos[i];
-            const mitadSugerida = i % 2 === 0 ? 'superior' : 'inferior';
             let mitadPreferida = null;
-            if (grupoMitadDirecto.has(jugador.id_grupo)) {
-                mitadPreferida = grupoMitadDirecto.get(jugador.id_grupo) === 'superior' ? 'inferior' : 'superior';
-            } else {
-                mitadPreferida = mitadSugerida;
-            }
+            mitadPreferida = mitadRequerida.get(jugador.id_inscripto) || dsSlots[i].mitad;
 
             const slotElegido = buscarSlotDisponible(dsSlots, jugador, mitadPreferida);
             if (!slotElegido) {
@@ -1942,12 +2012,9 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             }
         }
 
-        // 2) Ubicar el resto de directos en partidos DD
+        // 1.3 Ubicar el resto de directos en partidos DD
         for (const jugador of directosResto) {
-            let mitadPreferida = null;
-            if (grupoMitadDirecto.has(jugador.id_grupo)) {
-                mitadPreferida = grupoMitadDirecto.get(jugador.id_grupo) === 'superior' ? 'inferior' : 'superior';
-            }
+            let mitadPreferida = mitadRequerida.get(jugador.id_inscripto) || null;
 
             const slotElegido = buscarSlotDisponible(ddSlots, jugador, mitadPreferida);
             if (!slotElegido) {
@@ -1981,6 +2048,54 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             }
         }
 
+        // PASO 2: Crear pre-playoffs respetando mitades objetivo
+        function armarPares(jugadoresMitad) {
+            const lista = [...jugadoresMitad];
+            const pares = [];
+            while (lista.length >= 2) {
+                const j1 = lista.shift();
+                let idx = lista.findIndex(j => j.id_grupo !== j1.id_grupo);
+                if (idx === -1) idx = 0;
+                const j2 = lista.splice(idx, 1)[0];
+                pares.push([j1, j2]);
+            }
+            return pares;
+        }
+
+        const preTop = [];
+        const preBottom = [];
+        for (const j of jugadoresParaPrePlayoffs) {
+            const mitad = mitadRequerida.get(j.id_inscripto) || (preTop.length <= preBottom.length ? 'superior' : 'inferior');
+            if (mitad === 'superior') preTop.push(j);
+            else preBottom.push(j);
+        }
+
+        // Rebalanceo: ambas listas deben ser pares para poder formar cruces completos
+        if (preTop.length % 2 !== 0 && preBottom.length % 2 !== 0) {
+            const mover = preTop.pop();
+            preBottom.push(mover);
+        }
+
+        const paresPre = [...armarPares(preTop), ...armarPares(preBottom)];
+        const prePlayoffs = [];
+        let posicionPrePlayoff = 1;
+        for (const [j1, j2] of paresPre) {
+            prePlayoffs.push({
+                ronda: 'pre-playoff',
+                posicion: posicionPrePlayoff++,
+                id_inscripto_1: j1.id_inscripto,
+                id_inscripto_2: j2.id_inscripto,
+                id_grupo_1: j1.id_grupo,
+                id_grupo_2: j2.id_grupo,
+                es_bye: 0,
+                ganador_id: null,
+                es_pre_playoff: true,
+                _mitad_objetivo: mitadRequerida.get(j1.id_inscripto) || mitadRequerida.get(j2.id_inscripto) || 'superior'
+            });
+        }
+
+        bracket.push(...prePlayoffs);
+
         const destinosPrePlayoff = [];
         for (const pre of prePlayoffs) {
             if (slotsVacios.length === 0) {
@@ -1994,11 +2109,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             let mejorScore = Number.POSITIVE_INFINITY;
             for (let i = 0; i < slotsVacios.length; i++) {
                 const slot = slotsVacios[i];
-                let score = 0;
-                const mitadGrupo1 = grupoMitadDirecto.get(pre.id_grupo_1);
-                const mitadGrupo2 = grupoMitadDirecto.get(pre.id_grupo_2);
-                if (mitadGrupo1 && mitadGrupo1 === slot.mitad) score++;
-                if (mitadGrupo2 && mitadGrupo2 === slot.mitad) score++;
+                let score = slot.mitad === pre._mitad_objetivo ? 0 : 10;
                 if (score < mejorScore) {
                     mejorScore = score;
                     mejorIdx = i;
@@ -2018,6 +2129,10 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             partido.es_bye = 0;
             delete partido._tipo;
             delete partido._mitad;
+        });
+
+        prePlayoffs.forEach(pre => {
+            delete pre._mitad_objetivo;
         });
 
         primeraRondaPartidos.sort((a, b) => a.posicion - b.posicion);
