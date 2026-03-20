@@ -107,6 +107,14 @@ function armarLlaveOffline(clasificados) {
     .filter((x) => x.mitad === "inferior")
     .reduce((acc, x) => acc + x.slotVacios.length, 0) * 2;
 
+  const directosProtegidosIds = directos.slice(0, partidosDS).map((j) => j.id_inscripto);
+  const dsDirectSlotsTop = Object.values(plantilla)
+    .filter((x) => x.tipo === "DS" && x.mitad === "superior")
+    .length;
+  const dsDirectSlotsBottom = Object.values(plantilla)
+    .filter((x) => x.tipo === "DS" && x.mitad === "inferior")
+    .length;
+
   let bestMask = 0;
   let bestScore = Number.POSITIVE_INFINITY;
   const totalMasks = Math.pow(2, gruposCompletos.length);
@@ -115,6 +123,8 @@ function armarLlaveOffline(clasificados) {
     let dBottom = 0;
     let pTop = 0;
     let pBottom = 0;
+    let protTop = 0;
+    let protBottom = 0;
     for (let i = 0; i < gruposCompletos.length; i++) {
       const g = gruposCompletos[i];
       const inv = ((mask >> i) & 1) === 1;
@@ -129,13 +139,33 @@ function armarLlaveOffline(clasificados) {
         pTop += g.p2p;
         pBottom += g.p1p;
       }
+
+      if (directosProtegidosIds.includes(g.primero.id_inscripto)) {
+        if (!inv) protTop++;
+        else protBottom++;
+      }
+      if (directosProtegidosIds.includes(g.segundo.id_inscripto)) {
+        if (!inv) protBottom++;
+        else protTop++;
+      }
     }
+
+    if (modoEstricto1822) {
+      if (dTop !== directTop || dBottom !== directBottom) continue;
+      if (pTop !== preTop || pBottom !== preBottom) continue;
+      if (protTop !== dsDirectSlotsTop || protBottom !== dsDirectSlotsBottom) continue;
+    }
+
     const score = Math.abs(dTop - directTop) + Math.abs(dBottom - directBottom) + Math.abs(pTop - preTop) + Math.abs(pBottom - preBottom);
     if (score < bestScore) {
       bestScore = score;
       bestMask = mask;
       if (score === 0) break;
     }
+  }
+
+  if (modoEstricto1822 && bestScore === Number.POSITIVE_INFINITY) {
+    throw new Error("Sin orientación válida para N=18/22");
   }
 
   const mitadRequerida = new Map();
@@ -187,9 +217,16 @@ function armarLlaveOffline(clasificados) {
   const directosProtegidos = directos.slice(0, partidosDS);
   const directosResto = directos.slice(partidosDS);
 
-  for (let i = 0; i < dsSlots.length && i < directosProtegidos.length; i++) {
-    const j = directosProtegidos[i];
-    const slot = buscarSlot(dsSlots, j, mitadRequerida.get(j.id_inscripto) || dsSlots[i].mitad);
+  const protegidosPendientes = [...directosProtegidos];
+  for (const ds of dsSlots) {
+    if (protegidosPendientes.length === 0) break;
+    let idx = protegidosPendientes.findIndex((j) => (mitadRequerida.get(j.id_inscripto) || ds.mitad) === ds.mitad);
+    if (idx === -1) {
+      if (modoEstricto1822) throw new Error("Sin protegido DS en mitad requerida");
+      idx = 0;
+    }
+    const j = protegidosPendientes.splice(idx, 1)[0];
+    const slot = buscarSlot(dsSlots, j, mitadRequerida.get(j.id_inscripto) || ds.mitad);
     if (!slot) throw new Error("Sin slot DS");
     const pMatch = primeraRonda[slot.pos - 1];
     if (slot.slot === 1) {
@@ -364,20 +401,26 @@ function ejecutar() {
   console.log("=== Test de emparejamientos sin BD ===");
 
   for (const n of casos) {
-    const fixture = generarFixture(n);
-    const res = armarLlaveOffline(fixture);
-    const errConteo = validarConteos(res);
-    const errGrupo = validarNoCruceAntesFinal(res);
+    try {
+      const fixture = generarFixture(n);
+      const res = armarLlaveOffline(fixture);
+      const errConteo = validarConteos(res);
+      const errGrupo = validarNoCruceAntesFinal(res);
 
-    const ok = errConteo.length === 0 && errGrupo.length === 0;
-    if (!ok) fallos++;
+      const ok = errConteo.length === 0 && errGrupo.length === 0;
+      if (!ok) fallos++;
 
-    console.log(`\nCaso N=${n}: ${ok ? "OK" : "FAIL"}`);
-    console.log(`  pre=${res.prePlayoff.length}, directos=${res.jugadoresConBye}, DD=${res.partidosDD}, DS=${res.partidosDS}, SS=${res.partidosSS}`);
+      console.log(`\nCaso N=${n}: ${ok ? "OK" : "FAIL"}`);
+      console.log(`  pre=${res.prePlayoff.length}, directos=${res.jugadoresConBye}, DD=${res.partidosDD}, DS=${res.partidosDS}, SS=${res.partidosSS}`);
 
-    if (!ok) {
-      for (const e of errConteo) console.log(`  - ${e}`);
-      for (const e of errGrupo) console.log(`  - ${e}`);
+      if (!ok) {
+        for (const e of errConteo) console.log(`  - ${e}`);
+        for (const e of errGrupo) console.log(`  - ${e}`);
+      }
+    } catch (e) {
+      fallos++;
+      console.log(`\nCaso N=${n}: FAIL`);
+      console.log(`  - excepción: ${e.message}`);
     }
   }
 

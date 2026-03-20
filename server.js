@@ -1886,6 +1886,14 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             preBottom: preSlotsBottom * 2
         };
 
+        const directosProtegidosIds = jugadoresConByeArray.slice(0, partidosDS).map(j => j.id_inscripto);
+        const dsDirectSlotsTop = Object.values(plantillaPartidos)
+            .filter(p => p.tipo === 'DS' && p.mitad === 'superior')
+            .length;
+        const dsDirectSlotsBottom = Object.values(plantillaPartidos)
+            .filter(p => p.tipo === 'DS' && p.mitad === 'inferior')
+            .length;
+
         let mejorMask = 0;
         let mejorScore = Number.POSITIVE_INFINITY;
         const totalMasks = Math.pow(2, gruposCompletos.length);
@@ -1895,6 +1903,8 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             let directBottom = 0;
             let preTop = 0;
             let preBottom = 0;
+            let protegidosTop = 0;
+            let protegidosBottom = 0;
 
             for (let i = 0; i < gruposCompletos.length; i++) {
                 const g = gruposCompletos[i];
@@ -1911,6 +1921,27 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                     preTop += g.p2p;
                     preBottom += g.p1p;
                 }
+
+                if (directosProtegidosIds.includes(g.primero.id_inscripto)) {
+                    if (!invertido) protegidosTop++;
+                    else protegidosBottom++;
+                }
+                if (directosProtegidosIds.includes(g.segundo.id_inscripto)) {
+                    if (!invertido) protegidosBottom++;
+                    else protegidosTop++;
+                }
+            }
+
+            if (modoEstricto1822) {
+                if (directTop !== objetivo.directTop || directBottom !== objetivo.directBottom) {
+                    continue;
+                }
+                if (preTop !== objetivo.preTop || preBottom !== objetivo.preBottom) {
+                    continue;
+                }
+                if (protegidosTop !== dsDirectSlotsTop || protegidosBottom !== dsDirectSlotsBottom) {
+                    continue;
+                }
             }
 
             const score =
@@ -1924,6 +1955,13 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                 mejorMask = mask;
                 if (score === 0) break;
             }
+        }
+
+        if (modoEstricto1822 && mejorScore === Number.POSITIVE_INFINITY) {
+            await connection.rollback();
+            return res.status(500).json({
+                error: 'Error de estructura: no se encontró orientación válida para N=18/22'
+            });
         }
 
         const mitadRequerida = new Map();
@@ -1989,11 +2027,23 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         const directosProtegidos = directosOrdenados.slice(0, partidosDS);
         const directosResto = directosOrdenados.slice(partidosDS);
 
-        for (let i = 0; i < dsSlots.length; i++) {
-            if (i >= directosProtegidos.length) break;
-            const jugador = directosProtegidos[i];
-            let mitadPreferida = null;
-            mitadPreferida = mitadRequerida.get(jugador.id_inscripto) || dsSlots[i].mitad;
+        const protegidosPendientes = [...directosProtegidos];
+        for (const slotDs of dsSlots) {
+            if (protegidosPendientes.length === 0) break;
+
+            let idxJugador = protegidosPendientes.findIndex(j => (mitadRequerida.get(j.id_inscripto) || slotDs.mitad) === slotDs.mitad);
+            if (idxJugador === -1) {
+                if (modoEstricto1822) {
+                    await connection.rollback();
+                    return res.status(500).json({
+                        error: 'Error de estructura: no se pudo ubicar protegidos DS en mitades correctas'
+                    });
+                }
+                idxJugador = 0;
+            }
+
+            const jugador = protegidosPendientes.splice(idxJugador, 1)[0];
+            const mitadPreferida = mitadRequerida.get(jugador.id_inscripto) || slotDs.mitad;
 
             const slotElegido = buscarSlotDisponible(dsSlots, jugador, mitadPreferida);
             if (!slotElegido) {
