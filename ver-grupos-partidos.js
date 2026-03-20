@@ -38,6 +38,19 @@ document.addEventListener('DOMContentLoaded', function () {
         // Si viene como "14:00:00", devolver "14:00"
         return hora.substring(0, 5);
     }
+
+    function formatearRondaCorta(ronda) {
+        if (!ronda) return null;
+        const map = {
+            'pre-playoff': 'PP',
+            'dieciseisavos': '16°',
+            'octavos': '8°',
+            'cuartos': '4°',
+            'semifinal': 'SF',
+            'final': 'F'
+        };
+        return map[ronda] || ronda;
+    }
     
     // 1. Inicialización y carga de datos
     async function inicializar() {
@@ -336,6 +349,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 
                 grupoFecha.partidos.forEach(partido => {
                     const horaFormateada = formatearHora(partido.horario);
+                    const fase = formatearRondaCorta(partido.ronda);
                     html += `
                         <div class="partido-item">
                             <div class="partido-hora">${horaFormateada}</div>
@@ -344,7 +358,10 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <span class="partido-vs">VS</span>
                                 <span class="partido-visitante">${partido.visitante_nombre}</span>
                             </div>
-                            <div class="partido-categoria">${partido.categoria}</div>
+                            <div class="partido-meta">
+                                <div class="partido-categoria">${partido.categoria}</div>
+                                ${fase ? `<div class="partido-fase">${fase}</div>` : ''}
+                            </div>
                         </div>
                     `;
                 });
@@ -363,6 +380,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 `;
                 
                 sinHorario.forEach(partido => {
+                    const fase = formatearRondaCorta(partido.ronda);
                     html += `
                         <div class="partido-item sin-horario-item">
                             <div class="partido-hora">--:--</div>
@@ -371,7 +389,10 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <span class="partido-vs">VS</span>
                                 <span class="partido-visitante">${partido.visitante_nombre}</span>
                             </div>
-                            <div class="partido-categoria">${partido.categoria}</div>
+                            <div class="partido-meta">
+                                <div class="partido-categoria">${partido.categoria}</div>
+                                ${fase ? `<div class="partido-fase">${fase}</div>` : ''}
+                            </div>
                         </div>
                     `;
                 });

@@ -64,6 +64,19 @@ document.addEventListener('DOMContentLoaded', function () {
         return hora.substring(0, 5);
     }
 
+    function formatearRondaCorta(ronda) {
+        if (!ronda) return null;
+        const map = {
+            'pre-playoff': 'PP',
+            'dieciseisavos': '16°',
+            'octavos': '8°',
+            'cuartos': '4°',
+            'semifinal': 'SF',
+            'final': 'F'
+        };
+        return map[ronda] || ronda;
+    }
+
     // Cargar torneo activo
     async function cargarTorneoActivo() {
         const response = await fetch(`${API_BASE_URL}/torneo-activo`);
@@ -215,6 +228,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     const local = partido.local_nombre || `ID ${partido.local_id}`;
                     const visitante = partido.visitante_nombre || `ID ${partido.visitante_id}`;
                     const categoria = partido.categoria || 'Sin cat';
+                    const fase = formatearRondaCorta(partido.ronda);
                     const hora = formatearHora(partido.horario);
                     const partidoId = partido.id;
                     
@@ -226,7 +240,10 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <span class="partido-vs">VS</span>
                                 <span class="partido-visitante">${visitante}</span>
                             </div>
-                            <div class="partido-categoria">${categoria}</div>
+                            <div class="partido-meta">
+                                <div class="partido-categoria">${categoria}</div>
+                                ${fase ? `<div class="partido-fase">${fase}</div>` : ''}
+                            </div>
                             <button class="btn-editar-horario" data-partido-id="${partidoId}">✏️</button>
                         </div>
                     `;
@@ -251,6 +268,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const local = partido.local_nombre || `ID ${partido.local_id}`;
                 const visitante = partido.visitante_nombre || `ID ${partido.visitante_id}`;
                 const categoria = partido.categoria || 'Sin categoría';
+                const fase = formatearRondaCorta(partido.ronda);
                 const localId = partido.local_id;
                 const visitanteId = partido.visitante_id;
                 const partidoId = partido.id;
@@ -263,7 +281,10 @@ document.addEventListener('DOMContentLoaded', function () {
                             <span class="partido-vs">VS</span>
                             <span class="partido-visitante">${visitante}</span>
                         </div>
-                        <div class="partido-categoria">${categoria}</div>
+                        <div class="partido-meta">
+                            <div class="partido-categoria">${categoria}</div>
+                            ${fase ? `<div class="partido-fase">${fase}</div>` : ''}
+                        </div>
                         <button class="btn-editar-horario" data-partido-id="${partidoId}">✏️ Asignar</button>
                     </div>
                 `;

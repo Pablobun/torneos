@@ -1207,6 +1207,25 @@ footer {
     min-width: 80px;
 }
 
+.fecha-grupo .partido-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.fecha-grupo .partido-fase {
+    background: #f1f3f5;
+    color: #495057;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    text-align: center;
+    min-width: 42px;
+}
+
 .fecha-grupo .btn-editar-horario {
     background: #3498db;
     color: white;
@@ -1608,6 +1627,25 @@ footer {
     min-width: 80px;
 }
 
+.partido-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+.partido-fase {
+    background: #f1f3f5;
+    color: #495057;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    text-align: center;
+    min-width: 42px;
+}
+
 /* Partidos sin Horario - Versión corregida */
 .partidos-sin-horario {
     border-top: 2px dashed #f39c12;
@@ -1657,9 +1695,13 @@ footer {
     }
     
     .partido-categoria {
+        min-width: 72px;
+    }
+
+    .partido-meta {
         grid-column: 1 / -1;
-        text-align: center;
-        margin-top: 0.5rem;
+        align-items: center;
+        margin-top: 0.45rem;
     }
     
     .categoria-header {
