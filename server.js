@@ -1750,7 +1750,9 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         
         // 6. Separar: BYE (mejores) y Pre-playoffs (peores)
         const jugadoresConByeArray = rankingGlobal.slice(0, jugadoresConBye);
-        const jugadoresParaPrePlayoffs = rankingGlobal.slice(-jugadoresAHacerJugar);
+        const jugadoresParaPrePlayoffs = jugadoresAHacerJugar > 0
+            ? rankingGlobal.slice(-jugadoresAHacerJugar)
+            : [];
         
         // 7. Determinar rondas según potencia de 2
         const rondasMap = {
@@ -1862,22 +1864,28 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             });
         }
 
-        const directSlots = [];
+        const dsSlots = [];
+        const ddSlots = [];
         for (let p = 1; p <= numPartidosPrimeraRonda; p++) {
             for (const slot of plantillaPartidos[p].slotDirecto) {
-                directSlots.push({
+                const item = {
                     posicion: p,
                     slot,
                     mitad: plantillaPartidos[p].mitad
-                });
+                };
+                if (plantillaPartidos[p].tipo === 'DS') {
+                    dsSlots.push(item);
+                } else {
+                    ddSlots.push(item);
+                }
             }
         }
 
         const grupoMitadDirecto = new Map();
         const directosOrdenados = [...jugadoresConByeArray];
 
-        function buscarSlotDisponible(jugador, mitadPreferida) {
-            let candidatos = directSlots.filter(s => !s.usado);
+        function buscarSlotDisponible(pool, jugador, mitadPreferida) {
+            let candidatos = pool.filter(s => !s.usado);
             if (mitadPreferida) {
                 const filtrados = candidatos.filter(s => s.mitad === mitadPreferida);
                 if (filtrados.length > 0) candidatos = filtrados;
@@ -1892,20 +1900,60 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                 }
             }
 
-            return directSlots.find(s => !s.usado) || null;
+            return pool.find(s => !s.usado) || null;
         }
 
-        for (const jugador of directosOrdenados) {
+        // 1) Ubicar primero a los protegidos en los partidos DS (esperan ganador previo)
+        const directosProtegidos = directosOrdenados.slice(0, partidosDS);
+        const directosResto = directosOrdenados.slice(partidosDS);
+
+        for (let i = 0; i < directosProtegidos.length; i++) {
+            const jugador = directosProtegidos[i];
+            const mitadSugerida = i % 2 === 0 ? 'superior' : 'inferior';
+            let mitadPreferida = null;
+            if (grupoMitadDirecto.has(jugador.id_grupo)) {
+                mitadPreferida = grupoMitadDirecto.get(jugador.id_grupo) === 'superior' ? 'inferior' : 'superior';
+            } else {
+                mitadPreferida = mitadSugerida;
+            }
+
+            const slotElegido = buscarSlotDisponible(dsSlots, jugador, mitadPreferida);
+            if (!slotElegido) {
+                await connection.rollback();
+                return res.status(500).json({
+                    error: 'Error de estructura: no se encontró slot DS para ubicar clasificados protegidos'
+                });
+            }
+
+            const partido = primeraRondaPartidos[slotElegido.posicion - 1];
+            if (slotElegido.slot === 1) {
+                partido.id_inscripto_1 = jugador.id_inscripto;
+                partido.id_grupo_1 = jugador.id_grupo;
+            } else {
+                partido.id_inscripto_2 = jugador.id_inscripto;
+                partido.id_grupo_2 = jugador.id_grupo;
+            }
+
+            partido.es_bye = 0;
+
+            slotElegido.usado = true;
+            if (!grupoMitadDirecto.has(jugador.id_grupo)) {
+                grupoMitadDirecto.set(jugador.id_grupo, slotElegido.mitad);
+            }
+        }
+
+        // 2) Ubicar el resto de directos en partidos DD
+        for (const jugador of directosResto) {
             let mitadPreferida = null;
             if (grupoMitadDirecto.has(jugador.id_grupo)) {
                 mitadPreferida = grupoMitadDirecto.get(jugador.id_grupo) === 'superior' ? 'inferior' : 'superior';
             }
 
-            const slotElegido = buscarSlotDisponible(jugador, mitadPreferida);
+            const slotElegido = buscarSlotDisponible(ddSlots, jugador, mitadPreferida);
             if (!slotElegido) {
                 await connection.rollback();
                 return res.status(500).json({
-                    error: 'Error de estructura: no se encontró slot para ubicar clasificados directos'
+                    error: 'Error de estructura: no se encontró slot DD para ubicar clasificados directos'
                 });
             }
 
