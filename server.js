@@ -1918,7 +1918,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                 partido.id_grupo_2 = jugador.id_grupo;
             }
 
-            partido.es_bye = (partido.id_inscripto_1 && !partido.id_inscripto_2) || (!partido.id_inscripto_1 && partido.id_inscripto_2);
+            partido.es_bye = 0;
 
             slotElegido.usado = true;
             if (!grupoMitadDirecto.has(jugador.id_grupo)) {
@@ -1967,7 +1967,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         }
 
         primeraRondaPartidos.forEach(partido => {
-            partido.es_bye = (partido.id_inscripto_1 && !partido.id_inscripto_2) || (!partido.id_inscripto_1 && partido.id_inscripto_2);
+            partido.es_bye = 0;
             delete partido._tipo;
             delete partido._mitad;
         });
