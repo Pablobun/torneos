@@ -1729,15 +1729,12 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             return res.status(400).json({ error: 'No hay clasificados disponibles' });
         }
         
-        // 3. Calcular estructura de pre-playoffs según reglamento
+        // 3. Calcular estructura según reglamento (2 clasificados por grupo)
         const totalClasificados = clasificados.length;
         const potenciaDe2 = Math.pow(2, Math.floor(Math.log2(totalClasificados)));
-        const jugadoresAEliminar = totalClasificados - potenciaDe2;
-        const jugadoresAHacerJugar = jugadoresAEliminar * 2;
-        const jugadoresConBye = totalClasificados - jugadoresAHacerJugar;
-        
-        // Slots de equipos en la primera ronda de playoffs
-        const numSlotsPrimeraRonda = potenciaDe2;
+        const jugadoresAEliminar = totalClasificados - potenciaDe2; // partidos pre-playoff
+        const jugadoresAHacerJugar = jugadoresAEliminar * 2; // jugadores en pre-playoff
+        const jugadoresConBye = totalClasificados - jugadoresAHacerJugar; // directos a ronda principal
         
         // 4. Aplicar criterios de desempate del reglamento
         function aplicarCriteriosDesempate(a, b) {
@@ -1768,18 +1765,18 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         
         // 8. Crear bracket completo
         const bracket = [];
-        let posicionPrePlayoff = 1;
-        
+
         // PASO 1: Crear pre-playoffs
         const prePlayoffs = [];
         const prePlayoffJugadores = [...jugadoresParaPrePlayoffs];
-        
+        let posicionPrePlayoff = 1;
+
         while (prePlayoffJugadores.length >= 2) {
             const jugador1 = prePlayoffJugadores.shift();
             let idxOponente = prePlayoffJugadores.findIndex(j => j.id_grupo !== jugador1.id_grupo);
             if (idxOponente === -1) idxOponente = 0;
             const jugador2 = prePlayoffJugadores.splice(idxOponente, 1)[0];
-            
+
             prePlayoffs.push({
                 ronda: 'pre-playoff',
                 posicion: posicionPrePlayoff++,
@@ -1792,148 +1789,189 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                 es_pre_playoff: true
             });
         }
-        
+
         bracket.push(...prePlayoffs);
-        
-        // PASO 2: Crear primera ronda de playoffs con BYE
-        // numSlotsPrimeraRonda = cantidad de equipos en la primera ronda (potenciaDe2)
-        const primeraRondaPartidos = [];
-        const byeJugadores = [...jugadoresConByeArray];
-        const posicionesAsignadas = new Set();
-        
-        // Obtener grupos únicos para distribución por mitades
-        const gruposUnicos = [...new Set(clasificados.map(c => c.id_grupo))];
-        
-        // Función para obtener primera posición libre
-        function obtenerPrimeraPosicionLibre() {
-            for (let pos = 0; pos < numSlotsPrimeraRonda; pos++) {
-                if (!posicionesAsignadas.has(pos)) {
-                    return pos;
-                }
-            }
-            return -1;
-        }
-        
-        // Función para obtener posición libre en la mitad correcta
-        function obtenerPosicionLibreEnMitad(esMitadIzquierda) {
-            const inicio = esMitadIzquierda ? 0 : numSlotsPrimeraRonda / 2;
-            const fin = esMitadIzquierda ? numSlotsPrimeraRonda / 2 : numSlotsPrimeraRonda;
-            
-            for (let pos = inicio; pos < fin; pos++) {
-                if (!posicionesAsignadas.has(pos)) {
-                    return pos;
-                }
-            }
-            return obtenerPrimeraPosicionLibre();
-        }
-        
-        // Función para determinar mitad según grupo
-        function getMitadIzquierda(idGrupo) {
-            const indice = gruposUnicos.indexOf(idGrupo);
-            return indice % 2 === 0;
-        }
-        
-        // Calcular cuántos BYEs van solos (esperando rival) y cuántos se enfrentan
+
+        // PASO 2: Crear ronda principal (partidos) con directos y espacios para ganadores de pre-playoff
         const numPartidosPrimeraRonda = potenciaDe2 / 2;
-        const maxByesSolos = numPartidosPrimeraRonda; // Un BYE solo por partido
-        const byesSolos = Math.min(jugadoresConBye, maxByesSolos);
-        const byesEnfrentados = Math.floor((jugadoresConBye - byesSolos) / 2) * 2;
-        
-        // Agrupar BYEs por grupo para distribución
-        const byePorGrupo = {};
-        for (const jugador of byeJugadores) {
-            if (!byePorGrupo[jugador.id_grupo]) {
-                byePorGrupo[jugador.id_grupo] = [];
-            }
-            byePorGrupo[jugador.id_grupo].push(jugador);
+        const primeraRondaPartidos = [];
+
+        const partidosPrePlayoff = prePlayoffs.length;
+        const directos = jugadoresConBye;
+        const partidosDD = Math.max(0, directos - numPartidosPrimeraRonda); // directo vs directo
+        const partidosDS = directos - (partidosDD * 2); // directo vs ganador previo
+        const partidosSS = numPartidosPrimeraRonda - partidosDD - partidosDS; // ganador previo vs ganador previo
+
+        const espaciosGanadoresEsperados = (partidosDS + (partidosSS * 2));
+        if (espaciosGanadoresEsperados !== partidosPrePlayoff) {
+            await connection.rollback();
+            return res.status(500).json({
+                error: `Error de estructura: se esperaban ${partidosPrePlayoff} espacios de ganadores y se calcularon ${espaciosGanadoresEsperados}`
+            });
         }
-        
-        // Primera fase: Asignar BYEs solos (primeros del ranking)
-        let byeIdx = 0;
-        for (let i = 0; i < byesSolos && byeIdx < byeJugadores.length; i++) {
-            const jugador = byeJugadores[byeIdx];
-            const posicion = obtenerPosicionLibreEnMitad(getMitadIzquierda(jugador.id_grupo));
-            
-            if (posicion >= 0) {
-                primeraRondaPartidos.push({
-                    ronda: primeraRonda,
-                    posicion: posicion + 1,
-                    id_inscripto_1: jugador.id_inscripto,
-                    id_inscripto_2: null,
-                    id_grupo_1: jugador.id_grupo,
-                    id_grupo_2: null,
-                    es_bye: true,
-                    es_bye_solo: true,
-                    ganador_id: null,
-                    es_pre_playoff: false
+
+        // Elegir posiciones de partidos DS (protegidos) desde extremos hacia el centro
+        const posicionesDS = [];
+        let izq = 1;
+        let der = numPartidosPrimeraRonda;
+        while (posicionesDS.length < partidosDS && izq <= der) {
+            posicionesDS.push(izq);
+            if (posicionesDS.length < partidosDS && izq !== der) posicionesDS.push(der);
+            izq++;
+            der--;
+        }
+
+        const posicionesRestantes = [];
+        for (let p = 1; p <= numPartidosPrimeraRonda; p++) {
+            if (!posicionesDS.includes(p)) posicionesRestantes.push(p);
+        }
+        const posicionesDD = posicionesRestantes.slice(0, partidosDD);
+        const posicionesSS = posicionesRestantes.slice(partidosDD);
+
+        const plantillaPartidos = {};
+        for (let p = 1; p <= numPartidosPrimeraRonda; p++) {
+            const mitad = p <= (numPartidosPrimeraRonda / 2) ? 'superior' : 'inferior';
+            if (posicionesDD.includes(p)) {
+                plantillaPartidos[p] = { tipo: 'DD', mitad, slotDirecto: [1, 2], slotVacios: [] };
+            } else if (posicionesDS.includes(p)) {
+                const slotDirecto = mitad === 'superior' ? 1 : 2;
+                plantillaPartidos[p] = {
+                    tipo: 'DS',
+                    mitad,
+                    slotDirecto: [slotDirecto],
+                    slotVacios: [slotDirecto === 1 ? 2 : 1]
+                };
+            } else {
+                plantillaPartidos[p] = { tipo: 'SS', mitad, slotDirecto: [], slotVacios: [1, 2] };
+            }
+        }
+
+        for (let p = 1; p <= numPartidosPrimeraRonda; p++) {
+            primeraRondaPartidos.push({
+                ronda: primeraRonda,
+                posicion: p,
+                id_inscripto_1: null,
+                id_inscripto_2: null,
+                id_grupo_1: null,
+                id_grupo_2: null,
+                es_bye: false,
+                ganador_id: null,
+                es_pre_playoff: false,
+                _tipo: plantillaPartidos[p].tipo,
+                _mitad: plantillaPartidos[p].mitad
+            });
+        }
+
+        const directSlots = [];
+        for (let p = 1; p <= numPartidosPrimeraRonda; p++) {
+            for (const slot of plantillaPartidos[p].slotDirecto) {
+                directSlots.push({
+                    posicion: p,
+                    slot,
+                    mitad: plantillaPartidos[p].mitad
                 });
-                posicionesAsignadas.add(posicion);
-                byeIdx++;
             }
         }
-        
-        // Segunda fase: Asignar BYEs que se enfrentan entre sí
-        let posicionIdx = 0;
-        while (byeIdx + 1 < byeJugadores.length && byesEnfrentados > 0) {
-            const jugador1 = byeJugadores[byeIdx];
-            const jugador2 = byeJugadores[byeIdx + 1];
-            
-            // Buscar posición libre
-            let posicion = -1;
-            for (let p = 0; p < numSlotsPrimeraRonda; p++) {
-                if (!posicionesAsignadas.has(p)) {
-                    posicion = p;
-                    break;
+
+        const grupoMitadDirecto = new Map();
+        const directosOrdenados = [...jugadoresConByeArray];
+
+        function buscarSlotDisponible(jugador, mitadPreferida) {
+            let candidatos = directSlots.filter(s => !s.usado);
+            if (mitadPreferida) {
+                const filtrados = candidatos.filter(s => s.mitad === mitadPreferida);
+                if (filtrados.length > 0) candidatos = filtrados;
+            }
+
+            for (const c of candidatos) {
+                const partido = primeraRondaPartidos[c.posicion - 1];
+                const grupoOcupado1 = partido.id_grupo_1;
+                const grupoOcupado2 = partido.id_grupo_2;
+                if (grupoOcupado1 !== jugador.id_grupo && grupoOcupado2 !== jugador.id_grupo) {
+                    return c;
                 }
             }
-            
-            if (posicion >= 0) {
-                primeraRondaPartidos.push({
-                    ronda: primeraRonda,
-                    posicion: posicion + 1,
-                    id_inscripto_1: jugador1.id_inscripto,
-                    id_inscripto_2: jugador2.id_inscripto,
-                    id_grupo_1: jugador1.id_grupo,
-                    id_grupo_2: jugador2.id_grupo,
-                    es_bye: true,
-                    es_bye_solo: false,
-                    ganador_id: null,
-                    es_pre_playoff: false
+
+            return directSlots.find(s => !s.usado) || null;
+        }
+
+        for (const jugador of directosOrdenados) {
+            let mitadPreferida = null;
+            if (grupoMitadDirecto.has(jugador.id_grupo)) {
+                mitadPreferida = grupoMitadDirecto.get(jugador.id_grupo) === 'superior' ? 'inferior' : 'superior';
+            }
+
+            const slotElegido = buscarSlotDisponible(jugador, mitadPreferida);
+            if (!slotElegido) {
+                await connection.rollback();
+                return res.status(500).json({
+                    error: 'Error de estructura: no se encontró slot para ubicar clasificados directos'
                 });
-                posicionesAsignadas.add(posicion);
-                byeIdx += 2;
+            }
+
+            const partido = primeraRondaPartidos[slotElegido.posicion - 1];
+            if (slotElegido.slot === 1) {
+                partido.id_inscripto_1 = jugador.id_inscripto;
+                partido.id_grupo_1 = jugador.id_grupo;
             } else {
-                break;
+                partido.id_inscripto_2 = jugador.id_inscripto;
+                partido.id_grupo_2 = jugador.id_grupo;
+            }
+
+            partido.es_bye = (partido.id_inscripto_1 && !partido.id_inscripto_2) || (!partido.id_inscripto_1 && partido.id_inscripto_2);
+
+            slotElegido.usado = true;
+            if (!grupoMitadDirecto.has(jugador.id_grupo)) {
+                grupoMitadDirecto.set(jugador.id_grupo, slotElegido.mitad);
             }
         }
-        
-        // Tercera fase: Espacios para ganadores de pre-playoffs
-        const numGanadoresPrePlayoffs = prePlayoffs.length;
-        for (let i = 0; i < numGanadoresPrePlayoffs; i++) {
-            const posicion = obtenerPrimeraPosicionLibre();
-            
-            if (posicion >= 0) {
-                primeraRondaPartidos.push({
-                    ronda: primeraRonda,
-                    posicion: posicion + 1,
-                    id_inscripto_1: null,
-                    id_inscripto_2: null,
-                    id_grupo_1: null,
-                    id_grupo_2: null,
-                    es_bye: false,
-                    es_bye_solo: false,
-                   ganador_id: null,
-                    es_pre_playoff: false
+
+        const slotsVacios = [];
+        for (let p = 1; p <= numPartidosPrimeraRonda; p++) {
+            for (const slot of plantillaPartidos[p].slotVacios) {
+                slotsVacios.push({ posicion: p, slot, mitad: plantillaPartidos[p].mitad });
+            }
+        }
+
+        const destinosPrePlayoff = [];
+        for (const pre of prePlayoffs) {
+            if (slotsVacios.length === 0) {
+                await connection.rollback();
+                return res.status(500).json({
+                    error: 'Error de estructura: faltan slots vacíos para ganadores de pre-playoff'
                 });
-                posicionesAsignadas.add(posicion);
             }
+
+            let mejorIdx = 0;
+            let mejorScore = Number.POSITIVE_INFINITY;
+            for (let i = 0; i < slotsVacios.length; i++) {
+                const slot = slotsVacios[i];
+                let score = 0;
+                const mitadGrupo1 = grupoMitadDirecto.get(pre.id_grupo_1);
+                const mitadGrupo2 = grupoMitadDirecto.get(pre.id_grupo_2);
+                if (mitadGrupo1 && mitadGrupo1 === slot.mitad) score++;
+                if (mitadGrupo2 && mitadGrupo2 === slot.mitad) score++;
+                if (score < mejorScore) {
+                    mejorScore = score;
+                    mejorIdx = i;
+                }
+            }
+
+            const destino = slotsVacios.splice(mejorIdx, 1)[0];
+            destinosPrePlayoff.push({
+                prePosicion: pre.posicion,
+                rondaDestino: primeraRonda,
+                posicionDestino: destino.posicion,
+                slotDestino: destino.slot
+            });
         }
-        
-        // Eliminar campo es_bye_solo ya que no existe en la BD
-        primeraRondaPartidos.forEach(p => {
-            delete p.es_bye_solo;
+
+        primeraRondaPartidos.forEach(partido => {
+            partido.es_bye = (partido.id_inscripto_1 && !partido.id_inscripto_2) || (!partido.id_inscripto_1 && partido.id_inscripto_2);
+            delete partido._tipo;
+            delete partido._mitad;
         });
-        
+
         primeraRondaPartidos.sort((a, b) => a.posicion - b.posicion);
         bracket.push(...primeraRondaPartidos);
         
@@ -1995,16 +2033,63 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         
         // 10. Insertar en BD
         for (const elemento of bracket) {
-            await connection.execute(
+            const [insertRes] = await connection.execute(
                 `INSERT INTO llave_eliminacion 
                  (id_torneo, categoria, ronda, posicion, id_inscripto_1, id_inscripto_2, 
                   id_grupo_1, id_grupo_2, es_bye, ganador_id)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [idTorneo, categoria, elemento.ronda, elemento.posicion, 
+                [idTorneo, categoria, elemento.ronda, elemento.posicion,
                  elemento.id_inscripto_1, elemento.id_inscripto_2,
                  elemento.id_grupo_1, elemento.id_grupo_2,
                  elemento.es_bye, elemento.ganador_id]
             );
+            elemento.id_llave = insertRes.insertId;
+        }
+
+        // 10.1 Insertar mapeo determinístico de avance
+        const llavePorRondaPos = new Map();
+        for (const e of bracket) {
+            llavePorRondaPos.set(`${e.ronda}:${e.posicion}`, e.id_llave);
+        }
+
+        try {
+            // Pre-playoff -> ronda principal (según slots vacíos definidos en generación)
+            for (const m of destinosPrePlayoff) {
+                const origenId = llavePorRondaPos.get(`pre-playoff:${m.prePosicion}`);
+                const destinoId = llavePorRondaPos.get(`${m.rondaDestino}:${m.posicionDestino}`);
+                if (origenId && destinoId) {
+                    await connection.execute(
+                        `INSERT INTO llave_avance (id_llave_origen, id_llave_destino, slot_destino)
+                         VALUES (?, ?, ?)`,
+                        [origenId, destinoId, m.slotDestino]
+                    );
+                }
+            }
+
+            // Ronda principal y siguientes -> mapeo binario estándar
+            for (let i = 0; i < rondas.length - 1; i++) {
+                const rondaActual = rondas[i];
+                const rondaSiguiente = rondas[i + 1];
+                const partidosActuales = bracket
+                    .filter(e => e.ronda === rondaActual)
+                    .sort((a, b) => a.posicion - b.posicion);
+
+                for (const partidoActual of partidosActuales) {
+                    const posSiguiente = Math.ceil(partidoActual.posicion / 2);
+                    const slotDestino = partidoActual.posicion % 2 === 1 ? 1 : 2;
+                    const destinoId = llavePorRondaPos.get(`${rondaSiguiente}:${posSiguiente}`);
+                    if (destinoId) {
+                        await connection.execute(
+                            `INSERT INTO llave_avance (id_llave_origen, id_llave_destino, slot_destino)
+                             VALUES (?, ?, ?)`,
+                            [partidoActual.id_llave, destinoId, slotDestino]
+                        );
+                    }
+                }
+            }
+        } catch (mapeoError) {
+            // Mantener compatibilidad si la tabla puente no está disponible en algún entorno
+            console.warn('No se pudo guardar mapeo en llave_avance:', mapeoError.message);
         }
         
         await connection.execute(
@@ -2369,7 +2454,7 @@ app.post('/api/llave/:idLlave/resultado', async (req, res) => {
         // 6. Avanzar ganador a siguiente ronda
         console.log(`🚀 DEBUG - Llamando avanzarGanadorEnLlave para llave ${idLlave}: ronda=${llave.ronda}, pos=${llave.posicion}, ganador=${ganadorId}`);
         try {
-            await avanzarGanadorEnLlave(connection, llave.id_torneo, llave.categoria, llave.ronda, llave.posicion, ganadorId);
+            await avanzarGanadorEnLlave(connection, llave.id, llave.id_torneo, llave.categoria, llave.ronda, llave.posicion, ganadorId);
             console.log(`✅ DEBUG - avanzarGanadorEnLlave completado exitosamente`);
         } catch (avanceError) {
             console.error(`❌ DEBUG - Error en avanzarGanadorEnLlave:`, avanceError.message);
@@ -2517,7 +2602,7 @@ app.put('/api/llave/:idLlave/resultado', async (req, res) => {
         
         // 6. SIEMPRE avanzar el ganador a la siguiente ronda (sin importar si cambió o no)
         // Esto soluciona el problema de los BYE que ya tienen ganador_id seteado
-        await avanzarGanadorEnLlave(connection, llave.id_torneo, llave.categoria, llave.ronda, llave.posicion, ganadorId);
+        await avanzarGanadorEnLlave(connection, llave.id, llave.id_torneo, llave.categoria, llave.ronda, llave.posicion, ganadorId);
         
         await connection.commit();
         
@@ -2598,7 +2683,7 @@ app.delete('/api/llave/:idLlave/resultado', async (req, res) => {
         }
         
         // 6. Revertir ganador de la siguiente ronda
-        await revertirGanadorEnLlave(connection, llave.id_torneo, llave.categoria, llave.ronda, llave.posicion, ganadorId);
+        await revertirGanadorEnLlave(connection, llave.id, llave.id_torneo, llave.categoria, llave.ronda, llave.posicion, ganadorId);
         
         await connection.commit();
         
@@ -2618,9 +2703,46 @@ app.delete('/api/llave/:idLlave/resultado', async (req, res) => {
 // ==========================================================
 // FUNCIÓN: REVERTIR GANADOR DE LA LLAVE
 // ==========================================================
-async function revertirGanadorEnLlave(connection, idTorneo, categoria, rondaActual, posicionActual, ganadorId) {
+async function revertirGanadorEnLlave(connection, idLlaveOrigen, idTorneo, categoria, rondaActual, posicionActual, ganadorId) {
+    // Prioridad: usar tabla puente llave_avance (mapeo determinístico)
+    try {
+        const [mapeo] = await connection.execute(
+            `SELECT la.slot_destino, ld.*
+             FROM llave_avance la
+             INNER JOIN llave_eliminacion ld ON ld.id = la.id_llave_destino
+             WHERE la.id_llave_origen = ?
+             LIMIT 1`,
+            [idLlaveOrigen]
+        );
+
+        if (mapeo.length > 0) {
+            const destino = mapeo[0];
+            const campoInscripto = destino.slot_destino === 1 ? 'id_inscripto_1' : 'id_inscripto_2';
+            const campoGrupo = destino.slot_destino === 1 ? 'id_grupo_1' : 'id_grupo_2';
+
+            await connection.execute(
+                `UPDATE llave_eliminacion
+                 SET ${campoInscripto} = NULL, ${campoGrupo} = NULL, ganador_id = NULL
+                 WHERE id = ?`,
+                [destino.id]
+            );
+
+            if (destino.id_partido) {
+                const campoPartido = destino.slot_destino === 1 ? 'id_inscriptoL' : 'id_inscriptoV';
+                await connection.execute(
+                    `UPDATE partido SET ${campoPartido} = NULL WHERE id = ?`,
+                    [destino.id_partido]
+                );
+            }
+
+            return;
+        }
+    } catch (errorMapeo) {
+        console.warn('Fallback a lógica legacy en revertirGanadorEnLlave:', errorMapeo.message);
+    }
+
     const progresionRondas = {
-        'pre-playoff': { siguiente: 'semifinal' },
+        'pre-playoff': { siguiente: null },
         'dieciseisavos': { siguiente: 'octavos' },
         'octavos': { siguiente: 'cuartos' },
         'cuartos': { siguiente: 'semifinal' },
@@ -2631,7 +2753,21 @@ async function revertirGanadorEnLlave(connection, idTorneo, categoria, rondaActu
     const progresion = progresionRondas[rondaActual];
     if (!progresion) return; // Es la final, no hay siguiente
     
-    const siguienteRonda = progresion.siguiente;
+    let siguienteRonda = progresion.siguiente;
+    if (rondaActual === 'pre-playoff') {
+        const orden = ['dieciseisavos', 'octavos', 'cuartos', 'semifinal', 'final'];
+        for (const r of orden) {
+            const [existe] = await connection.execute(
+                `SELECT COUNT(*) as total FROM llave_eliminacion WHERE id_torneo = ? AND categoria = ? AND ronda = ?`,
+                [idTorneo, categoria, r]
+            );
+            if (existe[0].total > 0) {
+                siguienteRonda = r;
+                break;
+            }
+        }
+        if (!siguienteRonda) return;
+    }
     
     // Obtener cantidad de partidos en cada ronda para determinar el mapeo
     const [partidosRondaActual] = await connection.execute(
@@ -2746,10 +2882,53 @@ async function revertirGanadorEnLlave(connection, idTorneo, categoria, rondaActu
 // ==========================================================
 // FUNCIÓN: AVANZAR GANADOR EN LA LLAVE
 // ==========================================================
-async function avanzarGanadorEnLlave(connection, idTorneo, categoria, rondaActual, posicionActual, ganadorId) {
+async function avanzarGanadorEnLlave(connection, idLlaveOrigen, idTorneo, categoria, rondaActual, posicionActual, ganadorId) {
+    // Prioridad: usar tabla puente llave_avance (mapeo determinístico)
+    try {
+        const [mapeo] = await connection.execute(
+            `SELECT la.slot_destino, ld.*
+             FROM llave_avance la
+             INNER JOIN llave_eliminacion ld ON ld.id = la.id_llave_destino
+             WHERE la.id_llave_origen = ?
+             LIMIT 1`,
+            [idLlaveOrigen]
+        );
+
+        if (mapeo.length > 0) {
+            const destino = mapeo[0];
+            const campoInscripto = destino.slot_destino === 1 ? 'id_inscripto_1' : 'id_inscripto_2';
+            const campoGrupo = destino.slot_destino === 1 ? 'id_grupo_1' : 'id_grupo_2';
+
+            const [ganadorInfo] = await connection.execute(
+                `SELECT id_grupo FROM grupo_integrantes WHERE id_inscripto = ? LIMIT 1`,
+                [ganadorId]
+            );
+            const idGrupoGanador = ganadorInfo.length > 0 ? ganadorInfo[0].id_grupo : null;
+
+            await connection.execute(
+                `UPDATE llave_eliminacion
+                 SET ${campoInscripto} = ?, ${campoGrupo} = ?
+                 WHERE id = ?`,
+                [ganadorId, idGrupoGanador, destino.id]
+            );
+
+            if (destino.id_partido) {
+                const campoPartido = destino.slot_destino === 1 ? 'id_inscriptoL' : 'id_inscriptoV';
+                await connection.execute(
+                    `UPDATE partido SET ${campoPartido} = ? WHERE id = ?`,
+                    [ganadorId, destino.id_partido]
+                );
+            }
+
+            return;
+        }
+    } catch (errorMapeo) {
+        console.warn('Fallback a lógica legacy en avanzarGanadorEnLlave:', errorMapeo.message);
+    }
+
     // Mapeo de rondas para cualquier estructura
     const progresionRondas = {
-        'pre-playoff': { siguiente: 'cuartos' },
+        'pre-playoff': { siguiente: null },
         'dieciseisavos': { siguiente: 'octavos' },
         'octavos': { siguiente: 'cuartos' },
         'cuartos': { siguiente: 'semifinal' },
@@ -2760,7 +2939,21 @@ async function avanzarGanadorEnLlave(connection, idTorneo, categoria, rondaActua
     const progresion = progresionRondas[rondaActual];
     if (!progresion) return; // Es la final, no hay siguiente
     
-    const siguienteRonda = progresion.siguiente;
+    let siguienteRonda = progresion.siguiente;
+    if (rondaActual === 'pre-playoff') {
+        const orden = ['dieciseisavos', 'octavos', 'cuartos', 'semifinal', 'final'];
+        for (const r of orden) {
+            const [existe] = await connection.execute(
+                `SELECT COUNT(*) as total FROM llave_eliminacion WHERE id_torneo = ? AND categoria = ? AND ronda = ?`,
+                [idTorneo, categoria, r]
+            );
+            if (existe[0].total > 0) {
+                siguienteRonda = r;
+                break;
+            }
+        }
+        if (!siguienteRonda) return;
+    }
     
     // Obtener cantidad de partidos en cada ronda para determinar el mapeo
     const [partidosRondaActual] = await connection.execute(
