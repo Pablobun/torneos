@@ -4231,3 +4231,179 @@ app.put('/api/admin/llave/:id/rivales', authMiddleware, async (req, res) => {
         res.status(500).json({ error: 'Error al actualizar llave' });
     }
 });
+
+// ==========================================================
+// ENDPOINTS: AGENDA DE PLAYOFFS (RESERVAS SIN RIVALES)
+// ==========================================================
+
+// GET público: agenda activa por torneo (y categoría opcional)
+app.get('/api/agenda-playoffs/:idTorneo', async (req, res) => {
+    const { idTorneo } = req.params;
+    const { categoria } = req.query;
+
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+
+        let sql = `
+            SELECT
+                a.id,
+                a.id_torneo,
+                a.id_horario,
+                a.categoria,
+                a.leyenda,
+                a.activo,
+                h.dia_semana,
+                h.fecha,
+                h.hora_inicio as horario,
+                h.lugar,
+                h.Canchas as cupo
+            FROM agenda_playoffs a
+            INNER JOIN horarios h ON h.id = a.id_horario
+            WHERE a.id_torneo = ? AND a.activo = 1
+        `;
+
+        const params = [idTorneo];
+        if (categoria) {
+            sql += ' AND LOWER(a.categoria) = LOWER(?)';
+            params.push(categoria);
+        }
+
+        sql += ' ORDER BY h.fecha, h.hora_inicio, a.id';
+
+        const [rows] = await connection.execute(sql, params);
+        await connection.end();
+
+        res.status(200).json(rows);
+    } catch (error) {
+        console.error('Error al obtener agenda de playoffs:', error);
+        res.status(500).json({ error: 'Error al obtener agenda de playoffs' });
+    }
+});
+
+// GET admin: agenda (activos e inactivos)
+app.get('/api/admin/agenda-playoffs', authMiddleware, async (req, res) => {
+    const { id_torneo, categoria } = req.query;
+
+    if (!id_torneo) {
+        return res.status(400).json({ error: 'Falta id_torneo' });
+    }
+
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+
+        let sql = `
+            SELECT
+                a.id,
+                a.id_torneo,
+                a.id_horario,
+                a.categoria,
+                a.leyenda,
+                a.activo,
+                h.dia_semana,
+                h.fecha,
+                h.hora_inicio,
+                h.lugar
+            FROM agenda_playoffs a
+            LEFT JOIN horarios h ON h.id = a.id_horario
+            WHERE a.id_torneo = ?
+        `;
+        const params = [id_torneo];
+
+        if (categoria) {
+            sql += ' AND LOWER(a.categoria) = LOWER(?)';
+            params.push(categoria);
+        }
+
+        sql += ' ORDER BY h.fecha, h.hora_inicio, a.id';
+
+        const [rows] = await connection.execute(sql, params);
+        await connection.end();
+
+        res.status(200).json(rows);
+    } catch (error) {
+        console.error('Error al obtener agenda admin:', error);
+        res.status(500).json({ error: 'Error al obtener agenda' });
+    }
+});
+
+// POST admin: crear reserva de agenda
+app.post('/api/admin/agenda-playoffs', authMiddleware, async (req, res) => {
+    const { id_torneo, id_horario, categoria, leyenda, activo } = req.body;
+
+    if (!id_torneo || !id_horario || !categoria || !leyenda) {
+        return res.status(400).json({ error: 'Faltan campos requeridos (id_torneo, id_horario, categoria, leyenda)' });
+    }
+
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        await connection.execute(
+            `INSERT INTO agenda_playoffs (id_torneo, id_horario, categoria, leyenda, activo)
+             VALUES (?, ?, ?, ?, ?)`,
+            [id_torneo, id_horario, categoria, leyenda, activo === 0 ? 0 : 1]
+        );
+        await connection.end();
+
+        res.status(201).json({ mensaje: 'Reserva de agenda creada correctamente' });
+    } catch (error) {
+        console.error('Error al crear agenda:', error);
+        res.status(500).json({ error: 'Error al crear agenda' });
+    }
+});
+
+// PUT admin: editar reserva de agenda
+app.put('/api/admin/agenda-playoffs/:id', authMiddleware, async (req, res) => {
+    const { id } = req.params;
+    const { id_horario, categoria, leyenda } = req.body;
+
+    if (!id_horario || !categoria || !leyenda) {
+        return res.status(400).json({ error: 'Faltan campos requeridos (id_horario, categoria, leyenda)' });
+    }
+
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        const [result] = await connection.execute(
+            `UPDATE agenda_playoffs
+             SET id_horario = ?, categoria = ?, leyenda = ?
+             WHERE id = ?`,
+            [id_horario, categoria, leyenda, id]
+        );
+        await connection.end();
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Reserva no encontrada' });
+        }
+
+        res.status(200).json({ mensaje: 'Reserva actualizada correctamente' });
+    } catch (error) {
+        console.error('Error al actualizar agenda:', error);
+        res.status(500).json({ error: 'Error al actualizar agenda' });
+    }
+});
+
+// PUT admin: activar/anular reserva
+app.put('/api/admin/agenda-playoffs/:id/activo', authMiddleware, async (req, res) => {
+    const { id } = req.params;
+    const { activo } = req.body;
+
+    if (activo === undefined) {
+        return res.status(400).json({ error: 'Falta el campo activo' });
+    }
+
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        const [result] = await connection.execute(
+            `UPDATE agenda_playoffs SET activo = ? WHERE id = ?`,
+            [activo ? 1 : 0, id]
+        );
+        await connection.end();
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Reserva no encontrada' });
+        }
+
+        res.status(200).json({ mensaje: 'Estado actualizado correctamente' });
+    } catch (error) {
+        console.error('Error al actualizar estado agenda:', error);
+        res.status(500).json({ error: 'Error al actualizar estado agenda' });
+    }
+});

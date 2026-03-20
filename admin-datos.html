@@ -78,7 +78,7 @@
             }
             
             /* Contenedor para scroll de tabla */
-            #inscriptos-list, #partidos-list, #llaves-list {
+            #inscriptos-list, #partidos-list, #llaves-list, #agenda-list {
                 width: 100%;
                 overflow-x: auto;
                 -webkit-overflow-scrolling: touch;
@@ -119,6 +119,7 @@
             <button class="tab-btn" onclick="cambiarTab('grupos')">🏆 Grupos</button>
             <button class="tab-btn" onclick="cambiarTab('partidos')">🎾 Partidos</button>
             <button class="tab-btn" onclick="cambiarTab('llaves')">🔗 Llaves</button>
+            <button class="tab-btn" onclick="cambiarTab('agenda')">📅 Agenda</button>
         </div>
 
         <!-- TAB 1: INSCRIPTOS -->
@@ -149,6 +150,34 @@
         <div id="tab-llaves" class="tab-content">
             <h2 class="section-title">Gestión de Llaves</h2>
             <div id="llaves-list"></div>
+        </div>
+
+        <!-- TAB 5: AGENDA PLAYOFFS -->
+        <div id="tab-agenda" class="tab-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 class="section-title" style="margin-bottom: 0;">Agenda de Playoffs</h2>
+            </div>
+
+            <div class="card" style="margin-bottom: 20px;">
+                <div class="card-header">Crear Reserva de Agenda</div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Categoría</label>
+                        <select id="agenda-categoria"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Horario</label>
+                        <select id="agenda-horario"></select>
+                    </div>
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>Leyenda</label>
+                        <input type="text" id="agenda-leyenda" placeholder="Ej: Cuartos de final 1" maxlength="150">
+                    </div>
+                </div>
+                <button class="btn-primary" onclick="crearAgendaPlayoff()">+ Crear Reserva</button>
+            </div>
+
+            <div id="agenda-list"></div>
         </div>
     </div>
 
@@ -337,6 +366,8 @@
         let gruposData = [];
         let partidosData = [];
         let llavesData = [];
+        let agendaData = [];
+        let agendaHorarios = [];
         let categoriasTorneo = [];
 
         // Inicialización
@@ -406,6 +437,8 @@
                     document.getElementById('edit-categoria').innerHTML += `<option value="${c}">${c}</option>`;
                     document.getElementById('create-categoria-grupo').innerHTML += `<option value="${c}">${c}</option>`;
                 });
+
+                prepararCategoriasAgenda(catSelect.value);
             } catch (error) {
                 console.error('Error:', error);
             }
@@ -419,6 +452,7 @@
             cargarGrupos();
             cargarPartidos();
             cargarLlaves();
+            cargarAgendaPlayoffs();
         }
 
         function cambiarTab(tabName) {
@@ -427,6 +461,10 @@
             
             document.querySelector(`[onclick="cambiarTab('${tabName}')"]`).classList.add('active');
             document.getElementById(`tab-${tabName}`).classList.add('active');
+
+            if (tabName === 'agenda') {
+                cargarAgendaPlayoffs();
+            }
         }
 
         // ==================== INSCRIPTOS ====================
@@ -1309,6 +1347,226 @@
                 alert('Error de conexión');
             }
         });
+
+        // ==================== AGENDA PLAYOFFS ====================
+        async function cargarAgendaPlayoffs() {
+            const idTorneo = document.getElementById('selector-torneo').value;
+            const categoria = document.getElementById('selector-categoria').value;
+
+            if (!idTorneo) return;
+
+            try {
+                await Promise.all([
+                    cargarHorariosAgenda(idTorneo),
+                    prepararCategoriasAgenda(categoria)
+                ]);
+
+                let url = `${API_URL}/admin/agenda-playoffs?id_torneo=${idTorneo}`;
+                if (categoria) {
+                    url += `&categoria=${encodeURIComponent(categoria)}`;
+                }
+
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    agendaData = [];
+                    renderAgendaPlayoffs();
+                    return;
+                }
+
+                const data = await response.json();
+                agendaData = Array.isArray(data) ? data : [];
+                renderAgendaPlayoffs();
+            } catch (error) {
+                console.error('Error agenda:', error);
+                agendaData = [];
+                renderAgendaPlayoffs();
+            }
+        }
+
+        async function cargarHorariosAgenda(idTorneo) {
+            const select = document.getElementById('agenda-horario');
+            select.innerHTML = '<option value="">Cargando horarios...</option>';
+
+            try {
+                const response = await fetch(`${API_URL}/horarios/${idTorneo}`);
+                const data = await response.json();
+                agendaHorarios = Array.isArray(data) ? data : [];
+
+                if (agendaHorarios.length === 0) {
+                    select.innerHTML = '<option value="">Sin horarios disponibles</option>';
+                    return;
+                }
+
+                select.innerHTML = '<option value="">Seleccionar horario...</option>';
+                agendaHorarios.forEach(h => {
+                    const fechaFormateada = formatearFecha(h.fecha);
+                    select.innerHTML += `<option value="${h.id}">${h.dia_semana} ${fechaFormateada} ${h.hora_inicio} - ${h.lugar || 'Sin lugar'}</option>`;
+                });
+            } catch (error) {
+                console.error('Error horarios agenda:', error);
+                select.innerHTML = '<option value="">Error al cargar horarios</option>';
+            }
+        }
+
+        async function prepararCategoriasAgenda(categoriaActual) {
+            const select = document.getElementById('agenda-categoria');
+            if (!select) return;
+
+            select.innerHTML = '';
+            categoriasTorneo.forEach(c => {
+                select.innerHTML += `<option value="${c}">${c}</option>`;
+            });
+
+            if (categoriaActual && categoriasTorneo.includes(categoriaActual)) {
+                select.value = categoriaActual;
+            }
+        }
+
+        async function crearAgendaPlayoff() {
+            const idTorneo = document.getElementById('selector-torneo').value;
+            const categoria = document.getElementById('agenda-categoria').value;
+            const idHorario = document.getElementById('agenda-horario').value;
+            const leyenda = document.getElementById('agenda-leyenda').value.trim();
+
+            if (!idTorneo || !categoria || !idHorario || !leyenda) {
+                alert('Completá categoría, horario y leyenda');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/admin/agenda-playoffs`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        id_torneo: parseInt(idTorneo),
+                        id_horario: parseInt(idHorario),
+                        categoria,
+                        leyenda,
+                        activo: 1
+                    })
+                });
+
+                if (response.ok) {
+                    document.getElementById('agenda-leyenda').value = '';
+                    alert('Reserva creada correctamente');
+                    cargarAgendaPlayoffs();
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Error al crear reserva');
+                }
+            } catch (error) {
+                console.error('Error crear agenda:', error);
+                alert('Error de conexión');
+            }
+        }
+
+        function renderAgendaPlayoffs() {
+            const container = document.getElementById('agenda-list');
+            if (!container) return;
+
+            if (agendaData.length === 0) {
+                container.innerHTML = '<div class="empty-state">No hay reservas de agenda para esta categoría</div>';
+                return;
+            }
+
+            let html = `<table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Hora</th>
+                        <th>Categoría</th>
+                        <th>Leyenda</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+            agendaData.forEach(a => {
+                const estadoBadge = a.activo ? '<span class="badge badge-jugado">Activo</span>' : '<span class="badge badge-wo">Anulado</span>';
+                html += `<tr>
+                    <td>${a.fecha ? formatearFecha(a.fecha) : '-'}</td>
+                    <td>${a.hora_inicio || '-'}</td>
+                    <td>${a.categoria || '-'}</td>
+                    <td>${a.leyenda || '-'}</td>
+                    <td>${estadoBadge}</td>
+                    <td class="actions-cell">
+                        <button class="btn-warning" onclick="editarLeyendaAgenda(${a.id}, '${(a.leyenda || '').replace(/'/g, "\\'")}')">✏️</button>
+                        <button class="${a.activo ? 'btn-danger' : 'btn-primary'}" onclick="cambiarEstadoAgenda(${a.id}, ${a.activo ? 0 : 1})">${a.activo ? '🚫' : '✅'}</button>
+                    </td>
+                </tr>`;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        async function editarLeyendaAgenda(id, leyendaActual) {
+            const item = agendaData.find(a => a.id === id);
+            if (!item) return;
+
+            const nuevaLeyenda = prompt('Editar leyenda:', leyendaActual || '');
+            if (nuevaLeyenda === null) return;
+            const leyenda = nuevaLeyenda.trim();
+            if (!leyenda) {
+                alert('La leyenda no puede estar vacía');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/admin/agenda-playoffs/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        id_horario: item.id_horario,
+                        categoria: item.categoria,
+                        leyenda
+                    })
+                });
+
+                if (response.ok) {
+                    cargarAgendaPlayoffs();
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Error al editar leyenda');
+                }
+            } catch (error) {
+                console.error('Error editar agenda:', error);
+                alert('Error de conexión');
+            }
+        }
+
+        async function cambiarEstadoAgenda(id, activo) {
+            try {
+                const response = await fetch(`${API_URL}/admin/agenda-playoffs/${id}/activo`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ activo })
+                });
+
+                if (response.ok) {
+                    cargarAgendaPlayoffs();
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Error al actualizar estado');
+                }
+            } catch (error) {
+                console.error('Error estado agenda:', error);
+                alert('Error de conexión');
+            }
+        }
 
         // Utilitarios
         function cerrarModal(id) {

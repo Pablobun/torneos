@@ -67,6 +67,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function formatearRondaCorta(ronda) {
         if (!ronda) return null;
         const map = {
+            'agenda': 'AG',
             'pre-playoff': 'PP',
             'dieciseisavos': '16°',
             'octavos': '8°',
@@ -143,6 +144,29 @@ document.addEventListener('DOMContentLoaded', function () {
         const responsePartidos = await fetch(`${API_BASE_URL}/partidos/${torneoActivo.id}`);
         if (responsePartidos.ok) {
             partidosData = await responsePartidos.json();
+        }
+
+        const responseAgenda = await fetch(`${API_BASE_URL}/agenda-playoffs/${torneoActivo.id}`);
+        if (responseAgenda.ok) {
+            const agendaData = await responseAgenda.json();
+            if (Array.isArray(agendaData)) {
+                const agendaComoPartidos = agendaData.map(a => ({
+                    id: `agenda-${a.id}`,
+                    id_horario: a.id_horario,
+                    ronda: 'agenda',
+                    dia_semana: a.dia_semana,
+                    fecha: a.fecha,
+                    horario: a.horario,
+                    local_id: null,
+                    local_nombre: a.leyenda,
+                    visitante_id: null,
+                    visitante_nombre: a.leyenda,
+                    categoria: a.categoria,
+                    estado: 'pendiente',
+                    es_agenda: true
+                }));
+                partidosData = [...partidosData, ...agendaComoPartidos];
+            }
         }
     }
 
@@ -231,6 +255,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     const fase = formatearRondaCorta(partido.ronda);
                     const hora = formatearHora(partido.horario);
                     const partidoId = partido.id;
+                    const esAgenda = !!partido.es_agenda;
                     
                     html += `
                         <div class="partido-item" data-partido-id="${partidoId}">
@@ -244,7 +269,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <div class="partido-categoria">${categoria}</div>
                                 ${fase ? `<div class="partido-fase">${fase}</div>` : ''}
                             </div>
-                            <button class="btn-editar-horario" data-partido-id="${partidoId}">✏️</button>
+                            ${esAgenda ? '<span class="btn-agenda-info" style="background:#95a5a6; color:white; border:none; padding:8px; border-radius:6px; font-size:1rem; width:36px; height:36px; display:flex; align-items:center; justify-content:center;">📌</span>' : `<button class="btn-editar-horario" data-partido-id="${partidoId}">✏️</button>`}
                         </div>
                     `;
                 });
@@ -272,6 +297,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const localId = partido.local_id;
                 const visitanteId = partido.visitante_id;
                 const partidoId = partido.id;
+                const esAgenda = !!partido.es_agenda;
                 
                 html += `
                     <div class="partido-item partido-sin-horario" data-partido-id="${partidoId}">
@@ -285,7 +311,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             <div class="partido-categoria">${categoria}</div>
                             ${fase ? `<div class="partido-fase">${fase}</div>` : ''}
                         </div>
-                        <button class="btn-editar-horario" data-partido-id="${partidoId}">✏️ Asignar</button>
+                        ${esAgenda ? '<span class="btn-agenda-info" style="background:#95a5a6; color:white; border:none; width:auto; padding:8px 10px; border-radius:6px;">📌 Agenda</span>' : `<button class="btn-editar-horario" data-partido-id="${partidoId}">✏️ Asignar</button>`}
                     </div>
                 `;
                 
@@ -301,16 +327,18 @@ document.addEventListener('DOMContentLoaded', function () {
                     ? horariosVisitante.map(h => `${h.dia_semana} ${h.hora_inicio}`).join(', ')
                     : 'Sin horarios registrados';
                 
-                html += `
-                    <div class="horarios-disponibles">
-                        <div class="horarios-jugador">
-                            <strong>${local}:</strong> ${horariosLocalText}
+                if (!esAgenda) {
+                    html += `
+                        <div class="horarios-disponibles">
+                            <div class="horarios-jugador">
+                                <strong>${local}:</strong> ${horariosLocalText}
+                            </div>
+                            <div class="horarios-jugador">
+                                <strong>${visitante}:</strong> ${horariosVisitanteText}
+                            </div>
                         </div>
-                        <div class="horarios-jugador">
-                            <strong>${visitante}:</strong> ${horariosVisitanteText}
-                        </div>
-                    </div>
-                `;
+                    `;
+                }
             });
             
             html += '</div></div>';

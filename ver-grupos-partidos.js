@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function formatearRondaCorta(ronda) {
         if (!ronda) return null;
         const map = {
+            'agenda': 'AG',
             'pre-playoff': 'PP',
             'dieciseisavos': '16°',
             'octavos': '8°',
@@ -70,13 +71,37 @@ document.addEventListener('DOMContentLoaded', function () {
             `;
             
             // Cargar grupos y partidos en paralelo
-            const [grupos, partidos] = await Promise.all([
+            const [grupos, partidos, agenda] = await Promise.all([
                 fetchGrupos(torneo.id),
-                fetchPartidos(torneo.id)
+                fetchPartidos(torneo.id),
+                fetchAgendaPlayoffs(torneo.id)
             ]);
             
             gruposData = grupos;
-            partidosData = partidos;
+            const agendaComoPartidos = (agenda || []).map(a => ({
+                id: `agenda-${a.id}`,
+                id_horario: a.id_horario,
+                ronda: 'agenda',
+                dia_semana: a.dia_semana,
+                fecha: a.fecha,
+                horario: a.horario,
+                cupo: a.cupo,
+                local_id: null,
+                local_nombre: a.leyenda,
+                visitante_id: null,
+                visitante_nombre: a.leyenda,
+                categoria: a.categoria,
+                grupo: null,
+                estado: 'pendiente',
+                ganador_id: null,
+                sets_local: null,
+                sets_visitante: null,
+                games_local: null,
+                games_visitante: null,
+                es_agenda: true
+            }));
+
+            partidosData = [...partidos, ...agendaComoPartidos];
             
             // Extraer y organizar jugadores
             jugadoresData = extraerJugadoresDeGrupos(grupos);
@@ -112,6 +137,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const response = await fetch(`${API_BASE_URL}/partidos/${idTorneo}`);
         if (!response.ok) throw new Error('Error al cargar partidos');
         return await response.json();
+    }
+
+    async function fetchAgendaPlayoffs(idTorneo) {
+        const response = await fetch(`${API_BASE_URL}/agenda-playoffs/${idTorneo}`);
+        if (!response.ok) return [];
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
     }
     
     // 3. Extracción de jugadores con ordenamiento por categoría
