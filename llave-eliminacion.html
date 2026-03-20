@@ -517,6 +517,19 @@
         let currentMatchId = null;
         let categoriaActual = null;
 
+        function formatearFechaLocal(fechaValor) {
+            if (!fechaValor) return '';
+            const soloFecha = String(fechaValor).split('T')[0].split(' ')[0];
+            const partes = soloFecha.split('-');
+            if (partes.length === 3) {
+                const anio = partes[0];
+                const mes = String(parseInt(partes[1], 10));
+                const dia = String(parseInt(partes[2], 10));
+                return `${dia}/${mes}/${anio}`;
+            }
+            return soloFecha;
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             // Obtener categoría de URL
             const urlParams = new URLSearchParams(window.location.search);
@@ -680,7 +693,7 @@
             const team2Name = match.nombre_2 || (match.id_inscripto_2 ? 'Por definir' : '---');
             
             const fechaHora = match.fecha ? 
-                `${new Date(match.fecha).toLocaleDateString()} ${match.hora_inicio || ''}` : 
+                `${formatearFechaLocal(match.fecha)} ${match.hora_inicio || ''}` : 
                 null;
             
             // Construir HTML de resultados si hay sets detalle o es WO
@@ -766,7 +779,7 @@
             container.innerHTML = horariosData.map(h => `
                 <div class="horario-card">
                     <div class="horario-info">
-                        <h4>${h.dia_semana} ${new Date(h.fecha).toLocaleDateString()}</h4>
+                        <h4>${h.dia_semana} ${formatearFechaLocal(h.fecha)}</h4>
                         <p>${h.hora_inicio} - ${h.lugar || 'Aeroclub'}</p>
                         <p style="font-size: 10px; color: #4CAF50;">
                             ✓ Horario disponible (reusable)
@@ -849,7 +862,7 @@
                         <label style="display: block; margin-bottom: 10px; font-weight: bold;">Seleccionar horario:</label>
                         <select id="select-horario" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 5px;">
                             ${todosHorarios.map(h => `
-                                <option value="${h.id}">${h.dia_semana} ${new Date(h.fecha).toLocaleDateString()} - ${h.hora_inicio} (${h.lugar || 'Sin lugar'})</option>
+                                <option value="${h.id}">${h.dia_semana} ${formatearFechaLocal(h.fecha)} - ${h.hora_inicio} (${h.lugar || 'Sin lugar'})</option>
                             `).join('')}
                         </select>
                     </div>

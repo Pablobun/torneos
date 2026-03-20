@@ -431,6 +431,19 @@
         let torneoId = null;
         let categoriaActual = null;
 
+        function formatearFechaLocal(fechaValor) {
+            if (!fechaValor) return '';
+            const soloFecha = String(fechaValor).split('T')[0].split(' ')[0];
+            const partes = soloFecha.split('-');
+            if (partes.length === 3) {
+                const anio = partes[0];
+                const mes = String(parseInt(partes[1], 10));
+                const dia = String(parseInt(partes[2], 10));
+                return `${dia}/${mes}/${anio}`;
+            }
+            return soloFecha;
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             const urlParams = new URLSearchParams(window.location.search);
             categoriaActual = urlParams.get('categoria');
@@ -602,7 +615,7 @@
             }
             
             const fechaHora = match.fecha ? 
-                `${new Date(match.fecha).toLocaleDateString()} ${match.hora_inicio || ''}` : 
+                `${formatearFechaLocal(match.fecha)} ${match.hora_inicio || ''}` : 
                 null;
             
             // Construir HTML de resultados si hay sets detalle o es WO
