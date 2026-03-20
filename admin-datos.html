@@ -1177,19 +1177,19 @@
             if (!idTorneo || !categoria) return;
             
             try {
-                const response = await fetch(`${API_URL}/torneo/${idTorneo}/llave`);
+                const response = await fetch(`${API_URL}/torneo/${idTorneo}/llave?categoria=${encodeURIComponent(categoria)}`);
                 if (!response.ok) {
                     llavesData = [];
                     renderLlaves();
                     return;
                 }
                 let data = await response.json();
-                
-                if (!Array.isArray(data)) {
+
+                if (!data || !data.bracket || typeof data.bracket !== 'object') {
                     llavesData = [];
                 } else {
-                    data = data.filter(l => l.categoria === categoria);
-                    llavesData = data;
+                    const ordenRondas = ['pre-playoff', 'dieciseisavos', 'octavos', 'cuartos', 'semifinal', 'final'];
+                    llavesData = ordenRondas.flatMap(r => Array.isArray(data.bracket[r]) ? data.bracket[r] : []);
                 }
                 renderLlaves();
             } catch (error) {
@@ -1215,7 +1215,7 @@
             });
 
             let html = '';
-            const ordenRondas = ['dieciseisavos', 'octavos', 'cuartos', 'semifinal', 'final'];
+            const ordenRondas = ['pre-playoff', 'dieciseisavos', 'octavos', 'cuartos', 'semifinal', 'final'];
             
             ordenRondas.forEach(ronda => {
                 if (!rondas[ronda]) return;
@@ -1235,8 +1235,8 @@
                 llavesData.filter(l => l.ronda === ronda).sort((a,b) => a.posicion - b.posicion).forEach(l => {
                     html += `<tr>
                         <td>${l.posicion}</td>
-                        <td>${l.inscripto_1 || '-'}</td>
-                        <td>${l.inscripto_2 || '-'}</td>
+                        <td>${l.nombre_1 || '-'}</td>
+                        <td>${l.nombre_2 || '-'}</td>
                         <td><button class="btn-warning" onclick="abrirEditarLlave(${l.id})">✏️</button></td>
                     </tr>`;
                 });
