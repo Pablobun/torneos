@@ -1391,12 +1391,12 @@
             select.innerHTML = '<option value="">Cargando horarios...</option>';
 
             try {
-                const response = await fetch(`${API_URL}/horarios/${idTorneo}`);
+                const response = await fetch(`${API_URL}/horarios-playoffs/${idTorneo}`);
                 const data = await response.json();
                 agendaHorarios = Array.isArray(data) ? data : [];
 
                 if (agendaHorarios.length === 0) {
-                    select.innerHTML = '<option value="">Sin horarios disponibles</option>';
+                    select.innerHTML = '<option value="">Sin horarios playoffs disponibles</option>';
                     return;
                 }
 
