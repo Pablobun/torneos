@@ -403,7 +403,7 @@
         <div class="header">
             <h1>🏆 Llave de Eliminación</h1>
             <select id="selector-categoria" onchange="cambiarCategoria()" style="padding: 8px 15px; border-radius: 5px; border: none; font-size: 14px; min-width: 150px;">
-                <option value="">Seleccionar categoría...</option>
+                <option value="" disabled selected>Seleccionar categoría...</option>
             </select>
             <div class="tabs">
                 <button class="tab active" onclick="showTab('bracket')">Bracket</button>
@@ -525,12 +525,6 @@
             await cargarTorneoActivo();
             if (torneoId) {
                 await cargarCategorias();
-                if (categoriaActual) {
-                    document.getElementById('selector-categoria').value = categoriaActual;
-                    await cargarBracket(categoriaActual);
-                } else {
-                    await cargarBracket();
-                }
                 await cargarHorarios();
             }
         });
@@ -553,12 +547,42 @@
                 if (response.ok) {
                     const data = await response.json();
                     const select = document.getElementById('selector-categoria');
+                    select.innerHTML = '';
+
+                    if (!data.categorias || data.categorias.length === 0) {
+                        const option = document.createElement('option');
+                        option.value = '';
+                        option.textContent = 'Sin llaves generadas';
+                        select.appendChild(option);
+                        select.disabled = true;
+                        categoriaActual = null;
+                        document.getElementById('bracket-content').innerHTML = `
+                            <div style="text-align: center; padding: 40px; color: #666;">
+                                <h3>No hay llaves generadas</h3>
+                                <p>Primero debés generar la llave desde \"Posiciones de Grupos\"</p>
+                                <a href="posiciones-grupos.html" class="btn btn-primary" style="margin-top: 20px; display: inline-block; text-decoration: none;">
+                                    Ir a Posiciones
+                                </a>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    select.disabled = false;
                     data.categorias.forEach(cat => {
                         const option = document.createElement('option');
                         option.value = cat;
                         option.textContent = cat;
                         select.appendChild(option);
                     });
+
+                    if (!categoriaActual || !data.categorias.includes(categoriaActual)) {
+                        categoriaActual = data.categorias[0];
+                    }
+
+                    select.value = categoriaActual;
+                    history.replaceState({}, '', `?categoria=${encodeURIComponent(categoriaActual)}`);
+                    await cargarBracket(categoriaActual);
                 }
             } catch (error) {
                 console.error('Error al cargar categorías:', error);
@@ -569,14 +593,24 @@
             const select = document.getElementById('selector-categoria');
             categoriaActual = select.value;
             if (categoriaActual) {
+                history.replaceState({}, '', `?categoria=${encodeURIComponent(categoriaActual)}`);
                 await cargarBracket(categoriaActual);
-            } else {
-                await cargarBracket();
             }
         }
 
         async function cargarBracket(categoria = null) {
             try {
+                categoria = categoria || categoriaActual;
+                if (!categoria) {
+                    document.getElementById('bracket-content').innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: #666;">
+                            <h3>No hay categoría seleccionada</h3>
+                            <p>Seleccioná una categoría para ver la llave</p>
+                        </div>
+                    `;
+                    return;
+                }
+
                 let url = `${API_URL}/torneo/${torneoId}/llave`;
                 if (categoria) {
                     url += `?categoria=${encodeURIComponent(categoria)}`;
@@ -840,7 +874,7 @@
                 
                 if (response.ok) {
                     closeModal('modal-horario');
-                    await cargarBracket();
+                    await cargarBracket(categoriaActual);
                     await cargarHorarios();
                 } else {
                     alert('Error al asignar horario');
@@ -1168,7 +1202,7 @@
                 
                 if (response.ok) {
                     closeModal('modal-resultado');
-                    await cargarBracket();
+                    await cargarBracket(categoriaActual);
                 } else {
                     alert('Error al guardar el resultado');
                 }
@@ -1188,7 +1222,7 @@
                 });
                 
                 if (response.ok) {
-                    await cargarBracket();
+                    await cargarBracket(categoriaActual);
                 } else {
                     alert('Error al eliminar el resultado');
                 }

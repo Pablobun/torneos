@@ -390,7 +390,7 @@
                 <p>Bracket de eliminación directa</p>
             </div>
             <select id="selector-categoria" onchange="cambiarCategoria()" style="padding: 10px 15px; border-radius: 5px; border: none; font-size: 14px; min-width: 150px;">
-                <option value="">Todas las categorías</option>
+                <option value="" disabled selected>Seleccionar categoría...</option>
             </select>
         </div>
         
@@ -432,17 +432,12 @@
         let categoriaActual = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
-            // Obtener categoría de URL
             const urlParams = new URLSearchParams(window.location.search);
             categoriaActual = urlParams.get('categoria');
-            
+
             await cargarTorneoActivo();
             if (torneoId) {
                 await cargarCategorias();
-                if (categoriaActual) {
-                    document.getElementById('selector-categoria').value = categoriaActual;
-                }
-                await cargarPlayoffs(categoriaActual);
             }
         });
 
@@ -464,12 +459,34 @@
                 if (response.ok) {
                     const data = await response.json();
                     const select = document.getElementById('selector-categoria');
+                    select.innerHTML = '';
+
+                    if (!data.categorias || data.categorias.length === 0) {
+                        const option = document.createElement('option');
+                        option.value = '';
+                        option.textContent = 'Sin llaves generadas';
+                        select.appendChild(option);
+                        select.disabled = true;
+                        categoriaActual = null;
+                        mostrarEmptyState();
+                        return;
+                    }
+
+                    select.disabled = false;
                     data.categorias.forEach(cat => {
                         const option = document.createElement('option');
                         option.value = cat;
                         option.textContent = cat;
                         select.appendChild(option);
                     });
+
+                    if (!categoriaActual || !data.categorias.includes(categoriaActual)) {
+                        categoriaActual = data.categorias[0];
+                    }
+
+                    select.value = categoriaActual;
+                    history.replaceState({}, '', `?categoria=${encodeURIComponent(categoriaActual)}`);
+                    await cargarPlayoffs(categoriaActual);
                 }
             } catch (error) {
                 console.error('Error al cargar categorías:', error);
@@ -479,11 +496,19 @@
         async function cambiarCategoria() {
             const select = document.getElementById('selector-categoria');
             categoriaActual = select.value || null;
+            if (!categoriaActual) return;
+            history.replaceState({}, '', `?categoria=${encodeURIComponent(categoriaActual)}`);
             await cargarPlayoffs(categoriaActual);
         }
 
         async function cargarPlayoffs(categoria = null) {
             try {
+                categoria = categoria || categoriaActual;
+                if (!categoria) {
+                    mostrarEmptyState();
+                    return;
+                }
+
                 let url = `${API_URL}/torneo/${torneoId}/llave`;
                 if (categoria) {
                     url += `?categoria=${encodeURIComponent(categoria)}`;
