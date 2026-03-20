@@ -169,45 +169,34 @@ document.addEventListener('DOMContentLoaded', function () {
         elementos.jugadoresList.innerHTML = html;
     }
     
-    // 5. Agrupación de partidos por categoría → fecha → hora
+    // 5. Agrupación global de partidos por fecha/hora
     function agruparPartidosParaVista(partidos) {
-        const agrupados = {};
-        
-        // Primero agrupar por categoría
+        const conHorario = [];
+        const sinHorario = [];
+
         partidos.forEach(partido => {
-            const categoria = partido.categoria || 'Sin categoría';
-            
-            if (!agrupados[categoria]) {
-                agrupados[categoria] = {
-                    conHorario: [],
-                    sinHorario: []
-                };
-            }
-            
-            // Separar por si tienen horario o no
             if (partido.id_horario && partido.fecha) {
-                agrupados[categoria].conHorario.push(partido);
+                conHorario.push(partido);
             } else {
-                agrupados[categoria].sinHorario.push(partido);
+                sinHorario.push(partido);
             }
         });
-        
-        // Ordenar por fecha y hora dentro de cada categoría
-        Object.keys(agrupados).forEach(categoria => {
-            agrupados[categoria].conHorario.sort((a, b) => {
-                const fechaA = new Date(`${a.fecha} ${a.horario || '00:00'}`);
-                const fechaB = new Date(`${b.fecha} ${b.horario || '00:00'}`);
-                return fechaA - fechaB;
-            });
-            
-            agrupados[categoria].sinHorario.sort((a, b) => {
-                const localA = a.local_nombre || '';
-                const localB = b.local_nombre || '';
-                return localA.localeCompare(localB);
-            });
+
+        conHorario.sort((a, b) => {
+            const fechaA = new Date(`${a.fecha} ${a.horario || '00:00'}`);
+            const fechaB = new Date(`${b.fecha} ${b.horario || '00:00'}`);
+            return fechaA - fechaB;
         });
-        
-        return agrupados;
+
+        sinHorario.sort((a, b) => {
+            const categoriaCmp = (a.categoria || '').localeCompare(b.categoria || '');
+            if (categoriaCmp !== 0) return categoriaCmp;
+            const localA = a.local_nombre || '';
+            const localB = b.local_nombre || '';
+            return localA.localeCompare(localB);
+        });
+
+        return { conHorario, sinHorario };
     }
     
     // 6. Renderizado de vista según filtros
@@ -291,117 +280,97 @@ document.addEventListener('DOMContentLoaded', function () {
         elementos.gruposContainer.innerHTML = html;
     }
     
-    // 8. Renderizado de partidos por categoría → fecha → hora
+    // 8. Renderizado de partidos por fecha → hora (global)
     function renderizarPartidos(partidos) {
         if (partidos.length === 0) {
             elementos.partidosContainer.innerHTML = '<p class="sin-resultados">No hay partidos con los filtros seleccionados.</p>';
             return;
         }
         
-        const agrupados = agruparPartidosParaVista(partidos);
+        const { conHorario, sinHorario } = agruparPartidosParaVista(partidos);
         
         let html = '<div class="partidos-por-categoria">';
-        
-        Object.keys(agrupados).sort().forEach(categoria => {
-            const { conHorario, sinHorario } = agrupados[categoria];
-            
-            html += `
-                <div class="categoria-seccion">
-                    <div class="categoria-header">
-                        <h3>🏆 ${categoria}</h3>
-                        <span class="partidos-count">
-                            ${conHorario.length + sinHorario.length} partidos
-                        </span>
-                    </div>
-            `;
-            
-            // Renderizar partidos con horario agrupados por fecha
-            const partidosPorFecha = {};
-            conHorario.forEach(partido => {
-                const fechaKey = partido.fecha;
-                if (!partidosPorFecha[fechaKey]) {
-                    partidosPorFecha[fechaKey] = {
-                        dia: partido.dia_semana,
-                        partidos: []
-                    };
-                }
-                partidosPorFecha[fechaKey].partidos.push(partido);
-            });
-            
-            // Ordenar y renderizar fechas
-            Object.keys(partidosPorFecha).sort().forEach(fechaKey => {
-                const grupoFecha = partidosPorFecha[fechaKey];
-                const fechaFormateada = formatearFecha(fechaKey);
-                
-                html += `
-                    <div class="fecha-seccion">
-                        <div class="fecha-header">
-                            <span class="fecha-dia">${grupoFecha.dia}</span>
-                            <span class="fecha-fecha">${fechaFormateada}</span>
-                        </div>
-                        <div class="partidos-list">
-                `;
-                
-                // Ordenar partidos por hora
-                grupoFecha.partidos.sort((a, b) => {
-                    return (a.horario || '').localeCompare(b.horario || '');
-                });
-                
-                grupoFecha.partidos.forEach(partido => {
-                    const horaFormateada = formatearHora(partido.horario);
-                    const fase = formatearRondaCorta(partido.ronda);
-                    html += `
-                        <div class="partido-item">
-                            <div class="partido-hora">${horaFormateada}</div>
-                            <div class="partido-match">
-                                <span class="partido-local">${partido.local_nombre}</span>
-                                <span class="partido-vs">VS</span>
-                                <span class="partido-visitante">${partido.visitante_nombre}</span>
-                            </div>
-                            <div class="partido-meta">
-                                <div class="partido-categoria">${partido.categoria}</div>
-                                ${fase ? `<div class="partido-fase">${fase}</div>` : ''}
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                html += '</div></div>';
-            });
-            
-            // Renderizar partidos sin horario al final
-            if (sinHorario.length > 0) {
-                html += `
-                    <div class="partidos-sin-horario">
-                        <div class="sin-horario-header">
-                            ⏳ Partidos sin horario asignado
-                        </div>
-                        <div class="partidos-list">
-                `;
-                
-                sinHorario.forEach(partido => {
-                    const fase = formatearRondaCorta(partido.ronda);
-                    html += `
-                        <div class="partido-item sin-horario-item">
-                            <div class="partido-hora">--:--</div>
-                            <div class="partido-match">
-                                <span class="partido-local">${partido.local_nombre}</span>
-                                <span class="partido-vs">VS</span>
-                                <span class="partido-visitante">${partido.visitante_nombre}</span>
-                            </div>
-                            <div class="partido-meta">
-                                <div class="partido-categoria">${partido.categoria}</div>
-                                ${fase ? `<div class="partido-fase">${fase}</div>` : ''}
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                html += '</div></div>';
+
+        // Renderizar partidos con horario agrupados por fecha (sin separar categoría)
+        const partidosPorFecha = {};
+        conHorario.forEach(partido => {
+            const fechaKey = partido.fecha;
+            if (!partidosPorFecha[fechaKey]) {
+                partidosPorFecha[fechaKey] = {
+                    dia: partido.dia_semana,
+                    partidos: []
+                };
             }
-            
-            html += '</div>'; // cierre de categoria-seccion
+            partidosPorFecha[fechaKey].partidos.push(partido);
         });
+
+        Object.keys(partidosPorFecha).sort().forEach(fechaKey => {
+            const grupoFecha = partidosPorFecha[fechaKey];
+            const fechaFormateada = formatearFecha(fechaKey);
+
+            html += `
+                <div class="fecha-seccion">
+                    <div class="fecha-header">
+                        <span class="fecha-dia">${grupoFecha.dia}</span>
+                        <span class="fecha-fecha">${fechaFormateada}</span>
+                    </div>
+                    <div class="partidos-list">
+            `;
+
+            grupoFecha.partidos.sort((a, b) => (a.horario || '').localeCompare(b.horario || ''));
+
+            grupoFecha.partidos.forEach(partido => {
+                const horaFormateada = formatearHora(partido.horario);
+                const fase = formatearRondaCorta(partido.ronda);
+                html += `
+                    <div class="partido-item">
+                        <div class="partido-hora">${horaFormateada}</div>
+                        <div class="partido-match">
+                            <span class="partido-local">${partido.local_nombre}</span>
+                            <span class="partido-vs">VS</span>
+                            <span class="partido-visitante">${partido.visitante_nombre}</span>
+                        </div>
+                        <div class="partido-meta">
+                            <div class="partido-categoria">${partido.categoria}</div>
+                            ${fase ? `<div class="partido-fase">${fase}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div></div>';
+        });
+
+        // Renderizar partidos sin horario al final (sin separar categoría)
+        if (sinHorario.length > 0) {
+            html += `
+                <div class="partidos-sin-horario">
+                    <div class="sin-horario-header">
+                        ⏳ Partidos sin horario asignado
+                    </div>
+                    <div class="partidos-list">
+            `;
+
+            sinHorario.forEach(partido => {
+                const fase = formatearRondaCorta(partido.ronda);
+                html += `
+                    <div class="partido-item sin-horario-item">
+                        <div class="partido-hora">--:--</div>
+                        <div class="partido-match">
+                            <span class="partido-local">${partido.local_nombre}</span>
+                            <span class="partido-vs">VS</span>
+                            <span class="partido-visitante">${partido.visitante_nombre}</span>
+                        </div>
+                        <div class="partido-meta">
+                            <div class="partido-categoria">${partido.categoria}</div>
+                            ${fase ? `<div class="partido-fase">${fase}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div></div>';
+        }
         
         html += '</div>'; // cierre de partidos-por-categoria
         elementos.partidosContainer.innerHTML = html;
