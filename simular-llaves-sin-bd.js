@@ -21,7 +21,7 @@ function ordenarRankingGlobal(clasificados) {
 
 function armarLlaveOffline(clasificados) {
   const totalClasificados = clasificados.length;
-  const modoEstricto1822 = totalClasificados === 18 || totalClasificados === 22;
+  const modoEstrictoGrupos = true;
   const p = potencia2Inferior(totalClasificados);
   const jugadoresAEliminar = totalClasificados - p;
   const jugadoresAHacerJugar = jugadoresAEliminar * 2;
@@ -150,7 +150,7 @@ function armarLlaveOffline(clasificados) {
       }
     }
 
-    if (modoEstricto1822) {
+    if (modoEstrictoGrupos) {
       if (dTop !== directTop || dBottom !== directBottom) continue;
       if (pTop !== preTop || pBottom !== preBottom) continue;
       if (protTop !== dsDirectSlotsTop || protBottom !== dsDirectSlotsBottom) continue;
@@ -164,8 +164,8 @@ function armarLlaveOffline(clasificados) {
     }
   }
 
-  if (modoEstricto1822 && bestScore === Number.POSITIVE_INFINITY) {
-    throw new Error("Sin orientación válida para N=18/22");
+  if (modoEstrictoGrupos && bestScore === Number.POSITIVE_INFINITY) {
+    throw new Error("Sin orientación válida respetando separación de grupos");
   }
 
   const mitadRequerida = new Map();
@@ -202,7 +202,7 @@ function armarLlaveOffline(clasificados) {
       const filtered = cands.filter((x) => x.mitad === mitadPreferida);
       if (filtered.length > 0) {
         cands = filtered;
-      } else if (modoEstricto1822) {
+      } else if (modoEstrictoGrupos) {
         return null;
       }
     }
@@ -210,7 +210,7 @@ function armarLlaveOffline(clasificados) {
       const partido = primeraRonda[c.pos - 1];
       if (partido.g1 !== jugador.id_grupo && partido.g2 !== jugador.id_grupo) return c;
     }
-    if (modoEstricto1822) return null;
+    if (modoEstrictoGrupos) return null;
     return pool.find((x) => !x.used) || null;
   }
 
@@ -222,7 +222,7 @@ function armarLlaveOffline(clasificados) {
     if (protegidosPendientes.length === 0) break;
     let idx = protegidosPendientes.findIndex((j) => (mitadRequerida.get(j.id_inscripto) || ds.mitad) === ds.mitad);
     if (idx === -1) {
-      if (modoEstricto1822) throw new Error("Sin protegido DS en mitad requerida");
+      if (modoEstrictoGrupos) throw new Error("Sin protegido DS en mitad requerida");
       idx = 0;
     }
     const j = protegidosPendientes.splice(idx, 1)[0];
@@ -300,13 +300,13 @@ function armarLlaveOffline(clasificados) {
     for (let i = 0; i < vacios.length; i++) {
       const v = vacios[i];
       const score = v.mitad === pre.mitadObjetivo ? 0 : 10;
-      if (modoEstricto1822 && score > 0) continue;
+      if (modoEstrictoGrupos && score > 0) continue;
       if (score < bestScore2) {
         bestScore2 = score;
         bestIdx = i;
       }
     }
-    if (modoEstricto1822 && bestScore2 === Number.POSITIVE_INFINITY) {
+    if (modoEstrictoGrupos && bestScore2 === Number.POSITIVE_INFINITY) {
       throw new Error("Sin destino de mitad correcta para pre-playoff");
     }
     const dest = vacios.splice(bestIdx, 1)[0];
@@ -340,6 +340,27 @@ function generarFixture(N) {
     out.push({ id_inscripto: id++, id_grupo: g, posicion: 1, puntos: 100 - g, dif_sets: 30 - g, dif_games: 50 - g });
     out.push({ id_inscripto: id++, id_grupo: g, posicion: 2, puntos: 60 - g, dif_sets: 10 - g, dif_games: 20 - g });
   }
+  return out;
+}
+
+function generarFixtureAleatorio(N) {
+  const grupos = N / 2;
+  const out = [];
+  let id = 1000;
+
+  for (let g = 1; g <= grupos; g++) {
+    // Siempre mantiene 1ro y 2do por grupo, pero varía desempates
+    const p1 = 70 + Math.floor(Math.random() * 31);
+    const p2 = 20 + Math.floor(Math.random() * 41);
+    const ds1 = Math.floor(Math.random() * 40) - 10;
+    const ds2 = Math.floor(Math.random() * 40) - 10;
+    const dg1 = Math.floor(Math.random() * 80) - 20;
+    const dg2 = Math.floor(Math.random() * 80) - 20;
+
+    out.push({ id_inscripto: id++, id_grupo: g, posicion: 1, puntos: p1, dif_sets: ds1, dif_games: dg1 });
+    out.push({ id_inscripto: id++, id_grupo: g, posicion: 2, puntos: p2, dif_sets: ds2, dif_games: dg2 });
+  }
+
   return out;
 }
 
@@ -397,8 +418,9 @@ function validarConteos(resultado) {
 
 function ejecutar() {
   const casos = [4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32];
+  const iteracionesAleatorias = 25;
   let fallos = 0;
-  console.log("=== Test de emparejamientos sin BD ===");
+  console.log("=== Test de emparejamientos sin BD (modo estricto grupos) ===");
 
   for (const n of casos) {
     try {
@@ -416,6 +438,21 @@ function ejecutar() {
       if (!ok) {
         for (const e of errConteo) console.log(`  - ${e}`);
         for (const e of errGrupo) console.log(`  - ${e}`);
+      }
+
+      // Stress aleatorio para el mismo N
+      for (let i = 0; i < iteracionesAleatorias; i++) {
+        const fixtureRnd = generarFixtureAleatorio(n);
+        const resRnd = armarLlaveOffline(fixtureRnd);
+        const errConteoRnd = validarConteos(resRnd);
+        const errGrupoRnd = validarNoCruceAntesFinal(resRnd);
+        if (errConteoRnd.length > 0 || errGrupoRnd.length > 0) {
+          fallos++;
+          console.log(`  - FAIL random #${i + 1}`);
+          for (const e of errConteoRnd) console.log(`    * ${e}`);
+          for (const e of errGrupoRnd) console.log(`    * ${e}`);
+          break;
+        }
       }
     } catch (e) {
       fallos++;

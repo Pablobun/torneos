@@ -1764,7 +1764,8 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         };
         const rondas = rondasMap[potenciaDe2] || ['final'];
         const primeraRonda = rondas[0];
-        const modoEstricto1822 = totalClasificados === 18 || totalClasificados === 22;
+        // Regla general: 1° y 2° del mismo grupo en mitades opuestas para todos los tamaños
+        const modoEstrictoGrupos = true;
         
         // 8. Crear bracket completo
         const bracket = [];
@@ -1932,7 +1933,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                 }
             }
 
-            if (modoEstricto1822) {
+            if (modoEstrictoGrupos) {
                 if (directTop !== objetivo.directTop || directBottom !== objetivo.directBottom) {
                     continue;
                 }
@@ -1957,10 +1958,10 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             }
         }
 
-        if (modoEstricto1822 && mejorScore === Number.POSITIVE_INFINITY) {
+        if (modoEstrictoGrupos && mejorScore === Number.POSITIVE_INFINITY) {
             await connection.rollback();
             return res.status(500).json({
-                error: 'Error de estructura: no se encontró orientación válida para N=18/22'
+                error: 'Error de estructura: no se encontró orientación válida respetando separación de grupos'
             });
         }
 
@@ -2003,7 +2004,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                 const filtrados = candidatos.filter(s => s.mitad === mitadPreferida);
                 if (filtrados.length > 0) {
                     candidatos = filtrados;
-                } else if (modoEstricto1822) {
+                } else if (modoEstrictoGrupos) {
                     return null;
                 }
             }
@@ -2017,7 +2018,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                 }
             }
 
-            if (modoEstricto1822) {
+            if (modoEstrictoGrupos) {
                 return null;
             }
             return pool.find(s => !s.usado) || null;
@@ -2033,7 +2034,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
 
             let idxJugador = protegidosPendientes.findIndex(j => (mitadRequerida.get(j.id_inscripto) || slotDs.mitad) === slotDs.mitad);
             if (idxJugador === -1) {
-                if (modoEstricto1822) {
+                if (modoEstrictoGrupos) {
                     await connection.rollback();
                     return res.status(500).json({
                         error: 'Error de estructura: no se pudo ubicar protegidos DS en mitades correctas'
@@ -2168,7 +2169,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             for (let i = 0; i < slotsVacios.length; i++) {
                 const slot = slotsVacios[i];
                 let score = slot.mitad === pre._mitad_objetivo ? 0 : 10;
-                if (modoEstricto1822 && score > 0) {
+                if (modoEstrictoGrupos && score > 0) {
                     continue;
                 }
                 if (score < mejorScore) {
@@ -2177,7 +2178,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                 }
             }
 
-            if (modoEstricto1822 && mejorScore === Number.POSITIVE_INFINITY) {
+            if (modoEstrictoGrupos && mejorScore === Number.POSITIVE_INFINITY) {
                 await connection.rollback();
                 return res.status(500).json({
                     error: 'Error de estructura: no se encontró destino de mitad correcta para pre-playoff'
