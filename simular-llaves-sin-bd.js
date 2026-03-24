@@ -28,6 +28,7 @@ function armarLlaveOffline(clasificados) {
   const jugadoresConBye = totalClasificados - jugadoresAHacerJugar;
 
   const rankingGlobal = ordenarRankingGlobal(clasificados);
+  const rankingIndexById = new Map(rankingGlobal.map((j, idx) => [j.id_inscripto, idx]));
   const directos = rankingGlobal.slice(0, jugadoresConBye);
   const preJugadores = jugadoresAHacerJugar > 0 ? rankingGlobal.slice(-jugadoresAHacerJugar) : [];
 
@@ -307,19 +308,65 @@ function armarLlaveOffline(clasificados) {
     if (mitad === "superior") preTopList.push(j);
     else preBottomList.push(j);
   }
-  if (preTopList.length % 2 !== 0 && preBottomList.length % 2 !== 0) {
-    preBottomList.push(preTopList.pop());
+  function costoParejaPre(a, b) {
+    let costo = 0;
+    if (a.posicion === b.posicion) costo += 100;
+    const ra = rankingIndexById.get(a.id_inscripto) ?? 999;
+    const rb = rankingIndexById.get(b.id_inscripto) ?? 999;
+    costo += Math.abs(ra - rb) * 0.001;
+    return costo;
   }
 
-  function armarPares(lista) {
-    const src = [...lista];
+  function armarParesOptimos(lista) {
+    const jugadores = [...lista];
+    if (jugadores.length === 0) return [];
+    if (jugadores.length % 2 !== 0) return null;
+
+    const n = jugadores.length;
+    const usados = new Array(n).fill(false);
+    let mejorCosto = Number.POSITIVE_INFINITY;
+    let mejorPares = null;
+
+    function backtrack(actual, costoActual) {
+      if (costoActual >= mejorCosto) return;
+
+      let i = -1;
+      for (let k = 0; k < n; k++) {
+        if (!usados[k]) { i = k; break; }
+      }
+
+      if (i === -1) {
+        mejorCosto = costoActual;
+        mejorPares = [...actual];
+        return;
+      }
+
+      usados[i] = true;
+      for (let j = i + 1; j < n; j++) {
+        if (usados[j]) continue;
+        const a = jugadores[i];
+        const b = jugadores[j];
+        if (a.id_grupo === b.id_grupo) continue;
+
+        usados[j] = true;
+        actual.push([a, b]);
+        backtrack(actual, costoActual + costoParejaPre(a, b));
+        actual.pop();
+        usados[j] = false;
+      }
+      usados[i] = false;
+    }
+
+    backtrack([], 0);
+    if (mejorPares) return mejorPares;
+
+    // fallback greedy
+    const src = [...jugadores];
     const pares = [];
     while (src.length >= 2) {
       const j1 = src.shift();
       let idx = src.findIndex((x) => x.id_grupo !== j1.id_grupo && x.posicion !== j1.posicion);
-      if (idx === -1) {
-        idx = src.findIndex((x) => x.id_grupo !== j1.id_grupo);
-      }
+      if (idx === -1) idx = src.findIndex((x) => x.id_grupo !== j1.id_grupo);
       if (idx === -1) idx = 0;
       const j2 = src.splice(idx, 1)[0];
       pares.push([j1, j2]);
@@ -327,7 +374,28 @@ function armarLlaveOffline(clasificados) {
     return pares;
   }
 
-  const prePares = [...armarPares(preTopList), ...armarPares(preBottomList)];
+  if (preTopList.length % 2 !== 0 || preBottomList.length % 2 !== 0) {
+    if (preTopList.length % 2 !== 0 && preBottomList.length % 2 !== 0) {
+      if (preTopList.length >= preBottomList.length && preTopList.length > 0) preBottomList.push(preTopList.pop());
+      else if (preBottomList.length > 0) preTopList.push(preBottomList.pop());
+    } else if (preTopList.length % 2 !== 0 && preTopList.length > 0) {
+      preBottomList.push(preTopList.pop());
+    } else if (preBottomList.length % 2 !== 0 && preBottomList.length > 0) {
+      preTopList.push(preBottomList.pop());
+    }
+  }
+
+  if (preTopList.length % 2 !== 0 || preBottomList.length % 2 !== 0) {
+    throw new Error("No se pudo balancear pre-playoffs por mitad");
+  }
+
+  const paresTop = armarParesOptimos(preTopList);
+  const paresBottom = armarParesOptimos(preBottomList);
+  if (!paresTop || !paresBottom) {
+    throw new Error("No se pudo armar cruces válidos de pre-playoff");
+  }
+
+  const prePares = [...paresTop, ...paresBottom];
   const prePlayoff = [];
   const destinosPre = [];
 

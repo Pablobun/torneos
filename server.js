@@ -1747,6 +1747,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         
         // 5. Ordenar todos los clasificados por ranking global
         const rankingGlobal = [...clasificados].sort(aplicarCriteriosDesempate);
+        const rankingIndexById = new Map(rankingGlobal.map((j, idx) => [j.id_inscripto, idx]));
         
         // 6. Separar: BYE (mejores) y Pre-playoffs (peores)
         const jugadoresConByeArray = rankingGlobal.slice(0, jugadoresConBye);
@@ -2168,18 +2169,68 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         }
 
         // PASO 2: Crear pre-playoffs respetando mitades objetivo
-        function armarPares(jugadoresMitad) {
-            const lista = [...jugadoresMitad];
+        function costoParejaPre(a, b) {
+            let costo = 0;
+            // Penalizar fuerte cruces del mismo puesto (1°vs1° o 2°vs2°)
+            if (a.posicion === b.posicion) costo += 100;
+            // Desempate suave por cercanía de ranking global
+            const ra = rankingIndexById.get(a.id_inscripto) ?? 999;
+            const rb = rankingIndexById.get(b.id_inscripto) ?? 999;
+            costo += Math.abs(ra - rb) * 0.001;
+            return costo;
+        }
+
+        function armarParesOptimos(jugadoresMitad) {
+            const jugadores = [...jugadoresMitad];
+            if (jugadores.length === 0) return [];
+            if (jugadores.length % 2 !== 0) return null;
+
+            const n = jugadores.length;
+            const usados = new Array(n).fill(false);
+            let mejorCosto = Number.POSITIVE_INFINITY;
+            let mejorPares = null;
+
+            function backtrack(paresActuales, costoActual) {
+                if (costoActual >= mejorCosto) return;
+
+                let i = -1;
+                for (let k = 0; k < n; k++) {
+                    if (!usados[k]) { i = k; break; }
+                }
+
+                if (i === -1) {
+                    mejorCosto = costoActual;
+                    mejorPares = [...paresActuales];
+                    return;
+                }
+
+                usados[i] = true;
+                for (let j = i + 1; j < n; j++) {
+                    if (usados[j]) continue;
+                    const a = jugadores[i];
+                    const b = jugadores[j];
+                    if (a.id_grupo === b.id_grupo) continue;
+
+                    usados[j] = true;
+                    paresActuales.push([a, b]);
+                    backtrack(paresActuales, costoActual + costoParejaPre(a, b));
+                    paresActuales.pop();
+                    usados[j] = false;
+                }
+                usados[i] = false;
+            }
+
+            backtrack([], 0);
+
+            if (mejorPares) return mejorPares;
+
+            // Fallback (muy improbable): greedy sin mismo grupo
+            const lista = [...jugadores];
             const pares = [];
             while (lista.length >= 2) {
                 const j1 = lista.shift();
-                // Prioridad: 1) distinto grupo y distinta posicion (1° vs 2°)
-                //            2) distinto grupo
-                //            3) fallback
                 let idx = lista.findIndex(j => j.id_grupo !== j1.id_grupo && j.posicion !== j1.posicion);
-                if (idx === -1) {
-                    idx = lista.findIndex(j => j.id_grupo !== j1.id_grupo);
-                }
+                if (idx === -1) idx = lista.findIndex(j => j.id_grupo !== j1.id_grupo);
                 if (idx === -1) idx = 0;
                 const j2 = lista.splice(idx, 1)[0];
                 pares.push([j1, j2]);
@@ -2195,13 +2246,31 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             else preBottom.push(j);
         }
 
-        // Rebalanceo: ambas listas deben ser pares para poder formar cruces completos
-        if (preTop.length % 2 !== 0 && preBottom.length % 2 !== 0) {
-            const mover = preTop.pop();
-            preBottom.push(mover);
+        // Rebalanceo: ambas listas deben quedar pares para poder formar cruces completos
+        if (preTop.length % 2 !== 0 || preBottom.length % 2 !== 0) {
+            if (preTop.length % 2 !== 0 && preBottom.length % 2 !== 0) {
+                if (preTop.length >= preBottom.length && preTop.length > 0) preBottom.push(preTop.pop());
+                else if (preBottom.length > 0) preTop.push(preBottom.pop());
+            } else if (preTop.length % 2 !== 0 && preTop.length > 0) {
+                preBottom.push(preTop.pop());
+            } else if (preBottom.length % 2 !== 0 && preBottom.length > 0) {
+                preTop.push(preBottom.pop());
+            }
         }
 
-        const paresPre = [...armarPares(preTop), ...armarPares(preBottom)];
+        if (preTop.length % 2 !== 0 || preBottom.length % 2 !== 0) {
+            await connection.rollback();
+            return res.status(500).json({ error: 'Error de estructura: no se pudo balancear pre-playoffs por mitad' });
+        }
+
+        const paresTop = armarParesOptimos(preTop);
+        const paresBottom = armarParesOptimos(preBottom);
+        if (!paresTop || !paresBottom) {
+            await connection.rollback();
+            return res.status(500).json({ error: 'Error de estructura: no se pudo armar cruces válidos de pre-playoff' });
+        }
+
+        const paresPre = [...paresTop, ...paresBottom];
         const prePlayoffs = [];
         let posicionPrePlayoff = 1;
         for (const [j1, j2] of paresPre) {
