@@ -234,6 +234,34 @@ async function inicializar() {
         }, 5000);
     }
 
+    function normalizarDia(valor) {
+        if (!valor) return '';
+        return String(valor)
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .trim();
+    }
+
+    function construirDiasOcupadosGenerados(partidos) {
+        const ocupados = {};
+
+        partidos.forEach(p => {
+            if (!p || !p.horario) return;
+            const diaCrudo = p.horario.dia || p.horario.dia_semana;
+            const dia = normalizarDia(diaCrudo);
+            if (!dia) return;
+
+            [p.local, p.visitante].forEach(idInscripto => {
+                if (!idInscripto) return;
+                if (!ocupados[idInscripto]) ocupados[idInscripto] = new Set();
+                ocupados[idInscripto].add(dia);
+            });
+        });
+
+        return ocupados;
+    }
+
     // Mostrar grupos formados - CORREGIDO PARA MANEJAR IDs
     function mostrarGruposFormados() {
         console.log('mostrarGruposFormados llamado');
@@ -247,6 +275,7 @@ async function inicializar() {
         }
         
         section.classList.remove('hidden');
+        const diasOcupadosPorInscripto = construirDiasOcupadosGenerados(partidosGenerados || []);
         
         let html = '<div class="grupos-list">';
         
@@ -312,19 +341,28 @@ async function inicializar() {
                 
                 // Si es partido pendiente, mostrar horarios disponibles
                 if (!partido.horario && (partido.horariosDisponiblesLocal || partido.horariosDisponiblesVisitante)) {
+                    const horariosLocalFiltrados = (partido.horariosDisponiblesLocal || []).filter(h => {
+                        const dia = normalizarDia(h.dia || h.dia_semana);
+                        return !diasOcupadosPorInscripto[partido.local] || !diasOcupadosPorInscripto[partido.local].has(dia);
+                    });
+                    const horariosVisitanteFiltrados = (partido.horariosDisponiblesVisitante || []).filter(h => {
+                        const dia = normalizarDia(h.dia || h.dia_semana);
+                        return !diasOcupadosPorInscripto[partido.visitante] || !diasOcupadosPorInscripto[partido.visitante].has(dia);
+                    });
+
                     html += '<div class="horarios-disponibles-container">';
                     html += '<div class="horarios-jugador-item">';
                     html += `<span class="jugador-nombre">${localNombre}:</span> `;
-                    if (partido.horariosDisponiblesLocal && partido.horariosDisponiblesLocal.length > 0) {
-                        html += partido.horariosDisponiblesLocal.map(h => `${h.dia} ${h.hora}`).join(', ');
+                    if (horariosLocalFiltrados.length > 0) {
+                        html += horariosLocalFiltrados.map(h => `${h.dia || h.dia_semana} ${h.hora || h.hora_inicio}`).join(', ');
                     } else {
                         html += 'Sin horarios disponibles';
                     }
                     html += '</div>';
                     html += '<div class="horarios-jugador-item">';
                     html += `<span class="jugador-nombre">${visitanteNombre}:</span> `;
-                    if (partido.horariosDisponiblesVisitante && partido.horariosDisponiblesVisitante.length > 0) {
-                        html += partido.horariosDisponiblesVisitante.map(h => `${h.dia} ${h.hora}`).join(', ');
+                    if (horariosVisitanteFiltrados.length > 0) {
+                        html += horariosVisitanteFiltrados.map(h => `${h.dia || h.dia_semana} ${h.hora || h.hora_inicio}`).join(', ');
                     } else {
                         html += 'Sin horarios disponibles';
                     }
