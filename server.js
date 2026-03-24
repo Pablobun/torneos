@@ -1898,6 +1898,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
 
         let mejorMask = 0;
         let mejorScore = Number.POSITIVE_INFINITY;
+        let mejorCostoPrePosicion = Number.POSITIVE_INFINITY;
         let mejorCostoCrucePosicion = Number.POSITIVE_INFINITY;
         const totalMasks = Math.pow(2, gruposCompletos.length);
 
@@ -1912,6 +1913,10 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             let directPrimeroBottom = 0;
             let directSegundoTop = 0;
             let directSegundoBottom = 0;
+            let prePrimeroTop = 0;
+            let prePrimeroBottom = 0;
+            let preSegundoTop = 0;
+            let preSegundoBottom = 0;
 
             for (let i = 0; i < gruposCompletos.length; i++) {
                 const g = gruposCompletos[i];
@@ -1925,6 +1930,8 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
 
                     directPrimeroTop += g.p1d;
                     directSegundoBottom += g.p2d;
+                    prePrimeroTop += g.p1p;
+                    preSegundoBottom += g.p2p;
                 } else {
                     directTop += g.p2d;
                     directBottom += g.p1d;
@@ -1933,6 +1940,8 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
 
                     directSegundoTop += g.p2d;
                     directPrimeroBottom += g.p1d;
+                    preSegundoTop += g.p2p;
+                    prePrimeroBottom += g.p1p;
                 }
 
                 if (directosProtegidosIds.includes(g.primero.id_inscripto)) {
@@ -1968,14 +1977,22 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                 Math.abs(directPrimeroTop - directSegundoTop) +
                 Math.abs(directPrimeroBottom - directSegundoBottom);
 
+            // Costo de pre-playoff por puesto (prioritario cuando hay pre):
+            // minimizar escenarios donde una mitad queda cargada de 1° o de 2°
+            const costoPrePosicion =
+                Math.abs(prePrimeroTop - preSegundoTop) +
+                Math.abs(prePrimeroBottom - preSegundoBottom);
+
             if (
                 score < mejorScore ||
-                (score === mejorScore && costoCrucePosicion < mejorCostoCrucePosicion)
+                (score === mejorScore && costoPrePosicion < mejorCostoPrePosicion) ||
+                (score === mejorScore && costoPrePosicion === mejorCostoPrePosicion && costoCrucePosicion < mejorCostoCrucePosicion)
             ) {
                 mejorScore = score;
+                mejorCostoPrePosicion = costoPrePosicion;
                 mejorCostoCrucePosicion = costoCrucePosicion;
                 mejorMask = mask;
-                if (score === 0 && costoCrucePosicion === 0) break;
+                if (score === 0 && costoPrePosicion === 0 && costoCrucePosicion === 0) break;
             }
         }
 

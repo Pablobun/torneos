@@ -118,6 +118,7 @@ function armarLlaveOffline(clasificados) {
 
   let bestMask = 0;
   let bestScore = Number.POSITIVE_INFINITY;
+  let bestPrePosCost = Number.POSITIVE_INFINITY;
   let bestCrucePosCost = Number.POSITIVE_INFINITY;
   const totalMasks = Math.pow(2, gruposCompletos.length);
   for (let mask = 0; mask < totalMasks; mask++) {
@@ -131,6 +132,10 @@ function armarLlaveOffline(clasificados) {
     let directPrimBottom = 0;
     let directSegTop = 0;
     let directSegBottom = 0;
+    let prePrimTop = 0;
+    let prePrimBottom = 0;
+    let preSegTop = 0;
+    let preSegBottom = 0;
     for (let i = 0; i < gruposCompletos.length; i++) {
       const g = gruposCompletos[i];
       const inv = ((mask >> i) & 1) === 1;
@@ -141,6 +146,8 @@ function armarLlaveOffline(clasificados) {
         pBottom += g.p2p;
         directPrimTop += g.p1d;
         directSegBottom += g.p2d;
+        prePrimTop += g.p1p;
+        preSegBottom += g.p2p;
       } else {
         dTop += g.p2d;
         dBottom += g.p1d;
@@ -148,6 +155,8 @@ function armarLlaveOffline(clasificados) {
         pBottom += g.p1p;
         directSegTop += g.p2d;
         directPrimBottom += g.p1d;
+        preSegTop += g.p2p;
+        prePrimBottom += g.p1p;
       }
 
       if (directosProtegidosIds.includes(g.primero.id_inscripto)) {
@@ -167,12 +176,18 @@ function armarLlaveOffline(clasificados) {
     }
 
     const score = Math.abs(dTop - directTop) + Math.abs(dBottom - directBottom) + Math.abs(pTop - preTop) + Math.abs(pBottom - preBottom);
+    const prePosCost = Math.abs(prePrimTop - preSegTop) + Math.abs(prePrimBottom - preSegBottom);
     const crucePosCost = Math.abs(directPrimTop - directSegTop) + Math.abs(directPrimBottom - directSegBottom);
-    if (score < bestScore || (score === bestScore && crucePosCost < bestCrucePosCost)) {
+    if (
+      score < bestScore ||
+      (score === bestScore && prePosCost < bestPrePosCost) ||
+      (score === bestScore && prePosCost === bestPrePosCost && crucePosCost < bestCrucePosCost)
+    ) {
       bestScore = score;
+      bestPrePosCost = prePosCost;
       bestCrucePosCost = crucePosCost;
       bestMask = mask;
-      if (score === 0 && crucePosCost === 0) break;
+      if (score === 0 && prePosCost === 0 && crucePosCost === 0) break;
     }
   }
 
@@ -573,6 +588,49 @@ function validarCrucesPorPosicion(resultado) {
   return errores;
 }
 
+function validarPrePlayoffPorPosicion(resultado) {
+  const errores = [];
+  if (!resultado.prePlayoff || resultado.prePlayoff.length === 0) return errores;
+
+  const posPorId = new Map();
+  for (const [, g] of resultado.gruposMap.entries()) {
+    if (g.primero) posPorId.set(g.primero.id_inscripto, 1);
+    if (g.segundo) posPorId.set(g.segundo.id_inscripto, 2);
+  }
+
+  const porMitad = { superior: [], inferior: [] };
+  for (const p of resultado.prePlayoff) {
+    const mitad = p.mitadObjetivo || "superior";
+    porMitad[mitad].push(p);
+  }
+
+  for (const mitad of ["superior", "inferior"]) {
+    const pares = porMitad[mitad];
+    if (pares.length === 0) continue;
+
+    let c1 = 0;
+    let c2 = 0;
+    let samePosActual = 0;
+
+    for (const p of pares) {
+      const a = posPorId.get(p.id1);
+      const b = posPorId.get(p.id2);
+      if (a === 1) c1++;
+      if (a === 2) c2++;
+      if (b === 1) c1++;
+      if (b === 2) c2++;
+      if (a && b && a === b) samePosActual++;
+    }
+
+    const samePosMinimo = Math.abs(c1 - c2) / 2;
+    if (samePosActual > samePosMinimo) {
+      errores.push(`Pre-playoff no minimizado en mitad ${mitad}: actual=${samePosActual}, minimo=${samePosMinimo}`);
+    }
+  }
+
+  return errores;
+}
+
 function ejecutar() {
   const casos = [4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32];
   const iteracionesAleatorias = 25;
@@ -586,8 +644,9 @@ function ejecutar() {
       const errConteo = validarConteos(res);
       const errGrupo = validarNoCruceAntesFinal(res);
       const errCrucePos = validarCrucesPorPosicion(res);
+      const errPrePos = validarPrePlayoffPorPosicion(res);
 
-      const ok = errConteo.length === 0 && errGrupo.length === 0 && errCrucePos.length === 0;
+      const ok = errConteo.length === 0 && errGrupo.length === 0 && errCrucePos.length === 0 && errPrePos.length === 0;
       if (!ok) fallos++;
 
       console.log(`\nCaso N=${n}: ${ok ? "OK" : "FAIL"}`);
@@ -597,6 +656,7 @@ function ejecutar() {
         for (const e of errConteo) console.log(`  - ${e}`);
         for (const e of errGrupo) console.log(`  - ${e}`);
         for (const e of errCrucePos) console.log(`  - ${e}`);
+        for (const e of errPrePos) console.log(`  - ${e}`);
       }
 
       // Stress aleatorio para el mismo N
@@ -606,12 +666,14 @@ function ejecutar() {
         const errConteoRnd = validarConteos(resRnd);
         const errGrupoRnd = validarNoCruceAntesFinal(resRnd);
         const errCrucePosRnd = validarCrucesPorPosicion(resRnd);
-        if (errConteoRnd.length > 0 || errGrupoRnd.length > 0 || errCrucePosRnd.length > 0) {
+        const errPrePosRnd = validarPrePlayoffPorPosicion(resRnd);
+        if (errConteoRnd.length > 0 || errGrupoRnd.length > 0 || errCrucePosRnd.length > 0 || errPrePosRnd.length > 0) {
           fallos++;
           console.log(`  - FAIL random #${i + 1}`);
           for (const e of errConteoRnd) console.log(`    * ${e}`);
           for (const e of errGrupoRnd) console.log(`    * ${e}`);
           for (const e of errCrucePosRnd) console.log(`    * ${e}`);
+          for (const e of errPrePosRnd) console.log(`    * ${e}`);
           break;
         }
       }
