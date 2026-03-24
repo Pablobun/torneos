@@ -1897,6 +1897,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
 
         let mejorMask = 0;
         let mejorScore = Number.POSITIVE_INFINITY;
+        let mejorCostoCrucePosicion = Number.POSITIVE_INFINITY;
         const totalMasks = Math.pow(2, gruposCompletos.length);
 
         for (let mask = 0; mask < totalMasks; mask++) {
@@ -1906,6 +1907,10 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             let preBottom = 0;
             let protegidosTop = 0;
             let protegidosBottom = 0;
+            let directPrimeroTop = 0;
+            let directPrimeroBottom = 0;
+            let directSegundoTop = 0;
+            let directSegundoBottom = 0;
 
             for (let i = 0; i < gruposCompletos.length; i++) {
                 const g = gruposCompletos[i];
@@ -1916,11 +1921,17 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                     directBottom += g.p2d;
                     preTop += g.p1p;
                     preBottom += g.p2p;
+
+                    directPrimeroTop += g.p1d;
+                    directSegundoBottom += g.p2d;
                 } else {
                     directTop += g.p2d;
                     directBottom += g.p1d;
                     preTop += g.p2p;
                     preBottom += g.p1p;
+
+                    directSegundoTop += g.p2d;
+                    directPrimeroBottom += g.p1d;
                 }
 
                 if (directosProtegidosIds.includes(g.primero.id_inscripto)) {
@@ -1951,10 +1962,19 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                 Math.abs(objetivo.preTop - preTop) +
                 Math.abs(objetivo.preBottom - preBottom);
 
-            if (score < mejorScore) {
+            // Costo de cruce por puesto: minimizar 1°vs1° y 2°vs2° cuando hay alternativa
+            const costoCrucePosicion =
+                Math.abs(directPrimeroTop - directSegundoTop) +
+                Math.abs(directPrimeroBottom - directSegundoBottom);
+
+            if (
+                score < mejorScore ||
+                (score === mejorScore && costoCrucePosicion < mejorCostoCrucePosicion)
+            ) {
                 mejorScore = score;
+                mejorCostoCrucePosicion = costoCrucePosicion;
                 mejorMask = mask;
-                if (score === 0) break;
+                if (score === 0 && costoCrucePosicion === 0) break;
             }
         }
 
@@ -1979,7 +1999,7 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         }
 
         const dsSlots = [];
-        const ddSlots = [];
+        const ddPartidos = [];
         for (let p = 1; p <= numPartidosPrimeraRonda; p++) {
             for (const slot of plantillaPartidos[p].slotDirecto) {
                 const item = {
@@ -1990,7 +2010,10 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
                 if (plantillaPartidos[p].tipo === 'DS') {
                     dsSlots.push(item);
                 } else {
-                    ddSlots.push(item);
+                    // DD se resuelve por partido completo (2 slots)
+                    if (!ddPartidos.some(dp => dp.posicion === p)) {
+                        ddPartidos.push({ posicion: p, mitad: plantillaPartidos[p].mitad });
+                    }
                 }
             }
         }
@@ -2072,32 +2095,69 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
         }
 
         // 1.3 Ubicar el resto de directos en partidos DD
-        for (const jugador of directosResto) {
-            let mitadPreferida = mitadRequerida.get(jugador.id_inscripto) || null;
+        // Prioridad: evitar 1° vs 1° y 2° vs 2° cuando exista alternativa
+        const restantesDD = [...directosResto];
+        ddPartidos.sort((a, b) => a.posicion - b.posicion);
 
-            const slotElegido = buscarSlotDisponible(ddSlots, jugador, mitadPreferida);
-            if (!slotElegido) {
+        for (const dd of ddPartidos) {
+            let candidatos = restantesDD.filter(j => (mitadRequerida.get(j.id_inscripto) || dd.mitad) === dd.mitad);
+            if (candidatos.length < 2) {
+                if (modoEstrictoGrupos) {
+                    await connection.rollback();
+                    return res.status(500).json({
+                        error: 'Error de estructura: faltan directos en la mitad requerida para partido DD'
+                    });
+                }
+                candidatos = [...restantesDD];
+            }
+
+            let parElegido = null;
+
+            // Intento 1: par de distinto puesto (1° vs 2°) y distinto grupo
+            for (let i = 0; i < candidatos.length && !parElegido; i++) {
+                for (let j = i + 1; j < candidatos.length && !parElegido; j++) {
+                    if (candidatos[i].id_grupo !== candidatos[j].id_grupo && candidatos[i].posicion !== candidatos[j].posicion) {
+                        parElegido = [candidatos[i], candidatos[j]];
+                    }
+                }
+            }
+
+            // Intento 2: mismo puesto permitido, pero distinto grupo
+            if (!parElegido) {
+                for (let i = 0; i < candidatos.length && !parElegido; i++) {
+                    for (let j = i + 1; j < candidatos.length && !parElegido; j++) {
+                        if (candidatos[i].id_grupo !== candidatos[j].id_grupo) {
+                            parElegido = [candidatos[i], candidatos[j]];
+                        }
+                    }
+                }
+            }
+
+            if (!parElegido) {
                 await connection.rollback();
                 return res.status(500).json({
-                    error: 'Error de estructura: no se encontró slot DD para ubicar clasificados directos'
+                    error: 'Error de estructura: no se pudo formar un par DD válido'
                 });
             }
 
-            const partido = primeraRondaPartidos[slotElegido.posicion - 1];
-            if (slotElegido.slot === 1) {
-                partido.id_inscripto_1 = jugador.id_inscripto;
-                partido.id_grupo_1 = jugador.id_grupo;
-            } else {
-                partido.id_inscripto_2 = jugador.id_inscripto;
-                partido.id_grupo_2 = jugador.id_grupo;
+            const [jugadorA, jugadorB] = parElegido;
+            const idxA = restantesDD.findIndex(j => j.id_inscripto === jugadorA.id_inscripto);
+            const idxB = restantesDD.findIndex(j => j.id_inscripto === jugadorB.id_inscripto);
+            if (idxA >= 0) restantesDD.splice(idxA, 1);
+            if (idxB >= 0) {
+                const nuevoIdxB = restantesDD.findIndex(j => j.id_inscripto === jugadorB.id_inscripto);
+                if (nuevoIdxB >= 0) restantesDD.splice(nuevoIdxB, 1);
             }
 
+            const partido = primeraRondaPartidos[dd.posicion - 1];
+            partido.id_inscripto_1 = jugadorA.id_inscripto;
+            partido.id_grupo_1 = jugadorA.id_grupo;
+            partido.id_inscripto_2 = jugadorB.id_inscripto;
+            partido.id_grupo_2 = jugadorB.id_grupo;
             partido.es_bye = 0;
 
-            slotElegido.usado = true;
-            if (!grupoMitadDirecto.has(jugador.id_grupo)) {
-                grupoMitadDirecto.set(jugador.id_grupo, slotElegido.mitad);
-            }
+            if (!grupoMitadDirecto.has(jugadorA.id_grupo)) grupoMitadDirecto.set(jugadorA.id_grupo, dd.mitad);
+            if (!grupoMitadDirecto.has(jugadorB.id_grupo)) grupoMitadDirecto.set(jugadorB.id_grupo, dd.mitad);
         }
 
         const slotsVacios = [];

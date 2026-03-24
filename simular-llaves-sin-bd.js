@@ -117,6 +117,7 @@ function armarLlaveOffline(clasificados) {
 
   let bestMask = 0;
   let bestScore = Number.POSITIVE_INFINITY;
+  let bestCrucePosCost = Number.POSITIVE_INFINITY;
   const totalMasks = Math.pow(2, gruposCompletos.length);
   for (let mask = 0; mask < totalMasks; mask++) {
     let dTop = 0;
@@ -125,6 +126,10 @@ function armarLlaveOffline(clasificados) {
     let pBottom = 0;
     let protTop = 0;
     let protBottom = 0;
+    let directPrimTop = 0;
+    let directPrimBottom = 0;
+    let directSegTop = 0;
+    let directSegBottom = 0;
     for (let i = 0; i < gruposCompletos.length; i++) {
       const g = gruposCompletos[i];
       const inv = ((mask >> i) & 1) === 1;
@@ -133,11 +138,15 @@ function armarLlaveOffline(clasificados) {
         dBottom += g.p2d;
         pTop += g.p1p;
         pBottom += g.p2p;
+        directPrimTop += g.p1d;
+        directSegBottom += g.p2d;
       } else {
         dTop += g.p2d;
         dBottom += g.p1d;
         pTop += g.p2p;
         pBottom += g.p1p;
+        directSegTop += g.p2d;
+        directPrimBottom += g.p1d;
       }
 
       if (directosProtegidosIds.includes(g.primero.id_inscripto)) {
@@ -157,10 +166,12 @@ function armarLlaveOffline(clasificados) {
     }
 
     const score = Math.abs(dTop - directTop) + Math.abs(dBottom - directBottom) + Math.abs(pTop - preTop) + Math.abs(pBottom - preBottom);
-    if (score < bestScore) {
+    const crucePosCost = Math.abs(directPrimTop - directSegTop) + Math.abs(directPrimBottom - directSegBottom);
+    if (score < bestScore || (score === bestScore && crucePosCost < bestCrucePosCost)) {
       bestScore = score;
+      bestCrucePosCost = crucePosCost;
       bestMask = mask;
-      if (score === 0) break;
+      if (score === 0 && crucePosCost === 0) break;
     }
   }
 
@@ -187,12 +198,12 @@ function armarLlaveOffline(clasificados) {
   }
 
   const dsSlots = [];
-  const ddSlots = [];
+  const ddPartidos = [];
   for (let pos = 1; pos <= numPartidosPrimeraRonda; pos++) {
     for (const slot of plantilla[pos].slotDirecto) {
       const s = { pos, slot, mitad: plantilla[pos].mitad, used: false };
       if (plantilla[pos].tipo === "DS") dsSlots.push(s);
-      else ddSlots.push(s);
+      else if (!ddPartidos.some((p) => p.pos === pos)) ddPartidos.push({ pos, mitad: plantilla[pos].mitad });
     }
   }
 
@@ -239,18 +250,47 @@ function armarLlaveOffline(clasificados) {
     slot.used = true;
   }
 
-  for (const j of directosResto) {
-    const slot = buscarSlot(ddSlots, j, mitadRequerida.get(j.id_inscripto) || null);
-    if (!slot) throw new Error("Sin slot DD");
-    const pMatch = primeraRonda[slot.pos - 1];
-    if (slot.slot === 1) {
-      pMatch.id1 = j.id_inscripto;
-      pMatch.g1 = j.id_grupo;
-    } else {
-      pMatch.id2 = j.id_inscripto;
-      pMatch.g2 = j.id_grupo;
+  const restantesDD = [...directosResto];
+  ddPartidos.sort((a, b) => a.pos - b.pos);
+  for (const dd of ddPartidos) {
+    let candidatos = restantesDD.filter(j => (mitadRequerida.get(j.id_inscripto) || dd.mitad) === dd.mitad);
+    if (candidatos.length < 2) {
+      if (modoEstrictoGrupos) throw new Error("Faltan directos DD en mitad requerida");
+      candidatos = [...restantesDD];
     }
-    slot.used = true;
+
+    let par = null;
+    for (let i = 0; i < candidatos.length && !par; i++) {
+      for (let j = i + 1; j < candidatos.length && !par; j++) {
+        if (candidatos[i].id_grupo !== candidatos[j].id_grupo && candidatos[i].posicion !== candidatos[j].posicion) {
+          par = [candidatos[i], candidatos[j]];
+        }
+      }
+    }
+
+    if (!par) {
+      for (let i = 0; i < candidatos.length && !par; i++) {
+        for (let j = i + 1; j < candidatos.length && !par; j++) {
+          if (candidatos[i].id_grupo !== candidatos[j].id_grupo) {
+            par = [candidatos[i], candidatos[j]];
+          }
+        }
+      }
+    }
+
+    if (!par) throw new Error("No se pudo formar par DD valido");
+
+    const [a, b] = par;
+    const idxA = restantesDD.findIndex(x => x.id_inscripto === a.id_inscripto);
+    if (idxA >= 0) restantesDD.splice(idxA, 1);
+    const idxB = restantesDD.findIndex(x => x.id_inscripto === b.id_inscripto);
+    if (idxB >= 0) restantesDD.splice(idxB, 1);
+
+    const pMatch = primeraRonda[dd.pos - 1];
+    pMatch.id1 = a.id_inscripto;
+    pMatch.g1 = a.id_grupo;
+    pMatch.id2 = b.id_inscripto;
+    pMatch.g2 = b.id_grupo;
   }
 
   const vacios = [];
@@ -416,6 +456,52 @@ function validarConteos(resultado) {
   return errores;
 }
 
+function validarCrucesPorPosicion(resultado) {
+  const errores = [];
+  const posPorId = new Map();
+  for (const [, g] of resultado.gruposMap.entries()) {
+    if (g.primero) posPorId.set(g.primero.id_inscripto, 1);
+    if (g.segundo) posPorId.set(g.segundo.id_inscripto, 2);
+  }
+
+  const ddPorMitad = {
+    superior: [],
+    inferior: []
+  };
+
+  resultado.primeraRonda
+    .filter(p => p.tipo === 'DD' && p.id1 != null && p.id2 != null)
+    .forEach(p => {
+      ddPorMitad[p.mitad].push(p);
+    });
+
+  for (const mitad of ['superior', 'inferior']) {
+    const partidos = ddPorMitad[mitad];
+    if (partidos.length === 0) continue;
+
+    let c1 = 0;
+    let c2 = 0;
+    let samePosActual = 0;
+
+    for (const p of partidos) {
+      const p1 = posPorId.get(p.id1);
+      const p2 = posPorId.get(p.id2);
+      if (p1 === 1) c1++;
+      if (p1 === 2) c2++;
+      if (p2 === 1) c1++;
+      if (p2 === 2) c2++;
+      if (p1 && p2 && p1 === p2) samePosActual++;
+    }
+
+    const samePosMinimo = Math.abs(c1 - c2) / 2;
+    if (samePosActual > samePosMinimo) {
+      errores.push(`Cruces por posicion no minimizados en mitad ${mitad}: actual=${samePosActual}, minimo=${samePosMinimo}`);
+    }
+  }
+
+  return errores;
+}
+
 function ejecutar() {
   const casos = [4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32];
   const iteracionesAleatorias = 25;
@@ -428,8 +514,9 @@ function ejecutar() {
       const res = armarLlaveOffline(fixture);
       const errConteo = validarConteos(res);
       const errGrupo = validarNoCruceAntesFinal(res);
+      const errCrucePos = validarCrucesPorPosicion(res);
 
-      const ok = errConteo.length === 0 && errGrupo.length === 0;
+      const ok = errConteo.length === 0 && errGrupo.length === 0 && errCrucePos.length === 0;
       if (!ok) fallos++;
 
       console.log(`\nCaso N=${n}: ${ok ? "OK" : "FAIL"}`);
@@ -438,6 +525,7 @@ function ejecutar() {
       if (!ok) {
         for (const e of errConteo) console.log(`  - ${e}`);
         for (const e of errGrupo) console.log(`  - ${e}`);
+        for (const e of errCrucePos) console.log(`  - ${e}`);
       }
 
       // Stress aleatorio para el mismo N
@@ -446,11 +534,13 @@ function ejecutar() {
         const resRnd = armarLlaveOffline(fixtureRnd);
         const errConteoRnd = validarConteos(resRnd);
         const errGrupoRnd = validarNoCruceAntesFinal(resRnd);
-        if (errConteoRnd.length > 0 || errGrupoRnd.length > 0) {
+        const errCrucePosRnd = validarCrucesPorPosicion(resRnd);
+        if (errConteoRnd.length > 0 || errGrupoRnd.length > 0 || errCrucePosRnd.length > 0) {
           fallos++;
           console.log(`  - FAIL random #${i + 1}`);
           for (const e of errConteoRnd) console.log(`    * ${e}`);
           for (const e of errGrupoRnd) console.log(`    * ${e}`);
+          for (const e of errCrucePosRnd) console.log(`    * ${e}`);
           break;
         }
       }
