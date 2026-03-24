@@ -316,7 +316,10 @@ function armarLlaveOffline(clasificados) {
     const pares = [];
     while (src.length >= 2) {
       const j1 = src.shift();
-      let idx = src.findIndex((x) => x.id_grupo !== j1.id_grupo);
+      let idx = src.findIndex((x) => x.id_grupo !== j1.id_grupo && x.posicion !== j1.posicion);
+      if (idx === -1) {
+        idx = src.findIndex((x) => x.id_grupo !== j1.id_grupo);
+      }
       if (idx === -1) idx = 0;
       const j2 = src.splice(idx, 1)[0];
       pares.push([j1, j2]);

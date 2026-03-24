@@ -2173,7 +2173,13 @@ app.post('/api/torneo/:idTorneo/generar-llave', async (req, res) => {
             const pares = [];
             while (lista.length >= 2) {
                 const j1 = lista.shift();
-                let idx = lista.findIndex(j => j.id_grupo !== j1.id_grupo);
+                // Prioridad: 1) distinto grupo y distinta posicion (1° vs 2°)
+                //            2) distinto grupo
+                //            3) fallback
+                let idx = lista.findIndex(j => j.id_grupo !== j1.id_grupo && j.posicion !== j1.posicion);
+                if (idx === -1) {
+                    idx = lista.findIndex(j => j.id_grupo !== j1.id_grupo);
+                }
                 if (idx === -1) idx = 0;
                 const j2 = lista.splice(idx, 1)[0];
                 pares.push([j1, j2]);
