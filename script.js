@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }, {});
 
             // 4. Construir el HTML de los checkboxes
-            let html = '<h4>Por favor, selecciona todos los horarios en los que podrías jugar:</h4>';
+            let html = '<h4>Por favor, selecciona todos los horarios en los que podrías jugar:(Domingo 12 Optativo)</h4>';
             for (const dia in horariosPorDia) {
                 html += `<div class="dia-grupo"><h5>${dia}</h5><div class="horarios-grid">`;
                 horariosPorDia[dia].forEach(h => {
