@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
         inscriptos.forEach(inscripto => {
             const row = document.createElement('tr');
             // Formateamos el nombre de la categoría para que se vea más amigable
-            const categoriaFormateada = inscripto.categoria.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
+            const categoriaFormateada = inscripto.categoria.replace('*', ' ').replace(/\b\w/g, l => l.toUpperCase());
             row.innerHTML = `
                 <td>${inscripto.integrantes}</td>
                 <td>${categoriaFormateada}</td>
