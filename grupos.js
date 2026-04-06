@@ -307,12 +307,15 @@ async function inicializar() {
         // Mostrar partidos
         if (partidosGenerados && partidosGenerados.length > 0) {
             html += '<h3 class="partidos-titulo">Partidos Programados</h3>';
-            html += '<div class="partidos-list">';
+            html += '<div class="partidos-list grupos-partidos-list">';
             
             for (const partido of partidosGenerados) {
                 // Usar nombre del backend si está disponible, sino buscar en el mapa
                 const localNombre = partido.localNombre || (inscriptosPorId[partido.local] ? inscriptosPorId[partido.local].integrantes : 'ID ' + partido.local);
                 const visitanteNombre = partido.visitanteNombre || (inscriptosPorId[partido.visitante] ? inscriptosPorId[partido.visitante].integrantes : 'ID ' + partido.visitante);
+                
+                // Obtener categoría del partido
+                const categoria = partido.categoria || (inscriptosPorId[partido.local] ? inscriptosPorId[partido.local].categoria : '');
                 
                 // Mostrar fecha y hora real en lugar de ID
                 let horarioAsignado;
@@ -326,6 +329,7 @@ async function inicializar() {
                 
                 html += `
                     <div class="partido-item ${clasePartido}">
+                        <div class="partido-categoria-badge">${categoria}</div>
                         <div class="partido-info">
                             <div class="partido-equipos">
                                 <span class="partido-local">${localNombre}</span>

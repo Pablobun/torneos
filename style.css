@@ -1877,3 +1877,43 @@ footer {
         line-height: 1.2;
     }
 }
+
+/* CSS específico para grupos.html - Partidos Programados */
+.grupos-partidos-list .partido-item {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.grupos-partidos-list .partido-categoria-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #fff;
+    background: #3498db;
+    padding: 4px 10px;
+    border-radius: 4px;
+    align-self: flex-start;
+    margin-bottom: 8px;
+    display: inline-block;
+}
+
+.grupos-partidos-list .partido-equipos {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.grupos-partidos-list .partido-local,
+.grupos-partidos-list .partido-visitante {
+    white-space: normal;
+    word-break: break-word;
+    flex: 1;
+    min-width: 120px;
+}
+
+.grupos-partidos-list .partido-vs {
+    flex-shrink: 0;
+    padding: 0 0.5rem;
+}
