@@ -28,7 +28,9 @@ document.addEventListener('DOMContentLoaded', function () {
     let partidosData = [];
     let inscriptosPorId = {};
     let horariosData = [];
-    let horariosPorInscripto = {}; // Mapa de horarios por inscripto ID
+    let horariosPorInscripto = {};
+    let filtroCategoria = '';
+    const filtroCategoriaSelect = document.getElementById('filtro-categoria');
 
     // Inicialización
     async function inicializar() {
@@ -93,6 +95,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         return ocupados;
     }
+
+    // Event listener para el filtro de categoría
+    filtroCategoriaSelect.addEventListener('change', function() {
+        filtroCategoria = this.value;
+        mostrarGrupos();
+        mostrarPartidos();
+    });
 
     function formatearRondaCorta(ronda) {
         if (!ronda) return null;
@@ -168,6 +177,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const responseGrupos = await fetch(`${API_BASE_URL}/grupos/${torneoActivo.id}`);
         if (responseGrupos.ok) {
             gruposData = await responseGrupos.json();
+            
+            // Cargar categorías únicas para el filtro
+            const categoriasUnicas = [...new Set(gruposData.map(g => g.categoria))].sort();
+            filtroCategoriaSelect.innerHTML = '<option value="">Todas las categorías</option>';
+            categoriasUnicas.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                option.textContent = cat;
+                filtroCategoriaSelect.appendChild(option);
+            });
         }
         
         // Cargar partidos
@@ -207,9 +226,19 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        // Aplicar filtro de categoría
+        const gruposFiltrados = filtroCategoria 
+            ? gruposData.filter(g => g.categoria === filtroCategoria)
+            : gruposData;
+
+        if (gruposFiltrados.length === 0) {
+            gruposContainer.innerHTML = '<p>No hay grupos en esta categoría.</p>';
+            return;
+        }
+        
         let html = '<div class="grupos-list">';
         
-        for (const grupo of gruposData) {
+        for (const grupo of gruposFiltrados) {
             const integrantes = grupo.integrantes ? grupo.integrantes.split(' | ') : [];
             
             html += `
@@ -234,11 +263,21 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const diasOcupadosPorInscripto = construirDiasOcupadosPorInscripto(partidosData);
+        // Aplicar filtro de categoría
+        let partidosFiltrados = filtroCategoria 
+            ? partidosData.filter(p => p.categoria === filtroCategoria)
+            : partidosData;
+
+        if (partidosFiltrados.length === 0) {
+            partidosContainer.innerHTML = '<p>No hay partidos en esta categoría.</p>';
+            return;
+        }
+
+        const diasOcupadosPorInscripto = construirDiasOcupadosPorInscripto(partidosFiltrados);
 
         // Separar partidos con y sin horario
-        const partidosConHorario = partidosData.filter(p => p.id_horario !== null);
-        const partidosSinHorario = partidosData.filter(p => p.id_horario === null);
+        const partidosConHorario = partidosFiltrados.filter(p => p.id_horario !== null);
+        const partidosSinHorario = partidosFiltrados.filter(p => p.id_horario === null);
         
         let html = '<div class="partidos-por-fecha">';
         
