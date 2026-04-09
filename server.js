@@ -4081,6 +4081,48 @@ app.put('/api/admin/inscriptos/:id/horarios', authMiddleware, async (req, res) =
     }
 });
 
+// DELETE: Eliminar inscripto (solo si no tiene grupo ni partido asignado)
+app.delete('/api/admin/inscriptos/:id', authMiddleware, async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        // Verificar si está en un grupo
+        const [enGrupo] = await connection.execute(
+            'SELECT COUNT(*) as count FROM grupo_integrantes WHERE id_inscripto = ?',
+            [id]
+        );
+        
+        if (enGrupo[0].count > 0) {
+            await connection.end();
+            return res.status(400).json({ error: 'No se puede eliminar: la pareja ya tiene grupo asignado' });
+        }
+        
+        // Verificar si está en algún partido
+        const [enPartido] = await connection.execute(
+            'SELECT COUNT(*) as count FROM partido WHERE id_inscriptoL = ? OR id_inscriptoV = ?',
+            [id, id]
+        );
+        
+        if (enPartido[0].count > 0) {
+            await connection.end();
+            return res.status(400).json({ error: 'No se puede eliminar: la pareja ya tiene partido asignado' });
+        }
+        
+        // Eliminar horarios asociados
+        await connection.execute('DELETE FROM inscriptos_horarios WHERE id_inscripto_fk = ?', [id]);
+        
+        // Eliminar inscripto
+        await connection.execute('DELETE FROM inscriptos WHERE id = ?', [id]);
+        
+        await connection.end();
+        res.status(200).json({ mensaje: 'Inscripto eliminado correctamente' });
+    } catch (error) {
+        console.error('Error al eliminar inscripto:', error);
+        res.status(500).json({ error: 'Error al eliminar inscripto' });
+    }
+});
 // POST: Crear grupo
 app.post('/api/admin/grupos/crear', authMiddleware, async (req, res) => {
     const { id_torneo, numero_grupo, cantidad_integrantes, categoria } = req.body;

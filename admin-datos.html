@@ -520,6 +520,7 @@
                     <td class="actions-cell">
                         <button class="btn-warning" onclick="abrirEditarInscripto(${i.id})">✏️</button>
                         <button class="btn-warning" onclick="abrirEditarHorarios(${i.id})">🕐</button>
+                        <button class="btn-danger" onclick="eliminarInscripto(${i.id})">🗑️</button>
                     </td>
                 </tr>`;
             });
@@ -649,6 +650,27 @@
                 } else {
                     const error = await response.json();
                     alert(error.error || 'Error al guardar horarios');
+                }
+            } catch (err) {
+                alert('Error de conexión');
+            }
+        }
+        async function eliminarInscripto(id) {
+            if (!confirm('¿Estás seguro de que quieres eliminar esta pareja?')) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/admin/inscriptos/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert('Pareja eliminada correctamente');
+                    cargarInscriptos();
+                } else {
+                    alert(result.error || 'Error al eliminar');
                 }
             } catch (err) {
                 alert('Error de conexión');
