@@ -440,18 +440,6 @@
                     <h3>Agregar Nuevo Horario</h3>
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Día de la semana</label>
-                            <select id="horario-dia">
-                                <option value="Lunes">Lunes</option>
-                                <option value="Martes">Martes</option>
-                                <option value="Miércoles">Miércoles</option>
-                                <option value="Jueves">Jueves</option>
-                                <option value="Viernes">Viernes</option>
-                                <option value="Sábado">Sábado</option>
-                                <option value="Domingo">Domingo</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
                             <label>Fecha</label>
                             <input type="date" id="horario-fecha">
                         </div>
@@ -793,7 +781,6 @@
         }
 
         async function crearHorario() {
-            const dia = document.getElementById('horario-dia').value;
             const fecha = document.getElementById('horario-fecha').value;
             const hora = document.getElementById('horario-hora').value;
             const lugar = document.getElementById('horario-lugar').value;
@@ -803,11 +790,14 @@
                 return;
             }
             
+            // Calcular día de la semana automáticamente
+            const dia_semana = getDiaSemana(fecha);
+            
             try {
                 const response = await fetch(`${API_URL}/horarios-playoffs/${torneoId}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ dia_semana: dia, fecha, hora_inicio: hora, lugar })
+                    body: JSON.stringify({ dia_semana, fecha, hora_inicio: hora, lugar })
                 });
                 
                 if (response.ok) {
@@ -823,6 +813,13 @@
                 console.error('Error:', error);
                 alert('Error al crear el horario');
             }
+        }
+        
+        function getDiaSemana(fecha) {
+            const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+            const [year, month, day] = fecha.split("-").map(Number);
+            const date = new Date(year, month - 1, day);
+            return dias[date.getDay()];
         }
 
         async function eliminarHorario(id) {

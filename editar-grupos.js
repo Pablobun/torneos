@@ -207,9 +207,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     fecha: a.fecha,
                     horario: a.horario,
                     local_id: null,
-                    local_nombre: a.leyenda,
+                    local_nombre: a.leyenda || '',
                     visitante_id: null,
-                    visitante_nombre: a.leyenda,
+                    visitante_nombre: a.leyendados || a.leyenda || '',
                     categoria: a.categoria,
                     estado: 'pendiente',
                     es_agenda: true

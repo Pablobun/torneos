@@ -169,9 +169,13 @@
                         <label>Horario</label>
                         <select id="agenda-horario"></select>
                     </div>
-                    <div class="form-group" style="grid-column: 1 / -1;">
-                        <label>Leyenda</label>
+                    <div class="form-group">
+                        <label>Leyenda 1</label>
                         <input type="text" id="agenda-leyenda" placeholder="Ej: Cuartos de final 1" maxlength="150">
+                    </div>
+                    <div class="form-group">
+                        <label>Leyenda 2 (opcional)</label>
+                        <input type="text" id="agenda-leyendados" placeholder="Ej: Cancha 1" maxlength="150">
                     </div>
                 </div>
                 <button class="btn-primary" onclick="crearAgendaPlayoff()">+ Crear Reserva</button>
@@ -1452,6 +1456,7 @@
             const categoria = document.getElementById('agenda-categoria').value;
             const idHorario = document.getElementById('agenda-horario').value;
             const leyenda = document.getElementById('agenda-leyenda').value.trim();
+            const leyendados = document.getElementById('agenda-leyendados').value.trim();
 
             if (!idTorneo || !categoria || !idHorario || !leyenda) {
                 alert('Completá categoría, horario y leyenda');
@@ -1470,12 +1475,14 @@
                         id_horario: parseInt(idHorario),
                         categoria,
                         leyenda,
+                        leyendados: leyendados || null,
                         activo: 1
                     })
                 });
 
                 if (response.ok) {
                     document.getElementById('agenda-leyenda').value = '';
+                    document.getElementById('agenda-leyendados').value = '';
                     alert('Reserva creada correctamente');
                     cargarAgendaPlayoffs();
                 } else {
@@ -1512,14 +1519,15 @@
 
             agendaData.forEach(a => {
                 const estadoBadge = a.activo ? '<span class="badge badge-jugado">Activo</span>' : '<span class="badge badge-wo">Anulado</span>';
+                const ambasLeyendas = [a.leyenda, a.leyendados].filter(l => l).join(' - ');
                 html += `<tr>
                     <td>${a.fecha ? formatearFecha(a.fecha) : '-'}</td>
                     <td>${a.hora_inicio || '-'}</td>
                     <td>${a.categoria || '-'}</td>
-                    <td>${a.leyenda || '-'}</td>
+                    <td>${ambasLeyendas || '-'}</td>
                     <td>${estadoBadge}</td>
                     <td class="actions-cell">
-                        <button class="btn-warning" onclick="editarLeyendaAgenda(${a.id}, '${(a.leyenda || '').replace(/'/g, "\\'")}')">✏️</button>
+                        <button class="btn-warning" onclick="editarLeyendaAgenda(${a.id}, '${(a.leyenda || '').replace(/'/g, "\\'")}', '${(a.leyendados || '').replace(/'/g, "\\'")}')">✏️</button>
                         <button class="${a.activo ? 'btn-danger' : 'btn-primary'}" onclick="cambiarEstadoAgenda(${a.id}, ${a.activo ? 0 : 1})">${a.activo ? '🚫' : '✅'}</button>
                     </td>
                 </tr>`;
@@ -1529,17 +1537,20 @@
             container.innerHTML = html;
         }
 
-        async function editarLeyendaAgenda(id, leyendaActual) {
+        async function editarLeyendaAgenda(id, leyendaActual, leyendadosActual) {
             const item = agendaData.find(a => a.id === id);
             if (!item) return;
 
-            const nuevaLeyenda = prompt('Editar leyenda:', leyendaActual || '');
+            const nuevaLeyenda = prompt('Editar leyenda 1:', leyendaActual || '');
             if (nuevaLeyenda === null) return;
             const leyenda = nuevaLeyenda.trim();
             if (!leyenda) {
                 alert('La leyenda no puede estar vacía');
                 return;
             }
+
+            const nuevaLeyenda2 = prompt('Editar leyenda 2 (dejar vacío para borrar):', leyendadosActual || '');
+            const leyendados = nuevaLeyenda2 === null ? null : (nuevaLeyenda2.trim() || null);
 
             try {
                 const response = await fetch(`${API_URL}/admin/agenda-playoffs/${id}`, {
@@ -1551,7 +1562,8 @@
                     body: JSON.stringify({
                         id_horario: item.id_horario,
                         categoria: item.categoria,
-                        leyenda
+                        leyenda,
+                        leyendados
                     })
                 });
 

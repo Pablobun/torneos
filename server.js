@@ -754,7 +754,7 @@ function intentarFormarGrupos(jugadores, configuracionGrupos, horarios, horarios
                             return {
                                 id: id,
                                 uso: usoHorarios[id] || 0,
-                                cupo: horarios.find(h => h.id === id)?.cupo || 4,
+                                cupo: horarios.find(h => h.id === id)?.cupo ?? 4,
                                 fecha: fecha,
                                 totalPartidosDia: totalPartidosDia
                             };
@@ -898,7 +898,7 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
                 dia: h.dia_semana,
                 fecha: h.fecha,
                 hora: h.hora_inicio,
-                cupo: parseInt(h.Canchas) || 4
+                cupo: parseInt(h.Canchas) ?? 4
             };
             horariosMap[h.id] = horarioInfo;
             return horarioInfo;
@@ -3862,6 +3862,7 @@ app.get("/api/horarios-admin/:idTorneo", authMiddleware, async (req, res) => {
             );
             
             // Construir objeto con todos los campos explícitamente
+            const puedeEditar = inscriptos[0].count === 0 && partidos[0].count === 0;
             return {
                 id: h.id,
                 dia_semana: h.dia_semana,
@@ -3871,7 +3872,8 @@ app.get("/api/horarios-admin/:idTorneo", authMiddleware, async (req, res) => {
                 lugar: h.lugar,
                 activo: h.activo,
                 es_playoff: h.es_playoff,
-                puede_eliminar: inscriptos[0].count === 0 && partidos[0].count === 0
+                puede_eliminar: puedeEditar,
+                puede_editar: puedeEditar
             };
         }));
         
@@ -3960,6 +3962,63 @@ app.delete('/api/horarios/:id', authMiddleware, async (req, res) => {
     } catch (error) {
         console.error('Error al eliminar horario:', error);
         res.status(500).json({ error: 'Error al eliminar horario' });
+    }
+});
+
+// PUT: Editar horario (solo Canchas y lugar)
+app.put('/api/horarios/:id', authMiddleware, async (req, res) => {
+    const { id } = req.params;
+    const { Canchas, lugar } = req.body;
+    
+    if (Canchas === undefined && !lugar) {
+        return res.status(400).json({ error: 'Se requiere Canchas o lugar' });
+    }
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        // Verificar si está en uso (no se puede editar fecha/hora pero sí Canchas/lugar)
+        const [inscriptos] = await connection.execute(
+            'SELECT COUNT(*) as count FROM inscriptos_horarios WHERE id_horario_fk = ?',
+            [id]
+        );
+        
+        const [partidos] = await connection.execute(
+            'SELECT COUNT(*) as count FROM partido WHERE id_horario = ?',
+            [id]
+        );
+        
+        const puedeEditar = inscriptos[0].count === 0 && partidos[0].count === 0;
+        
+        // Construir query dinámica
+        let sql = 'UPDATE horarios SET ';
+        const params = [];
+        
+        if (Canchas !== undefined) {
+            sql += 'Canchas = ?';
+            params.push(Canchas);
+        }
+        
+        if (lugar) {
+            if (Canchas !== undefined) sql += ', ';
+            sql += 'lugar = ?';
+            params.push(lugar);
+        }
+        
+        sql += ' WHERE id = ?';
+        params.push(id);
+        
+        await connection.execute(sql, params);
+        await connection.end();
+        
+        res.status(200).json({ 
+            mensaje: 'Horario actualizado correctamente',
+            puede_editar: puedeEditar
+        });
+        
+    } catch (error) {
+        console.error('Error al editar horario:', error);
+        res.status(500).json({ error: 'Error al editar horario' });
     }
 });
 
@@ -4446,6 +4505,7 @@ app.get('/api/agenda-playoffs/:idTorneo', async (req, res) => {
                 a.id_horario,
                 a.categoria,
                 a.leyenda,
+                a.leyendados,
                 a.activo,
                 h.dia_semana,
                 h.fecha,
@@ -4493,6 +4553,7 @@ app.get('/api/admin/agenda-playoffs', authMiddleware, async (req, res) => {
                 a.id_horario,
                 a.categoria,
                 a.leyenda,
+                a.leyendados,
                 a.activo,
                 h.dia_semana,
                 h.fecha,
@@ -4523,7 +4584,7 @@ app.get('/api/admin/agenda-playoffs', authMiddleware, async (req, res) => {
 
 // POST admin: crear reserva de agenda
 app.post('/api/admin/agenda-playoffs', authMiddleware, async (req, res) => {
-    const { id_torneo, id_horario, categoria, leyenda, activo } = req.body;
+    const { id_torneo, id_horario, categoria, leyenda, leyendados, activo } = req.body;
 
     if (!id_torneo || !id_horario || !categoria || !leyenda) {
         return res.status(400).json({ error: 'Faltan campos requeridos (id_torneo, id_horario, categoria, leyenda)' });
@@ -4532,9 +4593,9 @@ app.post('/api/admin/agenda-playoffs', authMiddleware, async (req, res) => {
     try {
         const connection = await mysql.createConnection(connectionConfig);
         await connection.execute(
-            `INSERT INTO agenda_playoffs (id_torneo, id_horario, categoria, leyenda, activo)
-             VALUES (?, ?, ?, ?, ?)`,
-            [id_torneo, id_horario, categoria, leyenda, activo === 0 ? 0 : 1]
+            `INSERT INTO agenda_playoffs (id_torneo, id_horario, categoria, leyenda, leyendados, activo)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [id_torneo, id_horario, categoria, leyenda, leyendados || null, activo === 0 ? 0 : 1]
         );
         await connection.end();
 
@@ -4548,7 +4609,7 @@ app.post('/api/admin/agenda-playoffs', authMiddleware, async (req, res) => {
 // PUT admin: editar reserva de agenda
 app.put('/api/admin/agenda-playoffs/:id', authMiddleware, async (req, res) => {
     const { id } = req.params;
-    const { id_horario, categoria, leyenda } = req.body;
+    const { id_horario, categoria, leyenda, leyendados } = req.body;
 
     if (!id_horario || !categoria || !leyenda) {
         return res.status(400).json({ error: 'Faltan campos requeridos (id_horario, categoria, leyenda)' });
@@ -4558,9 +4619,9 @@ app.put('/api/admin/agenda-playoffs/:id', authMiddleware, async (req, res) => {
         const connection = await mysql.createConnection(connectionConfig);
         const [result] = await connection.execute(
             `UPDATE agenda_playoffs
-             SET id_horario = ?, categoria = ?, leyenda = ?
+             SET id_horario = ?, categoria = ?, leyenda = ?, leyendados = ?
              WHERE id = ?`,
-            [id_horario, categoria, leyenda, id]
+            [id_horario, categoria, leyenda, leyendados || null, id]
         );
         await connection.end();
 

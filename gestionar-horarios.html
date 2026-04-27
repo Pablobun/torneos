@@ -167,6 +167,28 @@
             cursor: not-allowed;
         }
         
+        .editable-cell {
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        
+        .editable-cell:hover {
+            background: #e8f5e9;
+        }
+        
+        .editable-cell.editing {
+            background: #fff;
+            border: 2px solid #4CAF50;
+            padding: 6px;
+        }
+        
+        .readonly-cell {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        
         .no-horarios {
             text-align: center;
             padding: 40px;
@@ -317,7 +339,7 @@
                     </div>
                     <div class="form-group">
                         <label for="canchas">Cantidad de Canchas *</label>
-                        <input type="number" id="canchas" name="canchas" min="1" value="4" required>
+                        <input type="number" id="canchas" name="canchas" min="0" value="4" required>
                     </div>
                     <div class="form-group">
                         <label for="lugar">Lugar *</label>
@@ -484,8 +506,8 @@
                         <td>${h.dia_semana || ''}</td>
                         <td>${fechaFormateada}</td>
                         <td>${hora}</td>
-                        <td>${canchas}</td>
-                        <td>${lugar}</td>
+                        <td class="editable-cell" data-id="${h.id}" data-field="Canchas" data-value="${canchas}" title="Doble click para editar">${canchas}</td>
+                        <td class="editable-cell" data-id="${h.id}" data-field="lugar" data-value="${lugar}" title="Doble click para editar">${lugar}</td>
                         <td>
                             <button class="btn-delete" 
                                     onclick="eliminarHorario(${h.id})" 
@@ -543,6 +565,56 @@
                 }
             } catch (error) {
                 showError('Error de conexión: ' + error.message);
+            }
+        });
+
+        // Edición inline de celdas
+        document.addEventListener('dblclick', async (e) => {
+            const cell = e.target;
+            if (!cell.classList.contains('editable-cell')) return;
+            
+            const id = cell.dataset.id;
+            const field = cell.dataset.field;
+            const currentValue = cell.dataset.value;
+            
+            let newValue = prompt(`Editar ${field === 'Canchas' ? 'Canchas' : 'Lugar'}:`, currentValue);
+            if (newValue === null || newValue.trim() === '') return;
+            
+            newValue = newValue.trim();
+            
+            // Validación
+            if (field === 'Canchas') {
+                const num = parseInt(newValue);
+                if (isNaN(num) || num < 0) {
+                    alert('Canchas debe ser un número >= 0');
+                    return;
+                }
+                newValue = num;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/horarios/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        [field]: field === 'Canchas' ? newValue : newValue
+                    })
+                });
+                
+                if (response.ok) {
+                    showSuccess('✅ Actualizado');
+                    cell.dataset.value = newValue;
+                    cell.textContent = newValue;
+                    cargarHorarios();
+                } else {
+                    const err = await response.json();
+                    alert(err.error || 'Error al actualizar');
+                }
+            } catch (error) {
+                alert('Error de conexión');
             }
         });
 
