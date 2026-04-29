@@ -120,6 +120,7 @@
             <button class="tab-btn" onclick="cambiarTab('partidos')">🎾 Partidos</button>
             <button class="tab-btn" onclick="cambiarTab('llaves')">🔗 Llaves</button>
             <button class="tab-btn" onclick="cambiarTab('agenda')">📅 Agenda</button>
+            <button class="tab-btn" onclick="cambiarTab('horarios-categoria')">📊 Horarios por Categoría</button>
         </div>
 
         <!-- TAB 1: INSCRIPTOS -->
@@ -182,6 +183,12 @@
             </div>
 
             <div id="agenda-list"></div>
+        </div>
+
+        <!-- TAB 6: HORARIOS POR CATEGORÍA -->
+        <div id="tab-horarios-categoria" class="tab-content">
+            <h2 class="section-title">Horarios por Categoría</h2>
+            <div id="horarios-categoria-list"></div>
         </div>
     </div>
 
@@ -457,6 +464,7 @@
             cargarPartidos();
             cargarLlaves();
             cargarAgendaPlayoffs();
+            cargarHorariosPorCategoria();
         }
 
         function cambiarTab(tabName) {
@@ -468,6 +476,9 @@
 
             if (tabName === 'agenda') {
                 cargarAgendaPlayoffs();
+            }
+            if (tabName === 'horarios-categoria') {
+                cargarHorariosPorCategoria();
             }
         }
 
@@ -1615,6 +1626,122 @@
                 }
             });
         });
+
+        // ==================== HORARIOS POR CATEGORÍA ====================
+        let horariosCategoriaData = null;
+
+        async function cargarHorariosPorCategoria() {
+            const idTorneo = document.getElementById('selector-torneo').value;
+            const categoria = document.getElementById('selector-categoria').value;
+            const container = document.getElementById('horarios-categoria-list');
+            
+            container.innerHTML = '<div class="loading">Cargando horarios...</div>';
+            
+            try {
+                const response = await fetch(`${API_URL}/admin/inscriptos-horarios/${idTorneo}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) throw new Error('Error al cargar');
+                
+                horariosCategoriaData = await response.json();
+                renderHorariosPorCategoria();
+            } catch (error) {
+                console.error('Error:', error);
+                container.innerHTML = '<div class="alert alert-error">Error al cargar los horarios</div>';
+            }
+        }
+
+        function renderHorariosPorCategoria() {
+            const container = document.getElementById('horarios-categoria-list');
+            const categoriaSeleccionada = document.getElementById('selector-categoria').value;
+            
+            if (!horariosCategoriaData || !horariosCategoriaData.inscriptos) {
+                container.innerHTML = '<div class="empty-state">No hay datos disponibles</div>';
+                return;
+            }
+            
+            let inscriptos = horariosCategoriaData.inscriptos;
+            
+            // Filtrar por categoría si se seleccionó una
+            if (categoriaSeleccionada) {
+                inscriptos = inscriptos.filter(i => i.categoria === categoriaSeleccionada);
+            }
+            
+            if (inscriptos.length === 0) {
+                container.innerHTML = '<div class="empty-state">No hay inscriptos en esta categoría</div>';
+                return;
+            }
+            
+            // Días de la semana en orden
+            const diasOrden = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+            
+            // Agrupar horarios por día para cada inscripto
+            const inscriptosAgrupados = inscriptos.map(insc => {
+                const horariosPorDia = {};
+                (insc.horarios || []).forEach(h => {
+                    const dia = h.dia_semana || '';
+                    if (!horariosPorDia[dia]) {
+                        horariosPorDia[dia] = [];
+                    }
+                    horariosPorDia[dia].push(h.hora_inicio ? h.hora_inicio.substring(0, 5) : '');
+                });
+                return {
+                    ...insc,
+                    horariosPorDia
+                };
+            });
+            
+            let html = `
+                <div style="overflow-x: auto;">
+                <table class="data-table" style="min-width: 900px;">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 180px;">Inscripto</th>
+                            ${diasOrden.map(dia => `<th>${dia}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            inscriptosAgrupados.forEach(insc => {
+                html += `
+                    <tr>
+                        <td><strong>${insc.integrantes}</strong><br><small>${insc.categoria}</small></td>
+                `;
+                
+                diasOrden.forEach(dia => {
+                    const horariosDia = insc.horariosPorDia[dia] || [];
+                    
+                    if (horariosDia.length === 0) {
+                        html += '<td style="color: #999;">-</td>';
+                    } else {
+                        let celdaHtml = '';
+                        const linea1 = horariosDia.slice(0, 2);
+                        const linea2 = horariosDia.slice(2, 4);
+                        const hayMas = horariosDia.length > 4;
+                        
+                        if (linea1.length > 0) {
+                            celdaHtml += linea1.join(', ');
+                        }
+                        if (linea2.length > 0) {
+                            celdaHtml += '<br>' + linea2.join(', ');
+                        }
+                        if (hayMas) {
+                            const resto = horariosDia.slice(4).join(', ');
+                            celdaHtml += `<br><span style="color: #666; font-size: 0.85em;">+${resto}</span>`;
+                        }
+                        
+                        html += `<td>${celdaHtml}</td>`;
+                    }
+                });
+                
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        }
     </script>
 </body>
 </html>

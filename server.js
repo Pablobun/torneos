@@ -4140,6 +4140,56 @@ app.put('/api/admin/inscriptos/:id/horarios', authMiddleware, async (req, res) =
     }
 });
 
+// GET: Obtener todos los inscriptos con sus horarios de disponibilidad por categoría
+app.get('/api/admin/inscriptos-horarios/:idTorneo', authMiddleware, async (req, res) => {
+    const { idTorneo } = req.params;
+    
+    try {
+        const connection = await mysql.createConnection(connectionConfig);
+        
+        // 1. Obtener todos los inscriptos del torneo
+        const [inscriptos] = await connection.execute(
+            'SELECT id, integrantes, categoria FROM inscriptos WHERE id_torneo_fk = ? ORDER BY categoria, integrantes',
+            [idTorneo]
+        );
+        
+        // 2. Obtener todos los horarios del torneo
+        const [horarios] = await connection.execute(
+            'SELECT id, dia_semana, fecha, hora_inicio, lugar FROM horarios WHERE id_torneo_fk = ? ORDER BY dia_semana, hora_inicio',
+            [idTorneo]
+        );
+        
+        // 3. Obtener los horarios de disponibilidad de cada inscripto
+        const inscriptosConHorarios = await Promise.all(
+            inscriptos.map(async (inscripto) => {
+                const [horariosInscripto] = await connection.execute(
+                    `SELECT h.dia_semana, h.fecha, h.hora_inicio, h.lugar 
+                     FROM inscriptos_horarios ih
+                     JOIN horarios h ON ih.id_horario_fk = h.id
+                     WHERE ih.id_inscripto_fk = ?
+                     ORDER BY h.dia_semana, h.hora_inicio`,
+                    [inscripto.id]
+                );
+                
+                return {
+                    ...inscripto,
+                    horarios: horariosInscripto
+                };
+            })
+        );
+        
+        await connection.end();
+        
+        res.json({
+            inscriptos: inscriptosConHorarios,
+            horarios: horarios
+        });
+    } catch (error) {
+        console.error('Error al obtener inscriptos con horarios:', error);
+        res.status(500).json({ error: 'Error al obtener inscriptos con horarios' });
+    }
+});
+
 // DELETE: Eliminar inscripto (solo si no tiene grupo ni partido asignado)
 app.delete('/api/admin/inscriptos/:id', authMiddleware, async (req, res) => {
     const { id } = req.params;
