@@ -38,6 +38,7 @@ let partidosGenerados = [];
 let sinGrupo = [];
 let advertencias = [];
 let torneoTieneGrupos = false;
+let modoOrdenPartidos = 'categoria';
 
     // Inicialización
 async function inicializar() {
@@ -103,6 +104,18 @@ async function inicializar() {
             btnArmarGrupos.classList.add('btn-primary');
             btnLimpiarTorneo.classList.add('hidden');
         }
+    }
+
+    // Cambiar orden de visualización de partidos
+    function cambiarOrdenPartidos(nuevoModo) {
+        modoOrdenPartidos = nuevoModo;
+        const btnCat = document.getElementById('btn-ordenar-categoria');
+        const btnFecha = document.getElementById('btn-ordenar-fecha');
+        if (btnCat && btnFecha) {
+            btnCat.classList.toggle('active', nuevoModo === 'categoria');
+            btnFecha.classList.toggle('active', nuevoModo === 'fecha');
+        }
+        mostrarGruposFormados();
     }
 
     // Cargar inscriptos agrupados por categoría
@@ -307,9 +320,39 @@ async function inicializar() {
         // Mostrar partidos
         if (partidosGenerados && partidosGenerados.length > 0) {
             html += '<h3 class="partidos-titulo">Partidos Programados</h3>';
+            html += '<div class="orden-toggle" style="margin: 10px 0;">';
+            html += '<button id="btn-ordenar-categoria" class="btn-toggle ' + (modoOrdenPartidos === 'categoria' ? 'active' : '') + '" onclick="cambiarOrdenPartidos(\'categoria\')">📊 Por Categoría</button>';
+            html += '<button id="btn-ordenar-fecha" class="btn-toggle ' + (modoOrdenPartidos === 'fecha' ? 'active' : '') + '" onclick="cambiarOrdenPartidos(\'fecha\')">📅 Por Fecha</button>';
+            html += '</div>';
             html += '<div class="partidos-list grupos-partidos-list">';
             
-            for (const partido of partidosGenerados) {
+            // Ordenar partidos según modo
+            let partidosOrdenados = [...partidosGenerados];
+            if (modoOrdenPartidos === 'fecha') {
+                const diasOrden = {
+                    'Domingo': 1,
+                    'Lunes': 2,
+                    'Martes': 3,
+                    'Miércoles': 4,
+                    'Jueves': 5,
+                    'Viernes': 6,
+                    'Sábado': 7
+                };
+                partidosOrdenados.sort((a, b) => {
+                    const tieneHorarioA = a.horario && a.horario.dia;
+                    const tieneHorarioB = b.horario && b.horario.dia;
+                    if (tieneHorarioA && tieneHorarioB) {
+                        const ordenA = (diasOrden[a.horario.dia] || 0) * 100000 + parseInt((a.horario.hora || '00:00:00').substring(0, 5).replace(':', '') || 0);
+                        const ordenB = (diasOrden[b.horario.dia] || 0) * 100000 + parseInt((b.horario.hora || '00:00:00').substring(0, 5).replace(':', '') || 0);
+                        return ordenA - ordenB;
+                    }
+                    if (tieneHorarioA) return -1;
+                    if (tieneHorarioB) return 1;
+                    return 0;
+                });
+            }
+            
+            for (const partido of partidosOrdenados) {
                 // Usar nombre del backend si está disponible, sino buscar en el mapa
                 const localNombre = partido.localNombre || (inscriptosPorId[partido.local] ? inscriptosPorId[partido.local].integrantes : 'ID ' + partido.local);
                 const visitanteNombre = partido.visitanteNombre || (inscriptosPorId[partido.visitante] ? inscriptosPorId[partido.visitante].integrantes : 'ID ' + partido.visitante);
@@ -580,4 +623,7 @@ async function inicializar() {
 
     // Iniciar la aplicación
     inicializar();
+    
+    // Exponer función al scope global para que sea accesible desde onclick del HTML
+    window.cambiarOrdenPartidos = cambiarOrdenPartidos;
 });
