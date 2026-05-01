@@ -671,100 +671,188 @@ function intentarFormarGrupos(jugadores, configuracionGrupos, horarios, horarios
         return String(fecha).split(' ')[0].split('T')[0];
     }
 
-        // NUEVO: GENERAR TODOS LOS PARTIDOS PRIMERO
-    let todosPartidos = [];
-    for (const grupo of grupos) {
+        for (const grupo of grupos) {
         const integrantesIds = grupo.integrantes;
+        
         for (let i = 0; i < integrantesIds.length; i++) {
             for (let j = i + 1; j < integrantesIds.length; j++) {
+                // Asegurar que los IDs son strings para consistencia
                 const localId = String(integrantesIds[i]);
                 const visitanteId = String(integrantesIds[j]);
+                
                 const jugadorLocal = inscriptos.find(j => String(j.id) === localId);
                 const jugadorVisitante = inscriptos.find(j => String(j.id) === visitanteId);
-                if (!jugadorLocal || !jugadorVisitante) continue;
+                
+                if (!jugadorLocal || !jugadorVisitante) {
+                    console.error(`No se encontraron datos de jugadores ${localId} vs ${visitanteId}`);
+                    continue;
+                }
+                
                 const horariosLocalSet = new Set(jugadorLocal.horarios);
                 const horariosComunes = jugadorVisitante.horarios.filter(h => horariosLocalSet.has(h));
-                todosPartidos.push({
-                    localId, visitanteId, grupoNumero: grupo.numero,
-                    horariosComunes, dificultad: horariosComunes.length,
-                    jugadorLocal, jugadorVisitante
-                });
-            }
-        }
-    }
-
-    // ORDENAR POR DIFICULTAD (menos horarios = más difícil = procesar primero)
-    todosPartidos.sort((a, b) => a.dificultad - b.dificultad);
-
-    // PROCESAR PARTIDOS EN ORDEN DE DIFICULTAD
-    for (const partido of todosPartidos) {
-        const localId = partido.localId;
-        const visitanteId = partido.visitanteId;
-        const jugadorLocal = partido.jugadorLocal;
-        const jugadorVisitante = partido.jugadorVisitante;
-        const horariosComunes = partido.horariosComunes;
-        let horarioAsignado = null;
-
-        if (horariosComunes.length === 0) {
-            advertencias.push({ tipo: 'sin_horario_compatible', local: localId, visitante: visitanteId, grupo: partido.grupoNumero, mensaje: `Sin horarios comunes` });
-        } else {
-            const horariosDisponibles = horariosComunes.filter(horarioId => {
-                const horarioInfo = horariosMap[horarioId];
-                if (!horarioInfo) return false;
-                const fechaHorario = normalizarFecha(horarioInfo.fecha);
-                const localTienePartido = jugadorFechas[localId]?.has(fechaHorario);
-                const visitanteTienePartido = jugadorFechas[visitanteId]?.has(fechaHorario);
-                const localTieneHorario = jugadorHorarios[localId]?.has(horarioId);
-                const visitanteTieneHorario = jugadorHorarios[visitanteId]?.has(horarioId);
-                return !localTienePartido && !visitanteTienePartido && !localTieneHorario && !visitanteTieneHorario;
-            });
-
-            if (horariosDisponibles.length === 0) {
-                advertencias.push({ tipo: 'jugadores_ocupados', local: localId, visitante: visitanteId, grupo: partido.grupoNumero, mensaje: `Sin horarios disponibles` });
-            } else {
-                const horariosInfo = horariosDisponibles.map(id => {
-                    const h = horariosMap[id];
-                    const fecha = h.fecha;
-                    const pLocal = Array.from(jugadorFechas[localId] || []).filter(f => f === fecha).length;
-                    const pVisit = Array.from(jugadorFechas[visitanteId] || []).filter(f => f === fecha).length;
-                    return { id, uso: usoHorarios[id] || 0, cupo: horarios.find(x => x.id === id)?.cupo ?? 4, fecha };
-                }).sort((a, b) => a.uso - b.uso);
-
-                for (const hInfo of horariosInfo) {
-                    if (hInfo.uso < hInfo.cupo) {
-                        const fechaVerif = normalizarFecha(hInfo.fecha);
-                        if (!jugadorFechas[localId]?.has(fechaVerif) && !jugadorFechas[visitanteId]?.has(fechaVerif)) {
-                            horarioAsignado = hInfo.id;
-                            usoHorarios[hInfo.id]++;
-                            const fechaNorm = normalizarFecha(hInfo.fecha);
-                            jugadorHorarios[localId].add(horarioAsignado);
-                            jugadorHorarios[visitanteId].add(horarioAsignado);
-                            jugadorFechas[localId].add(fechaNorm);
-                            jugadorFechas[visitanteId].add(fechaNorm);
-                            break;
+                
+                let horarioAsignado = null;
+                
+                if (horariosComunes.length === 0) {
+                    advertencias.push({
+                        tipo: 'sin_horario_compatible',
+                        local: localId,
+                        visitante: visitanteId,
+                        grupo: grupo.numero,
+                        mensaje: `Los jugadores ${localId} y ${visitanteId} no tienen horarios disponibles en común`
+                    });
+                } else {
+                        // NUEVO: Filtrar horarios donde ningún jugador ya tenga partido ese día
+                    const horariosDisponibles = horariosComunes.filter(horarioId => {
+                        const horarioInfo = horariosMap[horarioId];
+                        if (!horarioInfo) return false;
+                        
+                        // Normalizar fecha para comparación consistente
+                        const fechaHorario = normalizarFecha(horarioInfo.fecha);
+                        const horaHorario = horarioInfo.hora;
+                        
+                        // Verificar que ningún jugador ya tenga partido ese día
+                        const localTienePartidoEseDia = jugadorFechas[localId].has(fechaHorario);
+                        const visitanteTienePartidoEseDia = jugadorFechas[visitanteId].has(fechaHorario);
+                        
+                        // Verificar que ningún jugador ya tenga partido en ese horario específico
+                        const localTieneEseHorario = jugadorHorarios[localId].has(horarioId);
+                        const visitanteTieneEseHorario = jugadorHorarios[visitanteId].has(horarioId);
+                        
+                        // DEBUG: Log si hay conflicto
+                        if (localTienePartidoEseDia || visitanteTienePartidoEseDia) {
+                            console.log(`   ⚠️ Conflicto de fecha encontrado para partido ${jugadorLocal.nombre} vs ${jugadorVisitante.nombre} en ${fechaHorario} ${horaHorario}`);
+                            console.log(`      Local ${localId} tiene partido ese día: ${localTienePartidoEseDia}, Visitante ${visitanteId} tiene partido ese día: ${visitanteTienePartidoEseDia}`);
+                        }
+                        
+                        return !localTienePartidoEseDia && 
+                               !visitanteTienePartidoEseDia && 
+                               !localTieneEseHorario && 
+                               !visitanteTieneEseHorario;
+                    });
+                    
+                    if (horariosDisponibles.length === 0) {
+                        // No hay horarios donde ambos estén libres ese día
+                        advertencias.push({
+                            tipo: 'jugadores_ocupados',
+                            local: localId,
+                            visitante: visitanteId,
+                            grupo: grupo.numero,
+                            mensaje: `Los jugadores ${localId} y ${visitanteId} ya tienen partidos asignados en todos los horarios comunes disponibles`
+                        });
+                    } else {
+                        // Ordenar por: 1) uso de cancha, 2) cantidad de partidos ya asignados ese día a los jugadores
+                        const horariosComunesInfo = horariosDisponibles.map(id => {
+                            const horarioInfo = horariosMap[id];
+                            const fecha = horarioInfo.fecha;
+                            
+                            // Calcular cuántos partidos ya tienen cada jugador ese día
+                            const partidosDiaLocal = Array.from(jugadorFechas[localId]).filter(f => f === fecha).length;
+                            const partidosDiaVisitante = Array.from(jugadorFechas[visitanteId]).filter(f => f === fecha).length;
+                            const totalPartidosDia = partidosDiaLocal + partidosDiaVisitante;
+                            
+                            return {
+                                id: id,
+                                uso: usoHorarios[id] || 0,
+                                cupo: horarios.find(h => h.id === id)?.cupo ?? 4,
+                                fecha: fecha,
+                                totalPartidosDia: totalPartidosDia
+                            };
+                        }).sort((a, b) => {
+                            // Priorizar: 1) menos uso de cancha, 2) menos partidos ese día
+                            if (a.uso !== b.uso) return a.uso - b.uso;
+                            return a.totalPartidosDia - b.totalPartidosDia;
+                        });
+                        
+                         for (const horarioInfo of horariosComunesInfo) {
+                            if (horarioInfo.uso < horarioInfo.cupo) {
+                                // VERIFICACIÓN FINAL: Asegurar que ningún jugador tenga partido ese día
+                                // Normalizar fecha para verificación
+                                const fechaVerificar = normalizarFecha(horarioInfo.fecha);
+                                console.log(`   🔍 Verificando horario ${fechaVerificar} ${horarioInfo.hora}...`);
+                                console.log(`      Fechas en jugadorFechas[${localId}]:`, Array.from(jugadorFechas[localId]));
+                                console.log(`      Fechas en jugadorFechas[${visitanteId}]:`, Array.from(jugadorFechas[visitanteId]));
+                                console.log(`      ¿${fechaVerificar} está en local?`, jugadorFechas[localId].has(fechaVerificar));
+                                console.log(`      ¿${fechaVerificar} está en visitante?`, jugadorFechas[visitanteId].has(fechaVerificar));
+                                
+                                const localTienePartido = jugadorFechas[localId].has(fechaVerificar);
+                                const visitanteTienePartido = jugadorFechas[visitanteId].has(fechaVerificar);
+                                
+                                if (localTienePartido || visitanteTienePartido) {
+                                    console.log(`   ❌ CONFLICTO DETECTADO: No se puede asignar ${horarioInfo.fecha}`);
+                                    console.log(`      Local ${localId} (${jugadorLocal.nombre}) tiene partido: ${localTienePartido}`);
+                                    console.log(`      Visitante ${visitanteId} (${jugadorVisitante.nombre}) tiene partido: ${visitanteTienePartido}`);
+                                    console.log(`      ⏭️ Saltando al siguiente horario...`);
+                                    continue; // Saltar al siguiente horario
+                                }
+                                
+                                console.log(`   ✅ SIN CONFLICTO: Asignando horario ${horarioInfo.fecha} ${horarioInfo.hora}`);
+                                horarioAsignado = horarioInfo.id;
+                                usoHorarios[horarioInfo.id]++;
+                                
+                                // NUEVO: Registrar horario y fecha para ambos jugadores
+                                // Normalizar fecha antes de guardar (formato YYYY-MM-DD)
+                                const fechaNormalizada = normalizarFecha(horarioInfo.fecha);
+                                jugadorHorarios[localId].add(horarioAsignado);
+                                jugadorHorarios[visitanteId].add(horarioAsignado);
+                                jugadorFechas[localId].add(fechaNormalizada);
+                                jugadorFechas[visitanteId].add(fechaNormalizada);
+                                
+                                console.log(`✓ Asignado horario ${horarioInfo.fecha} ${horarioInfo.hora} (ID: ${horarioAsignado}) para partido: ${jugadorLocal.nombre} vs ${jugadorVisitante.nombre}`);
+                                console.log(`   Registrado: Jugador ${localId} y ${visitanteId} ahora tienen partido el ${horarioInfo.fecha}`);
+                                break;
+                            }
+                        }
+                        
+                        if (!horarioAsignado) {
+                            advertencias.push({
+                                tipo: 'cupo_lleno',
+                                local: localId,
+                                visitante: visitanteId,
+                                grupo: grupo.numero,
+                                mensaje: `Los horarios comunes entre ${localId} y ${visitanteId} están todos ocupados`
+                            });
                         }
                     }
                 }
-
-                if (!horarioAsignado) {
-                    advertencias.push({ tipo: 'cupo_lleno', local: localId, visitante: visitanteId, grupo: partido.grupoNumero, mensaje: `Todos los horarios ocupados` });
+                
+                let horarioInfo = null;
+                if (horarioAsignado && horariosMap[horarioAsignado]) {
+                    const h = horariosMap[horarioAsignado];
+                    horarioInfo = {
+                        id: h.id,
+                        dia: h.dia,
+                        hora: h.hora
+                    };
                 }
+                
+                let horariosLocal = [];
+                let horariosVisitante = [];
+                
+                if (!horarioAsignado) {
+                    horariosLocal = jugadorLocal.horarios.map(hId => {
+                        const h = horariosMap[hId];
+                        return h ? { id: h.id, dia: h.dia, hora: h.hora } : null;
+                    }).filter(h => h !== null);
+                    
+                    horariosVisitante = jugadorVisitante.horarios.map(hId => {
+                        const h = horariosMap[hId];
+                        return h ? { id: h.id, dia: h.dia, hora: h.hora } : null;
+                    }).filter(h => h !== null);
+                }
+                
+                partidos.push({
+                    local: localId,
+                    localNombre: jugadorLocal.nombre,
+                    visitante: visitanteId,
+                    visitanteNombre: jugadorVisitante.nombre,
+                    horario: horarioInfo,
+                    grupo: grupo.numero,
+                    horariosDisponiblesLocal: horariosLocal,
+                    horariosDisponiblesVisitante: horariosVisitante
+                });
             }
         }
-
-        let horarioInfo = null;
-        if (horarioAsignado && horariosMap[horarioAsignado]) {
-            const h = horariosMap[horarioAsignado];
-            horarioInfo = { id: h.id, dia: h.dia, hora: h.hora };
-        }
-
-        let horariosLocal = [], horariosVisitante = [];
-        if (!horarioAsignado) {
-            horariosLocal = jugadorLocal.horarios.map(hId => horariosMap[hId]).filter(h => h).map(h => ({ id: h.id, dia: h.dia, hora: h.hora }));
-            horariosVisitante = jugadorVisitante.horarios.map(hId => horariosMap[hId]).filter(h => h).map(h => ({ id: h.id, dia: h.dia, hora: h.hora }));
-        }
-
-        partidos.push({ local: localId, localNombre: jugadorLocal.nombre, visitante: visitanteId, visitanteNombre: jugadorVisitante.nombre, horario: horarioInfo, grupo: partido.grupoNumero, horariosDisponiblesLocal: horariosLocal, horariosDisponiblesVisitante: horariosVisitante });
     }
 
     // Contar partidos pendientes (sin horario asignado)
@@ -828,7 +916,7 @@ async function armarGruposBasico(configuracionGrupos, idTorneo) {
         let mejorSolucion = null;
         let mejorPuntaje = Infinity;
         
-        for (let intento = 0; intento < 50; intento++) {
+        for (let intento = 0; intento < 15; intento++) {
             const resultado = intentarFormarGrupos(
                 inscriptos,
                 configuracionGrupos,

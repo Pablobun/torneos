@@ -328,7 +328,22 @@ async function inicializar() {
             
             // Ordenar partidos según modo
             let partidosOrdenados = [...partidosGenerados];
-            if (modoOrdenPartidos === 'fecha') {
+            if (modoOrdenPartidos === 'categoria') {
+                // Ordenar por categoría, luego por grupo
+                partidosOrdenados.sort((a, b) => {
+                    // Obtener categoría desde el mapa de inscriptos
+                    const insA = inscriptosPorId[a.local];
+                    const insB = inscriptosPorId[b.local];
+                    const catA = insA?.categoria || '';
+                    const catB = insB?.categoria || '';
+                    
+                    // Primero por categoría
+                    if (catA !== catB) return catA.localeCompare(catB);
+                    
+                    // Dentro de la misma categoría, ordenar por grupo
+                    return (a.grupo || 0) - (b.grupo || 0);
+                });
+            } else if (modoOrdenPartidos === 'fecha') {
                 const diasOrden = {
                     'Domingo': 1,
                     'Lunes': 2,
