@@ -341,10 +341,11 @@ document.addEventListener('DOMContentLoaded', function () {
             const fechaFormateada = formatearFecha(fechaKey);
 
             html += `
-                <div class="fecha-seccion">
+                <div class="fecha-seccion" data-fecha="${fechaKey}">
                     <div class="fecha-header">
                         <span class="fecha-dia">${grupoFecha.dia}</span>
                         <span class="fecha-fecha">${fechaFormateada}</span>
+                        <button class="btn-imprimir" onclick="imprimirFecha('${fechaKey}', '${grupoFecha.dia} ${fechaFormateada}')" title="Descargar imagen">🖨️</button>
                     </div>
                     <div class="partidos-list">
             `;
@@ -495,4 +496,30 @@ document.addEventListener("DOMContentLoaded", function() {
             if (e.key === 'Escape' && modal.classList.contains('visible')) ocultarModal();
         });
     }
+
+    window.imprimirFecha = async function(fechaKey, titulo) {
+        const elemento = document.querySelector(`.fecha-seccion[data-fecha="${fechaKey}"]`);
+        if (!elemento) {
+            console.error('No se encontró el elemento de la fecha:', fechaKey);
+            return;
+        }
+        
+        try {
+            const canvas = await html2canvas(elemento, {
+                scale: 2,
+                backgroundColor: '#ffffff',
+                logging: false,
+                ignoreElements: (element) => element.classList.contains('btn-imprimir')
+            });
+            
+            const link = document.createElement('a');
+            const tituloLimpio = titulo.replace(/ /g, '-').replace(/\//g, '-');
+            link.download = `partidos-${tituloLimpio}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        } catch (err) {
+            console.error('Error al generar imagen:', err);
+            alert('Error al generar la imagen');
+        }
+    };
 });

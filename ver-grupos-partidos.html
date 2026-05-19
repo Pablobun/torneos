@@ -25,6 +25,26 @@
                 font-size: 14px !important;
             }
         }
+        
+        .btn-imprimir {
+            background: none;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 4px 8px;
+            font-size: 16px;
+            margin-left: 10px;
+            transition: background-color 0.2s;
+        }
+        
+        .btn-imprimir:hover {
+            background-color: #f0f0f0;
+        }
+        
+        .fecha-header {
+            display: flex;
+            align-items: center;
+        }
     </style>
 </head>
 <body>
@@ -143,6 +163,7 @@
         </footer>
     </div>
     
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="ver-grupos-partidos.js"></script>
   <!-- =============================== -->
     <!-- ==  NUEVO: MODAL DE SPONSORS == -->
