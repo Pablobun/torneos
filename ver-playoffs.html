@@ -379,6 +379,45 @@
                 font-size: 28px;
             }
         }
+        
+        .btn-imprimir {
+            background: none;
+            border: 1px solid rgba(255,255,255,0.5);
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 4px 8px;
+            font-size: 16px;
+            margin-left: 10px;
+            transition: background-color 0.2s;
+            color: white;
+            vertical-align: middle;
+        }
+        
+        .btn-imprimir:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .captura-playoffs {
+            padding: 20px;
+            background: white;
+            width: 100%;
+        }
+        
+        .captura-playoffs .captura-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .captura-playoffs .captura-header h2 {
+            font-size: 24px;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        
+        .captura-playoffs .captura-header p {
+            font-size: 16px;
+            color: #666;
+        }
     </style>
 </head>
 <body>
@@ -392,6 +431,7 @@
             <select id="selector-categoria" onchange="cambiarCategoria()" style="padding: 10px 15px; border-radius: 5px; border: none; font-size: 14px; min-width: 150px;">
                 <option value="" disabled selected>Seleccionar categoría...</option>
             </select>
+            <button class="btn-imprimir" onclick="imprimirLlave()" title="Descargar imagen del bracket">🖨️</button>
         </div>
         
         <div class="content">
@@ -423,9 +463,20 @@
                     <p>Cargando bracket de playoffs...</p>
                 </div>
             </div>
+            
+            <div id="captura-playoffs" class="captura-playoffs" style="display: none;">
+                <div class="captura-header">
+                    <h2>🏆 Playoffs - Fase Final</h2>
+                    <p>Categoría: <strong id="categoria-captura"></strong></p>
+                </div>
+                <div id="campeon-captura"></div>
+                <div id="stats-captura"></div>
+                <div id="bracket-captura"></div>
+            </div>
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script>
         const API_URL = 'https://academia-torneos.onrender.com/api';
         let torneoId = null;
@@ -721,6 +772,68 @@
                     </a>
                 </div>
             `;
+        }
+
+        async function imprimirLlave() {
+            const select = document.getElementById('selector-categoria');
+            const categoria = select.value;
+            if (!categoria) {
+                alert('Seleccioná una categoría primero');
+                return;
+            }
+
+            const bracketContainer = document.getElementById('bracket-container');
+            if (!bracketContainer || bracketContainer.innerHTML.includes('Cargando') || bracketContainer.innerHTML.includes('No hay')) {
+                alert('No hay bracket para descargar');
+                return;
+            }
+
+            const captura = document.getElementById('captura-playoffs');
+            const categoriaCaptura = document.getElementById('categoria-captura');
+            const campeonCaptura = document.getElementById('campeon-captura');
+            const statsCaptura = document.getElementById('stats-captura');
+            const bracketCaptura = document.getElementById('bracket-captura');
+
+            categoriaCaptura.textContent = categoria;
+
+            bracketCaptura.innerHTML = bracketContainer.innerHTML;
+
+            const championSection = document.getElementById('champion-section');
+            if (championSection.classList.contains('visible')) {
+                campeonCaptura.innerHTML = championSection.outerHTML;
+                campeonCaptura.style.display = 'block';
+            } else {
+                campeonCaptura.style.display = 'none';
+            }
+
+            const statsBar = document.getElementById('stats-bar');
+            if (statsBar.style.display === 'flex') {
+                statsCaptura.innerHTML = statsBar.outerHTML;
+                statsCaptura.style.display = 'block';
+            } else {
+                statsCaptura.style.display = 'none';
+            }
+
+            captura.style.display = 'block';
+
+            try {
+                const canvas = await html2canvas(captura, {
+                    scale: 2,
+                    backgroundColor: '#ffffff',
+                    logging: false
+                });
+                
+                const link = document.createElement('a');
+                const catLimpia = categoria.replace(/ /g, '-').replace(/\//g, '-');
+                link.download = `playoffs-${catLimpia}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } catch (err) {
+                console.error('Error al generar imagen:', err);
+                alert('Error al generar la imagen');
+            } finally {
+                captura.style.display = 'none';
+            }
         }
     </script>
 </body>
