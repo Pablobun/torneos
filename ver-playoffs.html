@@ -25,7 +25,7 @@
             background: white;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
+            overflow: visible;
         }
         
         .header {
@@ -110,7 +110,7 @@
             display: flex;
             gap: 50px;
             min-width: 1000px;
-            justify-content: center;
+            justify-content: flex-start;
         }
         
         .round {
@@ -400,7 +400,8 @@
         .captura-playoffs {
             padding: 20px;
             background: white;
-            width: 100%;
+            display: inline-block;
+            width: auto;
         }
         
         .captura-playoffs .captura-header {
@@ -417,6 +418,15 @@
         .captura-playoffs .captura-header p {
             font-size: 16px;
             color: #666;
+        }
+        
+        @media print {
+            body { background: white; padding: 0; }
+            .container { max-width: none; overflow: visible; box-shadow: none; border-radius: 0; }
+            .header { break-after: avoid; }
+            .bracket-container { overflow: visible; }
+            .bracket { min-width: auto; justify-content: flex-start; }
+            .match { break-inside: avoid; }
         }
     </style>
 </head>
@@ -816,11 +826,17 @@
 
             captura.style.display = 'block';
 
+            const bracketAncho = bracketCaptura.scrollWidth + 40;
+            captura.style.width = bracketAncho + 'px';
+            captura.style.minWidth = bracketAncho + 'px';
+
             try {
                 const canvas = await html2canvas(captura, {
                     scale: 2,
                     backgroundColor: '#ffffff',
-                    logging: false
+                    logging: false,
+                    width: bracketAncho,
+                    windowWidth: bracketAncho
                 });
                 
                 const link = document.createElement('a');
@@ -833,6 +849,8 @@
                 alert('Error al generar la imagen');
             } finally {
                 captura.style.display = 'none';
+                captura.style.width = '';
+                captura.style.minWidth = '';
             }
         }
     </script>
